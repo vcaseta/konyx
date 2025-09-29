@@ -1,0 +1,39 @@
+version: "3.9"
+
+services:
+  konyx-backend:
+    build:
+      context: ./backend
+    container_name: konyx-backend
+    environment:
+      TZ: ${TZ}
+      APP_USER: ${APP_USER}
+      APP_PASS: ${APP_PASS}
+      APP_TOKEN: ${APP_TOKEN}
+    volumes:
+      - konyx_data:/data
+    networks:
+      lan-local:
+        ipv4_address: 192.168.1.51
+    restart: unless-stopped
+
+  konyx-frontend:
+    build:
+      context: ./frontend
+    container_name: konyx-frontend
+    environment:
+      TZ: ${TZ}
+      NEXT_PUBLIC_BACKEND_URL: ${NEXT_PUBLIC_BACKEND_URL}
+    depends_on:
+      - konyx-backend
+    networks:
+      lan-local:
+        ipv4_address: 192.168.1.50
+    restart: unless-stopped
+
+networks:
+  lan-local:
+    external: true
+
+volumes:
+  konyx_data:
