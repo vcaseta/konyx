@@ -2,19 +2,16 @@ version: "3.9"
 
 services:
   konyx-backend:
-    build: ./backend
+    image: ghcr.io/vcaseta/konyx-backend:latest
     container_name: konyx-backend
     env_file: .env
     networks:
       lan-local:
         ipv4_address: 192.168.1.51
-    dns:
-      - 8.8.8.8
-      - 1.1.1.1
     restart: unless-stopped
 
   konyx-frontend:
-    build: ./frontend
+    image: ghcr.io/vcaseta/konyx-frontend:latest
     container_name: konyx-frontend
     env_file: .env
     depends_on:
@@ -24,9 +21,6 @@ services:
     networks:
       lan-local:
         ipv4_address: 192.168.1.50
-    dns:
-      - 8.8.8.8
-      - 1.1.1.1
     restart: unless-stopped
 
 networks:
