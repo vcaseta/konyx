@@ -8,25 +8,26 @@ services:
     networks:
       lan-local:
         ipv4_address: 192.168.1.51
-    restart: unless-stopped
-
-services:
-  konyx-frontend:
-    build: ./frontend
-    container_name: konyx-frontend
-    env_file: .env
-    networks:
-      lan-local:
-        ipv4_address: 192.168.1.50
-    ports:
-      - "3000:3000"
-    depends_on:
-      - konyx-backend
     dns:
       - 8.8.8.8
       - 1.1.1.1
     restart: unless-stopped
 
+  konyx-frontend:
+    build: ./frontend
+    container_name: konyx-frontend
+    env_file: .env
+    depends_on:
+      - konyx-backend
+    ports:
+      - "3000:3000"
+    networks:
+      lan-local:
+        ipv4_address: 192.168.1.50
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    restart: unless-stopped
 
 networks:
   lan-local:
