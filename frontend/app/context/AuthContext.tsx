@@ -1,3 +1,4 @@
+// frontend/app/context/AuthContext.tsx
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
@@ -5,36 +6,32 @@ import { getAuthToken, setAuthToken } from "../lib/api";
 
 type AuthCtx = {
   token: string | null;
-  login: (token: string) => void;
+  setToken: (t: string | null) => void;
   logout: () => void;
 };
 
 const AuthContext = createContext<AuthCtx>({
   token: null,
-  login: () => {},
+  setToken: () => {},
   logout: () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [token, setToken] = useState<string | null>(null);
+  const [token, setTokenState] = useState<string | null>(null);
 
-  // hidrata token desde localStorage al montar
   useEffect(() => {
-    setToken(getAuthToken());
+    setTokenState(getAuthToken());
   }, []);
 
-  const login = (t: string) => {
+  const setToken = (t: string | null) => {
     setAuthToken(t);
-    setToken(t);
+    setTokenState(t);
   };
 
-  const logout = () => {
-    setAuthToken(null);
-    setToken(null);
-  };
+  const logout = () => setToken(null);
 
   return (
-    <AuthContext.Provider value={{ token, login, logout }}>
+    <AuthContext.Provider value={{ token, setToken, logout }}>
       {children}
     </AuthContext.Provider>
   );
