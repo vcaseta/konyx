@@ -1,54 +1,36 @@
-// frontend/app/lib/api.ts
-export const API_BASE =
-  process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/+$/, "") || "";
+// app/lib/api.ts
+export const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "";
 
+// Helpers de token por si otros componentes los usan
+export function setAuthToken(t: string) {
+  if (typeof window !== "undefined") localStorage.setItem("konyx_token", t);
+}
 export function getAuthToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem("konyx_token");
+  if (typeof window !== "undefined") return localStorage.getItem("konyx_token");
+  return null;
 }
 
-export function setAuthToken(token: string | null) {
-  if (typeof window === "undefined") return;
-  if (token) {
-    localStorage.setItem("konyx_token", token);
-  } else {
-    localStorage.removeItem("konyx_token");
-  }
-}
-
-export async function login(user: string, password: string): Promise<string> {
-  // El backend espera { user, password } (no "username")
+// Login contra el backend (FastAPI espera {user, password})
+export async function login(username: string, password: string): Promise<string> {
+  if (!API_BASE) throw new Error("API base no configurada (NEXT_PUBLIC_BACKEND_URL)");
   const res = await fetch(`${API_BASE}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    // Importante: usar "user" como clave
-    body: JSON.stringify({ user, password }),
-    cache: "no-store",
+    body: JSON.stringify({ user: username, password }),
   });
 
   if (!res.ok) {
-    let msg = "Error de autenticación";
-    try {
-      const j = await res.json();
-      msg = j?.detail || msg;
-    } catch {}
-    throw new Error(msg);
+    const txt = await res.text();
+    throw new Error(`Login fallido (${res.status}): ${txt}`);
   }
 
   const data = await res.json();
-  // El backend devuelve { token: "..." }
-  const token: string = data?.token;
-  if (!token) throw new Error("Respuesta de login inválida");
+  const token: string = data?.token || data?.access_token || "";
+  if (!token) throw new Error("Respuesta sin token");
+
   setAuthToken(token);
   return token;
 }
 
-export async function fetchWithAuth(
-  path: string,
-  init?: RequestInit
-): Promise<Response> {
-  const token = getAuthToken();
-  const headers = new Headers(init?.headers);
-  if (token) headers.set("Authorization", `Bearer ${token}`);
-  return fetch(`${API_BASE}${path}`, { ...init, headers });
-}
+// Alias para mantener compatibilidad con Login.tsx
+export { login as apiLogin };
