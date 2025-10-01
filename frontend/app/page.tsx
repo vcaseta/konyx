@@ -78,7 +78,7 @@ export default function Page() {
 
         {/* Pie ligero */}
         <p className="text-center text-xs text-white/80 mt-6">
-          © {new Date().getFullYear()} Konyx
+          © {new Date().getFullYear()} Victor Mut
         </p>
       </div>
     </main>
