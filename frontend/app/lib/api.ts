@@ -1,7 +1,7 @@
 // app/lib/api.ts
 export const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "";
 
-// Helpers de token por si otros componentes los usan
+// Helpers para token en localStorage
 export function setAuthToken(t: string) {
   if (typeof window !== "undefined") localStorage.setItem("konyx_token", t);
 }
@@ -10,9 +10,13 @@ export function getAuthToken(): string | null {
   return null;
 }
 
-// Login contra el backend (FastAPI espera {user, password})
-export async function login(username: string, password: string): Promise<string> {
+/**
+ * apiLogin: hace POST a /auth/login con { user, password }
+ * y devuelve el token (también lo guarda en localStorage).
+ */
+export async function apiLogin(username: string, password: string): Promise<string> {
   if (!API_BASE) throw new Error("API base no configurada (NEXT_PUBLIC_BACKEND_URL)");
+
   const res = await fetch(`${API_BASE}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -31,6 +35,3 @@ export async function login(username: string, password: string): Promise<string>
   setAuthToken(token);
   return token;
 }
-
-// Alias para mantener compatibilidad con Login.tsx
-export { login as apiLogin };
