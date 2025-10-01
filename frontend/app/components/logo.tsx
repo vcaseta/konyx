@@ -1,11 +1,9 @@
-'use client';
-import Image from 'next/image';
-
 export default function Logo() {
   return (
-    <div className="flex items-center gap-2">
-      <Image src="/logo.png" alt="Konyx" width={36} height={36} priority />
-      <span className="text-xl font-bold tracking-tight text-brand-600">Konyx</span>
+    <div className="flex items-center gap-3">
+      {/* Si no tienes el PNG, sube uno como /public/logo.png */}
+      <img src="/logo.png" alt="Konyx" className="h-10 w-10 rounded-md" />
+      <span className="text-2xl font-semibold tracking-tight">Konyx</span>
     </div>
   );
 }
