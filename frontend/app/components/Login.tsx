@@ -1,44 +1,63 @@
 "use client";
 
 import { useState } from "react";
+import { apiLogin } from "../lib/api";
 
-type Props = {
-  onSubmit?: (user: string, pass: string) => void;
-};
-
-export default function Login({ onSubmit }: Props) {
+export default function Login({ onOk }: { onOk: (token: string) => void }) {
   const [user, setUser] = useState("");
   const [pass, setPass] = useState("");
+  const [error, setError] = useState("");
+
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    try {
+      const token = await apiLogin(user, pass);
+      localStorage.setItem("konyx_token", token);
+      onOk(token);
+    } catch (err: any) {
+      setError(err?.message || "No se pudo iniciar sesión");
+    }
+  };
 
   return (
     <form
-      className="bg-white/10 backdrop-blur-md rounded-2xl p-6 w-full max-w-md border border-white/10"
-      onSubmit={(e) => {
-        e.preventDefault();
-        onSubmit?.(user, pass);
-      }}
+      onSubmit={onSubmit}
+      className="bg-white/90 backdrop-blur rounded-2xl shadow-lg p-6 space-y-4"
     >
-      <h2 className="text-xl font-semibold mb-4">Acceso</h2>
-      <label className="block text-sm mb-1">Usuario</label>
-      <input
-        className="w-full mb-3 px-3 py-2 rounded bg-white/90 text-black outline-none"
-        value={user}
-        onChange={(e) => setUser(e.target.value)}
-        placeholder="usuario"
-        required
-      />
-      <label className="block text-sm mb-1">Contraseña</label>
-      <input
-        type="password"
-        className="w-full mb-4 px-3 py-2 rounded bg-white/90 text-black outline-none"
-        value={pass}
-        onChange={(e) => setPass(e.target.value)}
-        placeholder="••••••••"
-        required
-      />
+      <h1 className="text-2xl font-semibold text-center">Acceso a Konyx</h1>
+
+      {error ? (
+        <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">
+          {error}
+        </p>
+      ) : null}
+
+      <div>
+        <label className="block text-sm font-medium mb-1">Usuario</label>
+        <input
+          type="text"
+          value={user}
+          onChange={(e) => setUser(e.target.value)}
+          className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring focus:ring-blue-500"
+          placeholder="Usuario"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium mb-1">Contraseña</label>
+        <input
+          type="password"
+          value={pass}
+          onChange={(e) => setPass(e.target.value)}
+          className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring focus:ring-blue-500"
+          placeholder="Contraseña"
+        />
+      </div>
+
       <button
-        className="w-full py-2 rounded-xl bg-brand-600 hover:bg-brand-500 transition font-semibold"
         type="submit"
+        className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-semibold transition"
       >
         Entrar
       </button>
