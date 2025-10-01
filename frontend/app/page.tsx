@@ -55,7 +55,7 @@ export default function Page() {
           <img
             src="/logo.png"
             alt="Konyx"
-            className="h-24 w-auto drop-shadow-md"
+            className="h-64 w-auto drop-shadow-md"
           />
         </div>
 
