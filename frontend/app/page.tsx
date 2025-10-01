@@ -1,73 +1,87 @@
 "use client";
 
-import { useState } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { useAuth } from "./context/AuthContext";
+import api from "./lib/api";
+import Login from "./components/Login";   // tu componente existente
+import Logo from "./components/Logo";     // si prefieres imagen, usa la <Image /> de abajo
+import { useEffect, useState } from "react";
 
-function Login({ onSubmit }: { onSubmit?: (user: string, pass: string) => void }) {
-  const [user, setUser] = useState("");
-  const [pass, setPass] = useState("");
+export default function Page() {
+  const router = useRouter();
+  const { token, login } = useAuth();
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (onSubmit) onSubmit(user, pass);
+  // Si ya hay token, ir directo al dashboard
+  useEffect(() => {
+    if (token) router.replace("/dashboard");
+  }, [token, router]);
+
+  const handleLogin = async (user: string, pass: string) => {
+    try {
+      setSubmitting(true);
+      // Llama a tu backend real:
+      // const { data } = await api.post("/auth/login", { user, pass });
+      // login(data.token);
+
+      // Mientras tanto, demo:
+      const { data } = await api.post("/auth/login", { user, pass });
+      login(data.token || "demo-token");
+      router.push("/dashboard");
+    } catch (err) {
+      console.error(err);
+      alert("No se pudo iniciar sesión");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col space-y-4 w-80">
-      <input
-        type="text"
-        placeholder="Usuario"
-        value={user}
-        onChange={(e) => setUser(e.target.value)}
-        className="p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-400"
-      />
-      <input
-        type="password"
-        placeholder="Contraseña"
-        value={pass}
-        onChange={(e) => setPass(e.target.value)}
-        className="p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-400"
-      />
-      <button
-        type="submit"
-        className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 rounded-lg shadow"
-      >
-        Entrar
-      </button>
-    </form>
-  );
-}
+    <main
+      className="min-h-screen flex items-center justify-center p-6"
+      style={{
+        backgroundImage: "url('/fondo.png')",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+      }}
+    >
+      <div className="w-full max-w-md">
+        {/* LOGO grande */}
+        <div className="flex flex-col items-center mb-6 select-none">
+          {/* Opción 1: tu componente de logo vectorial */}
+          {/* <Logo className="h-20 w-auto" /> */}
 
-export default function Home() {
-  const [token, setToken] = useState<string | null>(null);
-
-  const handleLogin = (user: string, pass: string) => {
-    console.log("Login:", user, pass);
-    setToken("fake-token"); // luego cambiar por login real
-  };
-
-  return (
-    <main className="flex flex-col items-center justify-center min-h-screen">
-      {!token ? (
-        <div className="flex flex-col items-center space-y-8 bg-white/80 rounded-2xl p-10 shadow-lg">
-          {/* Logo grande */}
+          {/* Opción 2: imagen PNG (logo.png en /public) */}
           <Image
             src="/logo.png"
             alt="Konyx"
-            width={220}
-            height={220}
-            className="mb-4"
+            width={420}
+            height={120}
+            priority
+            className="h-auto w-auto max-w-[420px]"
           />
-
-          {/* Caja login */}
-          <Login onSubmit={handleLogin} />
         </div>
-      ) : (
-        <section className="bg-white/80 rounded-2xl p-8 shadow-lg">
-          <h2 className="text-2xl font-semibold mb-4 text-center">Bienvenido a Konyx</h2>
-          <p>Ya estás autenticado 🚀</p>
-        </section>
-      )}
+
+        {/* Caja de login */}
+        <div className="rounded-2xl backdrop-blur bg-white/85 shadow-xl p-6">
+          <h1 className="text-2xl font-semibold text-center mb-4">Accede a Konyx</h1>
+
+          {/* Tu componente Login debe aceptar onSubmit(user, pass) */}
+          <Login onSubmit={handleLogin} />
+
+          {/* Estado de envío */}
+          {submitting && (
+            <p className="text-center text-sm text-gray-600 mt-3">Validando credenciales…</p>
+          )}
+        </div>
+
+        {/* Pie ligero */}
+        <p className="text-center text-xs text-white/80 mt-6">
+          © {new Date().getFullYear()} Konyx
+        </p>
+      </div>
     </main>
   );
 }
+
