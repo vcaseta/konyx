@@ -1,49 +1,44 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
+import { useState } from "react";
 
-type LoginProps = {
+type Props = {
   onSubmit?: (user: string, pass: string) => void;
 };
 
-export default function Login({ onSubmit }: LoginProps) {
-  const [user, setUser] = useState('');
-  const [pass, setPass] = useState('');
+export default function Login({ onSubmit }: Props) {
+  const [user, setUser] = useState("");
+  const [pass, setPass] = useState("");
 
   return (
     <form
-      className="mt-8 w-full max-w-sm space-y-4"
+      className="bg-white/10 backdrop-blur-md rounded-2xl p-6 w-full max-w-md border border-white/10"
       onSubmit={(e) => {
         e.preventDefault();
         onSubmit?.(user, pass);
       }}
     >
-      <div>
-        <label className="block text-sm font-medium mb-1">Usuario</label>
-        <input
-          className="w-full rounded-md border px-3 py-2 outline-none focus:ring focus:ring-blue-200"
-          value={user}
-          onChange={(e) => setUser(e.target.value)}
-          placeholder="usuario"
-          required
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium mb-1">Contraseña</label>
-        <input
-          type="password"
-          className="w-full rounded-md border px-3 py-2 outline-none focus:ring focus:ring-blue-200"
-          value={pass}
-          onChange={(e) => setPass(e.target.value)}
-          placeholder="••••••••"
-          required
-        />
-      </div>
-
+      <h2 className="text-xl font-semibold mb-4">Acceso</h2>
+      <label className="block text-sm mb-1">Usuario</label>
+      <input
+        className="w-full mb-3 px-3 py-2 rounded bg-white/90 text-black outline-none"
+        value={user}
+        onChange={(e) => setUser(e.target.value)}
+        placeholder="usuario"
+        required
+      />
+      <label className="block text-sm mb-1">Contraseña</label>
+      <input
+        type="password"
+        className="w-full mb-4 px-3 py-2 rounded bg-white/90 text-black outline-none"
+        value={pass}
+        onChange={(e) => setPass(e.target.value)}
+        placeholder="••••••••"
+        required
+      />
       <button
+        className="w-full py-2 rounded-xl bg-brand-600 hover:bg-brand-500 transition font-semibold"
         type="submit"
-        className="w-full rounded-md bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700"
       >
         Entrar
       </button>
