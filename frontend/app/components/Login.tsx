@@ -2,11 +2,11 @@
 
 import { useState } from 'react';
 
-export default function Login({
-  onSubmit
-}: {
+type LoginProps = {
   onSubmit?: (user: string, pass: string) => void;
-}) {
+};
+
+export default function Login({ onSubmit }: LoginProps) {
   const [user, setUser] = useState('');
   const [pass, setPass] = useState('');
 
@@ -24,10 +24,11 @@ export default function Login({
           className="w-full rounded-md border px-3 py-2 outline-none focus:ring focus:ring-blue-200"
           value={user}
           onChange={(e) => setUser(e.target.value)}
-          placeholder="admin"
+          placeholder="usuario"
           required
         />
       </div>
+
       <div>
         <label className="block text-sm font-medium mb-1">Contraseña</label>
         <input
@@ -39,6 +40,7 @@ export default function Login({
           required
         />
       </div>
+
       <button
         type="submit"
         className="w-full rounded-md bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700"
@@ -48,4 +50,3 @@ export default function Login({
     </form>
   );
 }
-
