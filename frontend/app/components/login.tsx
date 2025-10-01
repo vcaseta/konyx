@@ -1,28 +1,50 @@
 'use client';
+
 import { useState } from 'react';
-import axios from 'axios';
 
-export default function Login({ onOk }: { onOk: (t: string) => void }) {
-  const [u, setU] = useState('admin');
-  const [p, setP] = useState('admin');
-  const backend = process.env.NEXT_PUBLIC_BACKEND_URL as string;
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    try {
-      const { data } = await axios.post(`${backend}/auth/login`, { username: u, password: p });
-      onOk(data.token);
-    } catch {
-      alert('Error de credenciales o backend no accesible');
-    }
-  }
+export default function Login({
+  onSubmit
+}: {
+  onSubmit?: (user: string, pass: string) => void;
+}) {
+  const [user, setUser] = useState('');
+  const [pass, setPass] = useState('');
 
   return (
-    <form onSubmit={submit} className="space-y-3 bg-white p-6 rounded-2xl shadow w-full max-w-sm">
-      <h2 className="text-lg font-semibold text-center">Acceso</h2>
-      <input className="border rounded p-2 w-full" placeholder="Usuario" value={u} onChange={(e)=>setU(e.target.value)} />
-      <input className="border rounded p-2 w-full" type="password" placeholder="Contraseña" value={p} onChange={(e)=>setP(e.target.value)} />
-      <button className="w-full rounded-2xl bg-brand-600 text-white font-semibold px-6 py-2">Entrar</button>
+    <form
+      className="mt-8 w-full max-w-sm space-y-4"
+      onSubmit={(e) => {
+        e.preventDefault();
+        onSubmit?.(user, pass);
+      }}
+    >
+      <div>
+        <label className="block text-sm font-medium mb-1">Usuario</label>
+        <input
+          className="w-full rounded-md border px-3 py-2 outline-none focus:ring focus:ring-blue-200"
+          value={user}
+          onChange={(e) => setUser(e.target.value)}
+          placeholder="admin"
+          required
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium mb-1">Contraseña</label>
+        <input
+          type="password"
+          className="w-full rounded-md border px-3 py-2 outline-none focus:ring focus:ring-blue-200"
+          value={pass}
+          onChange={(e) => setPass(e.target.value)}
+          placeholder="••••••••"
+          required
+        />
+      </div>
+      <button
+        type="submit"
+        className="w-full rounded-md bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700"
+      >
+        Entrar
+      </button>
     </form>
   );
 }
