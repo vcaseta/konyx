@@ -3,13 +3,12 @@
 import { useState } from "react";
 import Image from "next/image";
 import Login from "./components/Login";
-import logo from "../public/logo.png"; // asegúrate de tener el logo en /frontend/public/
+import logo from "../public/logo.png"; // Asegúrate que logo.png está en /frontend/public
 
 export default function HomePage() {
   const [token, setToken] = useState<string | null>(null);
 
   const onLogin = (user: string, pass: string) => {
-    // Aquí irá la lógica real de login con tu backend
     if (user && pass) {
       setToken("dummy-token");
     }
@@ -36,10 +35,6 @@ export default function HomePage() {
           <p className="text-gray-600">Ya tienes sesión iniciada.</p>
         </section>
       )}
-    </main>
-  );
-}
-
     </main>
   );
 }
