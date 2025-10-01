@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from "react";
-import { login, API_BASE } from "./lib/api";
+import { apiLogin as login, API_BASE } from "./lib/api";
 
 export default function Page() {
   const [user, setUser] = useState("");
