@@ -61,7 +61,7 @@ export default function Page() {
 
         <form
           onSubmit={onSubmit}
-          className="bg-white/90 backdrop-blur rounded-2xl shadow-lg p-6 space-y-4"
+          className="bg-white/90 backdrop-blur rounded-2xl p-6 space-y-4"
         >
           <h1 className="text-2xl font-semibold text-center">Acceso a Konyx</h1>
 
