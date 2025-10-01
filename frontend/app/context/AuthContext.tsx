@@ -1,23 +1,31 @@
 "use client";
+
 import { createContext, useContext, useEffect, useState } from "react";
-import { setAuthToken, getAuthToken } from "../lib/api";
+import { getAuthToken, setAuthToken } from "../lib/api";
 
 type AuthCtx = {
   token: string | null;
-  login: (tok: string) => void;
+  login: (token: string) => void;
   logout: () => void;
 };
 
-const Ctx = createContext<AuthCtx>({ token: null, login: () => {}, logout: () => {} });
+const AuthContext = createContext<AuthCtx>({
+  token: null,
+  login: () => {},
+  logout: () => {},
+});
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
 
-  useEffect(() => { setToken(getAuthToken()); }, []);
+  // hidrata token desde localStorage al montar
+  useEffect(() => {
+    setToken(getAuthToken());
+  }, []);
 
-  const login = (tok: string) => {
-    setAuthToken(tok);
-    setToken(tok);
+  const login = (t: string) => {
+    setAuthToken(t);
+    setToken(t);
   };
 
   const logout = () => {
@@ -25,7 +33,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setToken(null);
   };
 
-  return <Ctx.Provider value={{ token, login, logout }}>{children}</Ctx.Provider>;
+  return (
+    <AuthContext.Provider value={{ token, login, logout }}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
-export const useAuth = () => useContext(Ctx);
+export function useAuth() {
+  return useContext(AuthContext);
+}
