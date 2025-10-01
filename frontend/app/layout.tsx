@@ -1,15 +1,14 @@
 import "./globals.css";
-import type { Metadata } from "next";
+import { AuthProvider } from "./context/AuthContext";
 
-export const metadata: Metadata = {
-  title: "Konyx",
-  description: "Facturación Holded multiempresa desde Excel"
-};
+export const metadata = { title: process.env.NEXT_PUBLIC_APP_NAME || "Konyx" };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es">
-      <body className="min-h-screen">{children}</body>
+      <body>
+        <AuthProvider>{children}</AuthProvider>
+      </body>
     </html>
   );
 }
