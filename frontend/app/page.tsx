@@ -1,13 +1,32 @@
+// app/page.tsx
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Login from "./components/Login";
+import { getSavedToken } from "./lib/api";
 
-// Fuerza render dinámico (evita prerender/SSG)
 export const dynamic = "force-dynamic";
 
 export default function Page() {
+  const router = useRouter();
   const [token, setToken] = useState<string | null>(null);
+
+  // Al cargar, si ya hay token guardado, redirige:
+  useEffect(() => {
+    const t = getSavedToken();
+    if (t) {
+      setToken(t);
+      router.push("/dashboard");
+    }
+  }, [router]);
+
+  // Si acabamos de logearnos, también redirige:
+  useEffect(() => {
+    if (token) {
+      router.push("/dashboard");
+    }
+  }, [token, router]);
 
   return (
     <main
@@ -19,23 +38,17 @@ export default function Page() {
       }}
     >
       <div className="w-full max-w-sm">
-        {/* Logo SIEMPRE encima */}
+        {/* Logo siempre arriba */}
         <div className="flex justify-center mb-6">
-          <img
-            src="/logo.png"
-            alt="Konyx"
-            className="h-128 w-auto drop-shadow-md"
-          />
+          <img src="/logo.png" alt="Konyx" className="h-48 w-auto drop-shadow-md" />
         </div>
 
+        {/* Mientras no haya token, mostramos login */}
         {!token ? (
           <Login onOk={(t: string) => setToken(t)} />
         ) : (
           <div className="bg-white/90 backdrop-blur rounded-2xl shadow p-6 text-center">
-            <p className="text-sm text-gray-700">
-              Sesión iniciada. Redirigiendo al panel…
-            </p>
-            {/* Si ya tienes navegación automática en Login, esto es solo de cortesía */}
+            <p className="text-sm text-gray-700">Entrando al panel…</p>
           </div>
         )}
       </div>
