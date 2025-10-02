@@ -25,7 +25,7 @@ export default function Login({ onOk }: { onOk: (token: string) => void }) {
   }
 
   return (
-    <form onSubmit={onSubmit} className="p-6 space-y-4">
+    <form onSubmit={onSubmit} className="bg-white/90 backdrop-blur rounded-2xl shadow-lg p-6 space-y-4">
       <h1 className="text-2xl font-semibold text-center">Acceso a Konyx</h1>
 
       {err && (
