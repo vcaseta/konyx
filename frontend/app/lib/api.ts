@@ -9,6 +9,7 @@ type LoginResp = { token: string };
 /**
  * Login contra /auth/login
  * OJO: el backend espera { user, password } (no "username").
+ * Ya NO guardamos el token en localStorage para forzar login siempre.
  */
 export async function apiLogin(user: string, password: string): Promise<string> {
   try {
@@ -22,11 +23,7 @@ export async function apiLogin(user: string, password: string): Promise<string> 
       throw new Error("Credenciales inválidas");
     }
 
-    // Guarda token para posteriores sesiones
-    if (typeof window !== "undefined") {
-      localStorage.setItem("konyx_token", data.token);
-    }
-
+    // No persistimos token -> fuerza login cada vez
     return data.token;
   } catch (err: any) {
     const msg =
@@ -37,21 +34,12 @@ export async function apiLogin(user: string, password: string): Promise<string> 
   }
 }
 
-/** Obtener token guardado (si existe) */
-export function getSavedToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem("konyx_token");
+/** Compat: que siempre “no haya sesión” */
+export function getAuthToken(): string | null {
+  return null; // nunca recordamos sesión
 }
 
-/** Alias para compatibilidad con código antiguo */
-export const getAuthToken = getSavedToken;
-
-/** Setter explícito para compatibilidad con código antiguo */
-export function setAuthToken(token: string | null) {
-  if (typeof window === "undefined") return;
-  if (token) {
-    localStorage.setItem("konyx_token", token);
-  } else {
-    localStorage.removeItem("konyx_token");
-  }
+/** Compat: noop (no guardamos ni borramos nada) */
+export function setAuthToken(_token: string | null) {
+  // intencionalmente vacío
 }
