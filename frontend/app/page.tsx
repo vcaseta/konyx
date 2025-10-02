@@ -9,9 +9,14 @@ export default function Page() {
 
   return (
     <main
-      className="min-h-screen bg-cover bg-center bg-no-repeat flex flex-col items-center"
-      style={{ backgroundImage: "url(/fondo.png)" }}
-    >
+      className="min-h-screen bg-no-repeat bg-center bg-cover flex items-center justify-center p-4"
+      style={{
+        backgroundImage: 'url/(fondo.png)',
+        backgroundSize: '100% 100%', // <- fuerza a ocupar todo el viewport
+        backgroundRepeat: 'no-repeat',
+      }}
+      >
+
       {/* Logo grande, pegado arriba */}
       <header className="w-full flex justify-center pt-10 sm:pt-14">
         <Image
