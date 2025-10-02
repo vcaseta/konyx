@@ -1,37 +1,44 @@
 // app/lib/api.ts
-export const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "";
+import axios from "axios";
 
-// Helpers para token en localStorage
-export function setAuthToken(t: string) {
-  if (typeof window !== "undefined") localStorage.setItem("konyx_token", t);
-}
-export function getAuthToken(): string | null {
-  if (typeof window !== "undefined") return localStorage.getItem("konyx_token");
-  return null;
-}
+export const API_BASE =
+  process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+
+type LoginResp = { token: string };
 
 /**
- * apiLogin: hace POST a /auth/login con { user, password }
- * y devuelve el token (también lo guarda en localStorage).
+ * Login contra /auth/login
+ * Lanza Error si credenciales no válidas o si el backend responde != 200.
  */
-export async function apiLogin(username: string, password: string): Promise<string> {
-  if (!API_BASE) throw new Error("API base no configurada (NEXT_PUBLIC_BACKEND_URL)");
+export async function apiLogin(user: string, password: string): Promise<string> {
+  try {
+    const { data, status } = await axios.post<LoginResp>(
+      `${API_BASE}/auth/login`,
+      { user, password }, // <-- OJO: tu backend espera "user" y "password"
+      { headers: { "Content-Type": "application/json" } }
+    );
 
-  const res = await fetch(`${API_BASE}/auth/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ user: username, password }),
-  });
+    if (status !== 200 || !data?.token) {
+      throw new Error("Credenciales inválidas");
+    }
 
-  if (!res.ok) {
-    const txt = await res.text();
-    throw new Error(`Login fallido (${res.status}): ${txt}`);
+    // Guarda token para sesiones siguientes:
+    if (typeof window !== "undefined") {
+      localStorage.setItem("konyx_token", data.token);
+    }
+    return data.token;
+  } catch (err: any) {
+    // Normaliza mensaje
+    const msg =
+      err?.response?.data?.detail ||
+      err?.message ||
+      "No se pudo iniciar sesión";
+    throw new Error(msg);
   }
+}
 
-  const data = await res.json();
-  const token: string = data?.token || data?.access_token || "";
-  if (!token) throw new Error("Respuesta sin token");
-
-  setAuthToken(token);
-  return token;
+/** Obtener token guardado (si existe) */
+export function getSavedToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("konyx_token");
 }
