@@ -1,13 +1,10 @@
+// app/components/Login.tsx
 "use client";
 
 import { useState } from "react";
 import { apiLogin } from "../lib/api";
 
-type Props = {
-  onOk: (token: string) => void; // <-- importante: onOk recibe el token
-};
-
-export default function Login({ onOk }: Props) {
+export default function Login({ onOk }: { onOk: (token: string) => void }) {
   const [user, setUser] = useState("");
   const [pass, setPass] = useState("");
   const [loading, setLoading] = useState(false);
@@ -18,17 +15,20 @@ export default function Login({ onOk }: Props) {
     setErr(null);
     setLoading(true);
     try {
-      const token = await apiLogin(user, pass); // debe devolver string
-      onOk(token); // <-- pasamos el token al padre
+      const token = await apiLogin(user, pass);
+      onOk(token); // solo si NO lanza error
     } catch (error: any) {
-      setErr(error?.message || "No se pudo iniciar sesión");
+      setErr(error?.message || "Credenciales inválidas");
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <form onSubmit={onSubmit} className="bg-white/90 backdrop-blur rounded-2xl shadow-lg p-6 space-y-4">
+    <form
+      onSubmit={onSubmit}
+      className="bg-white/90 backdrop-blur rounded-2xl shadow-lg p-6 space-y-4"
+    >
       <h1 className="text-2xl font-semibold text-center">Acceso a Konyx</h1>
 
       {err && (
