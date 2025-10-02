@@ -1,36 +1,27 @@
-"use client";
-
-import Image from "next/image";
-import { useState } from "react";
+// app/page.tsx
 import Login from "./components/Login";
 
 export default function Page() {
-  const [token, setToken] = useState<string | null>(null);
-
   return (
-
     <main
-  className="min-h-screen bg-cover bg-center bg-no-repeat flex items-center justify-center p-4"
-  style={{ backgroundImage: 'url(/fondo.png)' }}
->
-     
-
-      {/* Logo grande, pegado arriba */}
-      <header className="w-full flex justify-center pt-10 sm:pt-14">
-        <Image
+      className="min-h-screen bg-no-repeat bg-center bg-cover flex items-center justify-center p-4"
+      style={{
+        backgroundImage: 'url(/fondo.png)',
+        backgroundSize: 'cover', // ajusta el fondo al viewport
+      }}
+    >
+      {/* Contenedor en columna: LOGO ARRIBA + LOGIN DEBAJO */}
+      <div className="w-full max-w-[420px] flex flex-col items-center">
+        {/* Logo centrado */}
+        <img
           src="/logo.png"
           alt="Konyx"
-          width={480}
-          height={140}
-          priority
-          className="h-auto w-[260px] sm:w-[360px] md:w-[480px]"
+          className="w-full max-w-[300px] h-auto mb-6"
         />
-      </header>
 
-      {/* Contenedor del formulario */}
-      <section className="w-full max-w-sm px-4 mt-6 sm:mt-10">
-        {!token && <Login onOk={setToken} />}
-      </section>
+        {/* Formulario */}
+        <Login onOk={() => {}} />
+      </div>
     </main>
   );
 }
