@@ -1,4 +1,17 @@
+# Node / Next
 node_modules
-.next
-.DS_Store
+npm-debug.log*
+yarn.lock
+.pnpm-store
+.next/cache
+.next/types
+
+# Varios
 .git
+.gitignore
+Dockerfile
+docker-compose.yml
+*.md
+.env.local
+.env.development
+.env.test
