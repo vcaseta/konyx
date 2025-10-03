@@ -178,7 +178,7 @@ export default function DashboardPage() {
                   </div>
                 )}
 
-                <Item active={menu === "empresaIt"} onClick={() => setMenu("empresa")}>
+                <Item active={menu === "empresa"} onClick={() => setMenu("empresa")}>
                   Empresa (seleccionar)
                 </Item>
                 {menu === "empresa" && (
