@@ -26,6 +26,13 @@ const CUENTAS = [
   "Otra (introducir)",
 ] as const;
 
+/** Helper: YYYY-MM-DD -> DD-MM-YYYY */
+function formatDateDMY(s: string): string {
+  if (!s) return "—";
+  const [y, m, d] = s.split("-");
+  return y && m && d ? `${d}-${m}-${y}` : s;
+}
+
 export default function DashboardPage() {
   const router = useRouter();
 
@@ -134,7 +141,6 @@ export default function DashboardPage() {
       }
       // TODO: llamada real a backend
       alert("API Holded Kissoro actualizada.");
-      // Opcional: actualizar “vigente” localmente
       setApiKissoroVigente(apiKissoroNuevo);
       setApiKissoroNuevo("");
     } finally {
@@ -151,7 +157,6 @@ export default function DashboardPage() {
       }
       // TODO: llamada real a backend
       alert("API Holded En Plural Psicologia actualizada.");
-      // Opcional: actualizar “vigente” localmente
       setApiEnPluralVigente(apiEnPluralNuevo);
       setApiEnPluralNuevo("");
     } finally {
@@ -456,18 +461,18 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* Resumen inferior */}
-          <div className="bg-indigo-50/90 rounded-2xl shadow p-6 border border-indigo-200">
-            <h3 className="text-base font-semibold text-indigo-800 mb-3">Resumen de selección</h3>
+          {/* Resumen inferior (más abajo y un tono más oscuro) */}
+          <div className="bg-indigo-200/90 rounded-2xl shadow p-6 border border-indigo-300 mt-10">
+            <h3 className="text-base font-semibold text-indigo-900 mb-3">Resumen de selección</h3>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
               <SummaryItem label="Formato Importación" value={formatoImport ?? "—"} />
               <SummaryItem label="Formato Exportación" value={formatoExport ?? "—"} />
               <SummaryItem label="Empresa" value={empresa ?? "—"} />
-              <SummaryItem label="Fecha factura" value={fechaFactura || "—"} />
+              <SummaryItem label="Fecha factura" value={formatDateDMY(fechaFactura)} />
               <SummaryItem label="Proyecto" value={proyecto ?? "—"} />
               <SummaryItem
                 label="Cuenta contable"
-                value={cuenta === "Otra (introducir)" ? cuentaOtra || "—" : cuenta ?? "—"}
+                value={cuenta === "Otra (introducir)" ? (cuentaOtra || "—") : (cuenta ?? "—")}
               />
               <SummaryItem label="Fichero" value={ficheroNombre || "—"} />
             </div>
