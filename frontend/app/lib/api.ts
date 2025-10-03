@@ -1,18 +1,32 @@
 // app/lib/api.ts
-const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "";
+export const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "";
 
 export async function apiLogin(username: string, password: string): Promise<string> {
+  // Tu backend espera { user, password } (lo comprobaste con PowerShell)
   const res = await fetch(`${API_BASE}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    cache: "no-store",
     body: JSON.stringify({ user: username, password }),
   });
+
   if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(text || `Login failed (${res.status})`);
+    let msg = "Credenciales inválidas";
+    try {
+      const data = await res.json();
+      msg = (data?.detail?.[0]?.msg) || data?.detail || msg;
+    } catch {}
+    throw new Error(msg);
   }
+
   const data = await res.json();
-  // Ajusta a tu backend: por lo que vimos devuelve { token: "..." }
-  if (!data?.token) throw new Error("Respuesta inválida del servidor");
-  return data.token as string;
+  // Acepta distintos nombres por si tu backend cambia
+  const token =
+    data?.token ||
+    data?.access_token ||
+    data?.Token ||
+    (typeof data === "string" ? data : null);
+
+  if (!token) throw new Error("Respuesta de login inválida");
+  return token;
 }
