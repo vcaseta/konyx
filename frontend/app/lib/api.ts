@@ -1,34 +1,18 @@
 // app/lib/api.ts
-export const API_BASE =
-  process.env.NEXT_PUBLIC_BACKEND_URL || "";
+const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "";
 
-export async function apiLogin(user: string, password: string): Promise<string> {
-  if (!API_BASE) {
-    throw new Error("API no configurada (NEXT_PUBLIC_BACKEND_URL)");
-  }
-
+export async function apiLogin(username: string, password: string): Promise<string> {
   const res = await fetch(`${API_BASE}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ user, password }),
+    body: JSON.stringify({ user: username, password }),
   });
-
-  // Intenta parsear JSON siempre (aunque no sea 2xx) para extraer mensajes
-  let data: any = {};
-  try {
-    data = await res.json();
-  } catch (_) {
-    // si no es JSON, dejamos data={}
-  }
-
   if (!res.ok) {
-    const msg = typeof data?.detail === "string" ? data.detail : "Credenciales inválidas";
-    throw new Error(msg);
+    const text = await res.text().catch(() => "");
+    throw new Error(text || `Login failed (${res.status})`);
   }
-
-  const token = data?.token;
-  if (!token) {
-    throw new Error("Respuesta inválida del servidor (sin token)");
-  }
-  return token;
+  const data = await res.json();
+  // Ajusta a tu backend: por lo que vimos devuelve { token: "..." }
+  if (!data?.token) throw new Error("Respuesta inválida del servidor");
+  return data.token as string;
 }
