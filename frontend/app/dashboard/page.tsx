@@ -1,7 +1,8 @@
+// app/dashboard/page.tsx
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 type SectionKey = "empresa" | "fecha" | "proyecto" | "cuenta" | "config";
 
@@ -17,9 +18,9 @@ export default function DashboardPage() {
   const router = useRouter();
   const [active, setActive] = useState<SectionKey>("empresa");
 
-  // Seguridad en cliente (además del middleware)
+  // Doble protección en cliente (además del middleware del servidor)
   useEffect(() => {
-    const hasToken = document.cookie.split("; ").some((c) => c.startsWith("konyx_token="));
+    const hasToken = document.cookie.split("; ").some(c => c.startsWith("konyx_token="));
     if (!hasToken) router.replace("/");
   }, [router]);
 
@@ -38,7 +39,7 @@ export default function DashboardPage() {
         backgroundRepeat: "no-repeat",
       }}
     >
-      {/* Barra superior ligera sólo con botón de logout */}
+      {/* Top bar minimal con logout */}
       <header className="px-4 py-3 flex items-center justify-end">
         <button
           onClick={logout}
@@ -48,13 +49,13 @@ export default function DashboardPage() {
         </button>
       </header>
 
-      {/* Layout sin márgenes laterales para que el panel quede totalmente a la izquierda */}
+      {/* Layout sin márgenes laterales para que el panel quede pegado a la izquierda */}
       <div className="mx-0 px-0">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-          {/* PANEL IZQUIERDO – pegado al borde izquierdo */}
+          {/* PANEL IZQUIERDO */}
           <aside className="md:col-span-4 md:pl-0">
             <div className="bg-white/85 backdrop-blur rounded-r-2xl rounded-l-none md:rounded-l-2xl md:ml-0 shadow p-4 md:min-h-[70vh]">
-              {/* Logo dentro del panel (h-24 = 96px) */}
+              {/* Logo dentro del panel: h-24 = 96px */}
               <div className="flex items-center gap-3 mb-4">
                 <img src="/logo.png" alt="Konyx" className="h-24 w-auto drop-shadow-md" />
               </div>
@@ -216,6 +217,7 @@ function ConfigView() {
     </div>
   );
 }
+
 
   );
 }
