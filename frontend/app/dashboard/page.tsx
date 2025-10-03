@@ -27,7 +27,7 @@ export default function DashboardPage() {
   const [estricta, setEstricta] = useState(false);
   const [notas, setNotas] = useState("");
 
-  // Protección en cliente (además del middleware)
+  // Protección cliente (además del middleware/edge si lo tienes)
   useEffect(() => {
     const hasToken = document.cookie.split("; ").some((c) => c.startsWith("konyx_token="));
     if (!hasToken) router.replace("/");
@@ -58,13 +58,12 @@ export default function DashboardPage() {
         </button>
       </header>
 
-      {/* Layout: panel más estrecho a la izquierda */}
       <div className="mx-0 px-0">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-          {/* PANEL IZQUIERDO (estrecho) */}
+          {/* PANEL IZQUIERDO — más estrecho */}
           <aside className="md:col-span-3 md:pl-0">
             <div className="bg-white/85 backdrop-blur rounded-r-2xl rounded-l-none md:rounded-l-2xl md:ml-0 shadow p-4 md:min-h-[70vh]">
-              {/* Logo dentro del panel (96px alta) */}
+              {/* Logo dentro del panel (alto 96px) */}
               <div className="flex items-center gap-3 mb-4">
                 <img src="/logo.png" alt="Konyx" className="h-24 w-auto drop-shadow-md" />
               </div>
@@ -132,7 +131,7 @@ export default function DashboardPage() {
               )}
             </div>
 
-            {/* RESUMEN AZUL CLARO (siempre visible abajo) */}
+            {/* RESUMEN (azul claro) */}
             <ResumenBox
               empresa={empresa}
               fechaInicio={fechaInicio}
@@ -149,7 +148,7 @@ export default function DashboardPage() {
   );
 }
 
-/* ======= VISTAS ======= */
+/* ========= VISTAS ========= */
 
 function EmpresaView({
   value,
@@ -319,7 +318,7 @@ function ConfigView({
   );
 }
 
-/* ======= RESUMEN ======= */
+/* ========= RESUMEN ========= */
 
 function ResumenBox({
   empresa,
@@ -338,7 +337,8 @@ function ResumenBox({
   estricta: boolean;
   notas: string;
 }) {
-  const empresaNombre = empresa === "001" ? "Kissoro" : empresa === "002" ? "En Plural Psicología" : empresa;
+  const empresaNombre =
+    empresa === "001" ? "Kissoro" : empresa === "002" ? "En Plural Psicología" : empresa;
 
   return (
     <div className="mt-6 md:mr-6 rounded-2xl border border-sky-200 bg-sky-50/80 backdrop-blur p-5 shadow-sm">
@@ -365,9 +365,6 @@ function ResumenBox({
         </div>
       </div>
     </div>
-  );
-}
-
   );
 }
 
