@@ -1,15 +1,20 @@
 // app/page.tsx
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Login from "./components/Login";
 
 export default function Page() {
   const router = useRouter();
+  const [token, setToken] = useState<string | null>(null);
 
-  function handleOk(token: string) {
-    // Guardar cookie SÓLO para sesión actual (sin remember)
-    document.cookie = `konyx_token=${token}; Path=/; SameSite=Lax`;
+  async function handleOk(t: string) {
+    // Guardamos token SOLO en sessionStorage (no persiste entre pestañas/cierres)
+    sessionStorage.setItem("token", t);
+    // Marcamos que esta sesión debe arrancar con estados limpios en el dashboard
+    sessionStorage.setItem("reset-dashboard-state", "1");
+    setToken(t);
     router.push("/dashboard");
   }
 
@@ -23,14 +28,18 @@ export default function Page() {
       }}
     >
       <div className="w-full max-w-sm">
-        {/* Logo encima del formulario (no cambiamos styling) */}
+        {/* Logo arriba, grande */}
         <div className="flex justify-center mb-6">
-          <img src="/logo.png" alt="Konyx" className="h-96 w-auto drop-shadow-md" />
+          <img
+            src="/logo.png"
+            alt="Konyx"
+            className="h-24 w-auto drop-shadow-md"
+          />
         </div>
 
+        {/* Login */}
         <Login onOk={handleOk} />
       </div>
     </main>
   );
 }
-
