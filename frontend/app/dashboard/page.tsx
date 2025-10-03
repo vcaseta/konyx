@@ -49,7 +49,7 @@ export default function DashboardPage() {
           {/* Logo arriba (opcional) */}
           <div className="p-6 border-b border-black/5">
             <div className="flex items-center justify-center">
-              <img src="/logo.png" alt="Konyx" className="h-12 w-auto" />
+              <img src="/logo.png" alt="Konyx" className="h-64 w-auto" />
             </div>
           </div>
 
