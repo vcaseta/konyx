@@ -18,6 +18,15 @@ export default function DashboardPage() {
   const router = useRouter();
   const [active, setActive] = useState<SectionKey>("empresa");
 
+  // Estado de datos seleccionados
+  const [empresa, setEmpresa] = useState("001");
+  const [fechaInicio, setFechaInicio] = useState<string>("");
+  const [fechaFin, setFechaFin] = useState<string>("");
+  const [proyecto, setProyecto] = useState("");
+  const [cuenta, setCuenta] = useState("");
+  const [estricta, setEstricta] = useState(false);
+  const [notas, setNotas] = useState("");
+
   // Protección en cliente (además del middleware)
   useEffect(() => {
     const hasToken = document.cookie.split("; ").some((c) => c.startsWith("konyx_token="));
@@ -49,13 +58,13 @@ export default function DashboardPage() {
         </button>
       </header>
 
-      {/* Layout sin márgenes: panel pegado a la izquierda */}
+      {/* Layout: panel más estrecho a la izquierda */}
       <div className="mx-0 px-0">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-          {/* PANEL IZQUIERDO */}
-          <aside className="md:col-span-4 md:pl-0">
+          {/* PANEL IZQUIERDO (estrecho) */}
+          <aside className="md:col-span-3 md:pl-0">
             <div className="bg-white/85 backdrop-blur rounded-r-2xl rounded-l-none md:rounded-l-2xl md:ml-0 shadow p-4 md:min-h-[70vh]">
-              {/* Logo dentro del panel (96px) */}
+              {/* Logo dentro del panel (96px alta) */}
               <div className="flex items-center gap-3 mb-4">
                 <img src="/logo.png" alt="Konyx" className="h-24 w-auto drop-shadow-md" />
               </div>
@@ -90,14 +99,49 @@ export default function DashboardPage() {
           </aside>
 
           {/* CONTENIDO DERECHO */}
-          <section className="md:col-span-8 px-4 md:px-0">
+          <section className="md:col-span-9 px-4 md:px-0">
             <div className="bg-white/90 backdrop-blur rounded-2xl shadow p-6 md:mr-6">
-              {active === "empresa" && <EmpresaView />}
-              {active === "fecha" && <FechaView />}
-              {active === "proyecto" && <ProyectoView />}
-              {active === "cuenta" && <CuentaView />}
-              {active === "config" && <ConfigView />}
+              {active === "empresa" && (
+                <EmpresaView value={empresa} onChange={setEmpresa} />
+              )}
+
+              {active === "fecha" && (
+                <FechaView
+                  inicio={fechaInicio}
+                  fin={fechaFin}
+                  onInicio={setFechaInicio}
+                  onFin={setFechaFin}
+                />
+              )}
+
+              {active === "proyecto" && (
+                <ProyectoView value={proyecto} onChange={setProyecto} />
+              )}
+
+              {active === "cuenta" && (
+                <CuentaView value={cuenta} onChange={setCuenta} />
+              )}
+
+              {active === "config" && (
+                <ConfigView
+                  estricta={estricta}
+                  notas={notas}
+                  onEstricta={setEstricta}
+                  onNotas={setNotas}
+                />
+              )}
             </div>
+
+            {/* RESUMEN AZUL CLARO (siempre visible abajo) */}
+            <ResumenBox
+              empresa={empresa}
+              fechaInicio={fechaInicio}
+              fechaFin={fechaFin}
+              proyecto={proyecto}
+              cuenta={cuenta}
+              estricta={estricta}
+              notas={notas}
+            />
           </section>
         </div>
       </div>
@@ -107,14 +151,24 @@ export default function DashboardPage() {
 
 /* ======= VISTAS ======= */
 
-function EmpresaView() {
+function EmpresaView({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
   return (
     <div>
       <h3 className="text-xl font-semibold mb-4">Empresa seleccionada</h3>
       <div className="space-y-3">
         <div>
           <label className="block text-sm font-medium mb-1">Empresa</label>
-          <select className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+          <select
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+          >
             <option value="001">Kissoro</option>
             <option value="002">En Plural Psicología</option>
           </select>
@@ -127,7 +181,17 @@ function EmpresaView() {
   );
 }
 
-function FechaView() {
+function FechaView({
+  inicio,
+  fin,
+  onInicio,
+  onFin,
+}: {
+  inicio: string;
+  fin: string;
+  onInicio: (v: string) => void;
+  onFin: (v: string) => void;
+}) {
   return (
     <div>
       <h3 className="text-xl font-semibold mb-4">Fecha factura</h3>
@@ -136,6 +200,8 @@ function FechaView() {
           <label className="block text-sm font-medium mb-1">Fecha inicio</label>
           <input
             type="date"
+            value={inicio}
+            onChange={(e) => onInicio(e.target.value)}
             className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
           />
         </div>
@@ -143,6 +209,8 @@ function FechaView() {
           <label className="block text-sm font-medium mb-1">Fecha fin</label>
           <input
             type="date"
+            value={fin}
+            onChange={(e) => onFin(e.target.value)}
             className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
           />
         </div>
@@ -154,7 +222,13 @@ function FechaView() {
   );
 }
 
-function ProyectoView() {
+function ProyectoView({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
   return (
     <div>
       <h3 className="text-xl font-semibold mb-4">Proyecto</h3>
@@ -163,6 +237,8 @@ function ProyectoView() {
           <label className="block text-sm font-medium mb-1">Proyecto</label>
           <input
             type="text"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
             placeholder="Código o nombre de proyecto"
             className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
           />
@@ -175,7 +251,13 @@ function ProyectoView() {
   );
 }
 
-function CuentaView() {
+function CuentaView({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
   return (
     <div>
       <h3 className="text-xl font-semibold mb-4">Cuenta contable</h3>
@@ -184,6 +266,8 @@ function CuentaView() {
           <label className="block text-sm font-medium mb-1">Cuenta</label>
           <input
             type="text"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
             placeholder="Ej. 700000 Ventas"
             className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
           />
@@ -196,25 +280,94 @@ function CuentaView() {
   );
 }
 
-function ConfigView() {
+function ConfigView({
+  estricta,
+  notas,
+  onEstricta,
+  onNotas,
+}: {
+  estricta: boolean;
+  notas: string;
+  onEstricta: (v: boolean) => void;
+  onNotas: (v: string) => void;
+}) {
   return (
     <div>
       <h3 className="text-xl font-semibold mb-4">Configuración</h3>
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
+        <label className="flex items-center justify-between">
           <span className="text-sm">Validación estricta</span>
-          <input type="checkbox" className="h-5 w-5" />
-        </div>
+          <input
+            type="checkbox"
+            checked={estricta}
+            onChange={(e) => onEstricta(e.target.checked)}
+            className="h-5 w-5"
+          />
+        </label>
         <div>
           <label className="block text-sm font-medium mb-1">Notas</label>
           <textarea
             rows={4}
+            value={notas}
+            onChange={(e) => onNotas(e.target.value)}
             placeholder="Notas o preferencias…"
             className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
           />
         </div>
       </div>
     </div>
+  );
+}
+
+/* ======= RESUMEN ======= */
+
+function ResumenBox({
+  empresa,
+  fechaInicio,
+  fechaFin,
+  proyecto,
+  cuenta,
+  estricta,
+  notas,
+}: {
+  empresa: string;
+  fechaInicio: string;
+  fechaFin: string;
+  proyecto: string;
+  cuenta: string;
+  estricta: boolean;
+  notas: string;
+}) {
+  const empresaNombre = empresa === "001" ? "Kissoro" : empresa === "002" ? "En Plural Psicología" : empresa;
+
+  return (
+    <div className="mt-6 md:mr-6 rounded-2xl border border-sky-200 bg-sky-50/80 backdrop-blur p-5 shadow-sm">
+      <h4 className="text-base font-semibold text-sky-900 mb-3">Resumen de selección</h4>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-y-2 gap-x-6 text-sm text-sky-900">
+        <div>
+          <span className="font-medium">Empresa:</span> {empresaNombre}
+        </div>
+        <div>
+          <span className="font-medium">Rango de fechas:</span>{" "}
+          {fechaInicio || "—"} {fechaFin ? `→ ${fechaFin}` : ""}
+        </div>
+        <div>
+          <span className="font-medium">Proyecto:</span> {proyecto || "—"}
+        </div>
+        <div>
+          <span className="font-medium">Cuenta contable:</span> {cuenta || "—"}
+        </div>
+        <div>
+          <span className="font-medium">Validación estricta:</span> {estricta ? "Sí" : "No"}
+        </div>
+        <div className="md:col-span-2">
+          <span className="font-medium">Notas:</span> {notas ? notas : "—"}
+        </div>
+      </div>
+    </div>
+  );
+}
+
   );
 }
 
