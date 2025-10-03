@@ -23,7 +23,7 @@ export default function Page() {
           <img
             src="/logo.png"
             alt="Konyx"
-            className="h-24 w-auto"
+            className="h-128 w-auto"
           />
         </div>
 
