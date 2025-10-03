@@ -1,370 +1,578 @@
 // app/dashboard/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useRef, ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 
-type SectionKey = "empresa" | "fecha" | "proyecto" | "cuenta" | "config";
+type MenuKey =
+  | "formato-import"
+  | "formato-export"
+  | "empresa"
+  | "fecha"
+  | "proyecto"
+  | "cuenta"
+  | "fichero"
+  | "config"
+  | "logout";
 
-const SECTIONS: { key: SectionKey; label: string }[] = [
-  { key: "empresa", label: "Empresa seleccionada" },
-  { key: "fecha", label: "Fecha factura" },
-  { key: "proyecto", label: "Proyecto" },
-  { key: "cuenta", label: "Cuenta contable" },
-  { key: "config", label: "Configuración" },
-];
+type ConfigTab = "password" | "apis" | "formatos";
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [active, setActive] = useState<SectionKey>("empresa");
 
-  // Estado de datos seleccionados
-  const [empresa, setEmpresa] = useState("001");
-  const [fechaInicio, setFechaInicio] = useState<string>("");
-  const [fechaFin, setFechaFin] = useState<string>("");
-  const [proyecto, setProyecto] = useState("");
-  const [cuenta, setCuenta] = useState("");
-  const [estricta, setEstricta] = useState(false);
-  const [notas, setNotas] = useState("");
+  // ---- Estado de selección ----
+  const [active, setActive] = useState<MenuKey>("empresa");
 
-  // Protección cliente (además del middleware/edge si lo tienes)
-  useEffect(() => {
-    const hasToken = document.cookie.split("; ").some((c) => c.startsWith("konyx_token="));
-    if (!hasToken) router.replace("/");
-  }, [router]);
+  const [formatoImport, setFormatoImport] = useState<"Eholo" | "Gestoria">(
+    "Eholo"
+  );
+  const [formatoExport, setFormatoExport] = useState<"Holded" | "Gestoria">(
+    "Holded"
+  );
 
-  function logout() {
-    document.cookie =
-      "konyx_token=; Path=/; Max-Age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax";
-    router.replace("/");
-  }
+  const empresas = ["Kissoro", "En Plural Psicologia"] as const;
+  const [empresaSel, setEmpresaSel] =
+    useState<(typeof empresas)[number]>("Kissoro");
+
+  const [fecha, setFecha] = useState<string>("");
+
+  const proyectos = [
+    "Servicios de Psicologia",
+    "Formacion",
+    "Administracion SL",
+  ] as const;
+  const [proyectoSel, setProyectoSel] =
+    useState<(typeof proyectos)[number]>("Servicios de Psicologia");
+
+  const cuentas = [
+    "70500000 Prestaciones de servicios",
+    "70000000 Venta de mercaderías",
+    "Otra (introducir)",
+  ] as const;
+  const [cuentaSel, setCuentaSel] =
+    useState<(typeof cuentas)[number]>("70500000 Prestaciones de servicios");
+  const [cuentaCustom, setCuentaCustom] = useState<string>("");
+
+  const [fileName, setFileName] = useState<string>("");
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Config
+  const [configTab, setConfigTab] = useState<ConfigTab>("password");
+  const [newPass, setNewPass] = useState("");
+  const [apiHoldedKissoro, setApiHoldedKissoro] = useState("");
+  const [apiHoldedEnPlural, setApiHoldedEnPlural] = useState("");
+  const [formatoExcelNotas, setFormatoExcelNotas] = useState("General");
+
+  // ---- Acciones ----
+  const onPickFile = () => fileInputRef.current?.click();
+
+  const onFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    setFileName(f ? f.name : "");
+  };
+
+  const onCerrarSesion = () => {
+    // Sin recordar sesión: simplemente volver a login
+    router.push("/");
+  };
+
+  // ---- UI auxiliares ----
+  const ActiveItem = ({ label }: { label: string }) => (
+    <span className="inline-block rounded-lg bg-white/10 px-3 py-2 text-white/90 hover:bg-white/15 transition">
+      {label}
+    </span>
+  );
+
+  // ---- Contenidos centrales por menú ----
+  const renderContent = () => {
+    switch (active) {
+      case "formato-import":
+        return (
+          <div className="space-y-4">
+            <h2 className="text-xl font-semibold text-white">
+              Formato Importación
+            </h2>
+            <div className="grid gap-3">
+              {(["Eholo", "Gestoria"] as const).map((opt) => (
+                <label
+                  key={opt}
+                  className="flex items-center gap-3 bg-white/90 backdrop-blur rounded-xl p-3"
+                >
+                  <input
+                    type="radio"
+                    name="formatoImport"
+                    value={opt}
+                    checked={formatoImport === opt}
+                    onChange={() => setFormatoImport(opt)}
+                  />
+                  <span className="font-medium">{opt}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        );
+
+      case "formato-export":
+        return (
+          <div className="space-y-4">
+            <h2 className="text-xl font-semibold text-white">
+              Formato Exportación
+            </h2>
+            <div className="grid gap-3">
+              {(["Holded", "Gestoria"] as const).map((opt) => (
+                <label
+                  key={opt}
+                  className="flex items-center gap-3 bg-white/90 backdrop-blur rounded-xl p-3"
+                >
+                  <input
+                    type="radio"
+                    name="formatoExport"
+                    value={opt}
+                    checked={formatoExport === opt}
+                    onChange={() => setFormatoExport(opt)}
+                  />
+                  <span className="font-medium">{opt}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        );
+
+      case "empresa":
+        return (
+          <div className="space-y-4">
+            <h2 className="text-xl font-semibold text-white">Empresa</h2>
+            <div className="grid gap-3">
+              {empresas.map((e) => (
+                <label
+                  key={e}
+                  className="flex items-center gap-3 bg-white/90 backdrop-blur rounded-xl p-3"
+                >
+                  <input
+                    type="radio"
+                    name="empresa"
+                    value={e}
+                    checked={empresaSel === e}
+                    onChange={() => setEmpresaSel(e)}
+                  />
+                  <span className="font-medium">{e}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        );
+
+      case "fecha":
+        return (
+          <div className="space-y-4">
+            <h2 className="text-xl font-semibold text-white">Fecha factura</h2>
+            <div className="bg-white/90 backdrop-blur rounded-xl p-4">
+              <input
+                type="date"
+                value={fecha}
+                onChange={(e) => setFecha(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2"
+              />
+            </div>
+          </div>
+        );
+
+      case "proyecto":
+        return (
+          <div className="space-y-4">
+            <h2 className="text-xl font-semibold text-white">Proyecto</h2>
+            <div className="grid gap-3">
+              {proyectos.map((p) => (
+                <label
+                  key={p}
+                  className="flex items-center gap-3 bg-white/90 backdrop-blur rounded-xl p-3"
+                >
+                  <input
+                    type="radio"
+                    name="proyecto"
+                    value={p}
+                    checked={proyectoSel === p}
+                    onChange={() => setProyectoSel(p)}
+                  />
+                  <span className="font-medium">{p}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        );
+
+      case "cuenta":
+        return (
+          <div className="space-y-4">
+            <h2 className="text-xl font-semibold text-white">Cuenta contable</h2>
+            <div className="grid gap-3">
+              {cuentas.map((c) => (
+                <label
+                  key={c}
+                  className="flex items-center gap-3 bg-white/90 backdrop-blur rounded-xl p-3"
+                >
+                  <input
+                    type="radio"
+                    name="cuenta"
+                    value={c}
+                    checked={cuentaSel === c}
+                    onChange={() => setCuentaSel(c)}
+                  />
+                  <span className="font-medium">{c}</span>
+                </label>
+              ))}
+              {cuentaSel === "Otra (introducir)" && (
+                <div className="bg-white/90 backdrop-blur rounded-xl p-3">
+                  <input
+                    type="text"
+                    placeholder="Introduce la cuenta contable..."
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2"
+                    value={cuentaCustom}
+                    onChange={(e) => setCuentaCustom(e.target.value)}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        );
+
+      case "fichero":
+        return (
+          <div className="space-y-4">
+            <h2 className="text-xl font-semibold text-white">Fichero de datos</h2>
+            <div className="bg-white/90 backdrop-blur rounded-xl p-4">
+              <p className="text-sm text-gray-700 mb-3">
+                Importa un fichero Excel desde tu equipo.
+              </p>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={onPickFile}
+                  className="rounded-lg bg-indigo-600 text-white px-4 py-2 hover:bg-indigo-700"
+                >
+                  Seleccionar fichero
+                </button>
+                <span className="text-sm text-gray-800">
+                  {fileName || "Ningún fichero seleccionado"}
+                </span>
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xls,.xlsx"
+                className="hidden"
+                onChange={onFileChange}
+              />
+            </div>
+          </div>
+        );
+
+      case "config":
+        return (
+          <div className="space-y-4">
+            <h2 className="text-xl font-semibold text-white">Configuración</h2>
+
+            <div className="flex gap-2">
+              {(["password", "apis", "formatos"] as const).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setConfigTab(tab)}
+                  className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
+                    configTab === tab
+                      ? "bg-white/20 text-white"
+                      : "bg-white/10 text-white/80 hover:bg-white/15"
+                  }`}
+                >
+                  {tab === "password"
+                    ? "Cambio de contraseña"
+                    : tab === "apis"
+                    ? "APIs"
+                    : "Formatos Excel"}
+                </button>
+              ))}
+            </div>
+
+            {configTab === "password" && (
+              <div className="bg-white/90 backdrop-blur rounded-xl p-4 space-y-3">
+                <label className="block text-sm font-medium">Nueva contraseña</label>
+                <input
+                  type="password"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2"
+                  value={newPass}
+                  onChange={(e) => setNewPass(e.target.value)}
+                  placeholder="••••••"
+                />
+                <button className="mt-2 rounded-lg bg-indigo-600 text-white px-4 py-2 hover:bg-indigo-700">
+                  Guardar
+                </button>
+              </div>
+            )}
+
+            {configTab === "apis" && (
+              <div className="bg-white/90 backdrop-blur rounded-xl p-4 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium">
+                    API Holded Kissoro
+                  </label>
+                  <input
+                    type="text"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2"
+                    value={apiHoldedKissoro}
+                    onChange={(e) => setApiHoldedKissoro(e.target.value)}
+                    placeholder="https://api.holded.com/..."
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium">
+                    API Holded En Plural Psicologia
+                  </label>
+                  <input
+                    type="text"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2"
+                    value={apiHoldedEnPlural}
+                    onChange={(e) => setApiHoldedEnPlural(e.target.value)}
+                    placeholder="https://api.holded.com/..."
+                  />
+                </div>
+                <button className="rounded-lg bg-indigo-600 text-white px-4 py-2 hover:bg-indigo-700">
+                  Guardar
+                </button>
+              </div>
+            )}
+
+            {configTab === "formatos" && (
+              <div className="bg-white/90 backdrop-blur rounded-xl p-4 space-y-3">
+                <label className="block text-sm font-medium">Formato Excel</label>
+                <select
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2"
+                  value={formatoExcelNotas}
+                  onChange={(e) => setFormatoExcelNotas(e.target.value)}
+                >
+                  <option>General</option>
+                  <option>Detalle</option>
+                  <option>Simple</option>
+                </select>
+                <button className="mt-2 rounded-lg bg-indigo-600 text-white px-4 py-2 hover:bg-indigo-700">
+                  Guardar
+                </button>
+              </div>
+            )}
+          </div>
+        );
+
+      case "logout":
+        // Mostramos confirmación simple aquí; al confirmar, ejecuta onCerrarSesion()
+        return (
+          <div className="space-y-4">
+            <h2 className="text-xl font-semibold text-white">Cerrar sesión</h2>
+            <div className="bg-white/90 backdrop-blur rounded-xl p-4">
+              <p className="mb-4 text-gray-800">¿Seguro que deseas salir?</p>
+              <div className="flex gap-2">
+                <button
+                  onClick={onCerrarSesion}
+                  className="rounded-lg bg-red-600 text-white px-4 py-2 hover:bg-red-700"
+                >
+                  Sí, cerrar
+                </button>
+                <button
+                  onClick={() => setActive("empresa")}
+                  className="rounded-lg bg-gray-200 text-gray-800 px-4 py-2 hover:bg-gray-300"
+                >
+                  No, volver
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+    }
+  };
+
+  // Valor cuenta mostrado
+  const cuentaMostrada =
+    cuentaSel === "Otra (introducir)" && cuentaCustom.trim()
+      ? cuentaCustom.trim()
+      : cuentaSel;
 
   return (
     <main
-      className="min-h-screen bg-no-repeat bg-center bg-cover"
-      style={{
-        backgroundImage: "url(/fondo.png)",
-        backgroundSize: "100% 100%",
-        backgroundRepeat: "no-repeat",
-      }}
+      className="min-h-screen bg-cover bg-center bg-no-repeat"
+      style={{ backgroundImage: "url(/fondo.png)" }}
     >
-      {/* Top bar con logout */}
-      <header className="px-4 py-3 flex items-center justify-end">
-        <button
-          onClick={logout}
-          className="rounded-lg bg-white/80 backdrop-blur px-4 py-2 text-sm font-medium shadow hover:bg-white/90 border border-white/60"
-        >
-          Cerrar sesión
-        </button>
-      </header>
-
-      <div className="mx-0 px-0">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-          {/* PANEL IZQUIERDO — más estrecho */}
-          <aside className="md:col-span-3 md:pl-0">
-            <div className="bg-white/85 backdrop-blur rounded-r-2xl rounded-l-none md:rounded-l-2xl md:ml-0 shadow p-4 md:min-h-[70vh]">
-              {/* Logo dentro del panel (alto 96px) */}
-              <div className="flex items-center gap-3 mb-4">
-                <img src="/logo.png" alt="Konyx" className="h-24 w-auto drop-shadow-md" />
+      <div className="min-h-screen bg-black/30">
+        {/* Layout */}
+        <div className="mx-auto max-w-7xl px-4 py-6">
+          <div className="grid grid-cols-1 md:grid-cols-[250px_1fr] gap-6">
+            {/* Sidebar (más estrecho) */}
+            <aside className="rounded-2xl bg-white/10 backdrop-blur p-4 md:p-5 shadow-lg">
+              {/* Logo dentro del panel (altura 96) */}
+              <div className="flex items-center gap-3 mb-6">
+                <img src="/logo.png" alt="Konyx" className="h-24 w-auto" />
               </div>
 
-              <h2 className="text-lg font-semibold mb-3">Panel</h2>
-              <nav className="space-y-2">
-                {SECTIONS.map((s) => (
-                  <button
-                    key={s.key}
-                    onClick={() => setActive(s.key)}
-                    className={`w-full text-left rounded-xl px-3 py-2 border transition
-                    ${
-                      active === s.key
-                        ? "bg-indigo-600 text-white border-indigo-600"
-                        : "bg-white/70 hover:bg-white/90 border-gray-200"
-                    }`}
-                  >
-                    {s.label}
-                  </button>
-                ))}
+              <nav className="space-y-1 text-white/90">
+                <p className="px-2 text-xs uppercase tracking-wide text-white/60">
+                  Dashboard
+                </p>
 
-                <div className="pt-2 mt-2 border-t border-gray-200/70">
+                <button
+                  onClick={() => setActive("formato-import")}
+                  className={`w-full text-left px-3 py-2 rounded-lg transition ${
+                    active === "formato-import"
+                      ? "bg-white/20"
+                      : "hover:bg-white/10"
+                  }`}
+                >
+                  Formato Importación
+                </button>
+                <button
+                  onClick={() => setActive("formato-export")}
+                  className={`w-full text-left px-3 py-2 rounded-lg transition ${
+                    active === "formato-export"
+                      ? "bg-white/20"
+                      : "hover:bg-white/10"
+                  }`}
+                >
+                  Formato Exportación
+                </button>
+
+                <button
+                  onClick={() => setActive("empresa")}
+                  className={`w-full text-left px-3 py-2 rounded-lg transition ${
+                    active === "empresa" ? "bg-white/20" : "hover:bg-white/10"
+                  }`}
+                >
+                  Empresa (seleccionar)
+                </button>
+
+                <button
+                  onClick={() => setActive("fecha")}
+                  className={`w-full text-left px-3 py-2 rounded-lg transition ${
+                    active === "fecha" ? "bg-white/20" : "hover:bg-white/10"
+                  }`}
+                >
+                  Fecha factura
+                </button>
+
+                <button
+                  onClick={() => setActive("proyecto")}
+                  className={`w-full text-left px-3 py-2 rounded-lg transition ${
+                    active === "proyecto" ? "bg-white/20" : "hover:bg-white/10"
+                  }`}
+                >
+                  Proyecto
+                </button>
+
+                <button
+                  onClick={() => setActive("cuenta")}
+                  className={`w-full text-left px-3 py-2 rounded-lg transition ${
+                    active === "cuenta" ? "bg-white/20" : "hover:bg-white/10"
+                  }`}
+                >
+                  Cuenta contable
+                </button>
+
+                <button
+                  onClick={() => setActive("fichero")}
+                  className={`w-full text-left px-3 py-2 rounded-lg transition ${
+                    active === "fichero" ? "bg-white/20" : "hover:bg-white/10"
+                  }`}
+                >
+                  Fichero de datos
+                </button>
+
+                <button
+                  onClick={() => setActive("config")}
+                  className={`w-full text-left px-3 py-2 rounded-lg transition ${
+                    active === "config" ? "bg-white/20" : "hover:bg-white/10"
+                  }`}
+                >
+                  Configuración
+                </button>
+
+                <div className="pt-2">
                   <button
-                    onClick={logout}
-                    className="w-full text-left rounded-xl px-3 py-2 border bg-white/70 hover:bg-white/90 border-gray-200 text-red-600 font-medium"
+                    onClick={() => setActive("logout")}
+                    className={`w-full text-left px-3 py-2 rounded-lg transition ${
+                      active === "logout"
+                        ? "bg-red-500/20 text-red-100"
+                        : "hover:bg-red-500/10 text-red-200"
+                    }`}
                   >
                     Cerrar sesión
                   </button>
                 </div>
               </nav>
-            </div>
-          </aside>
+            </aside>
 
-          {/* CONTENIDO DERECHO */}
-          <section className="md:col-span-9 px-4 md:px-0">
-            <div className="bg-white/90 backdrop-blur rounded-2xl shadow p-6 md:mr-6">
-              {active === "empresa" && (
-                <EmpresaView value={empresa} onChange={setEmpresa} />
-              )}
-
-              {active === "fecha" && (
-                <FechaView
-                  inicio={fechaInicio}
-                  fin={fechaFin}
-                  onInicio={setFechaInicio}
-                  onFin={setFechaFin}
+            {/* Contenido principal */}
+            <section className="space-y-6">
+              {/* Encabezado con “chips” del menú activo */}
+              <div className="flex flex-wrap gap-2">
+                <ActiveItem
+                  label={
+                    active === "formato-import"
+                      ? `Formato Importación: ${formatoImport}`
+                      : active === "formato-export"
+                      ? `Formato Exportación: ${formatoExport}`
+                      : active === "empresa"
+                      ? `Empresa: ${empresaSel}`
+                      : active === "fecha"
+                      ? `Fecha factura`
+                      : active === "proyecto"
+                      ? `Proyecto: ${proyectoSel}`
+                      : active === "cuenta"
+                      ? `Cuenta contable`
+                      : active === "fichero"
+                      ? `Fichero de datos`
+                      : active === "config"
+                      ? `Configuración`
+                      : "Cerrar sesión"
+                  }
                 />
-              )}
+              </div>
 
-              {active === "proyecto" && (
-                <ProyectoView value={proyecto} onChange={setProyecto} />
-              )}
+              {/* Card de contenido */}
+              <div className="rounded-2xl bg-white/10 backdrop-blur p-5 shadow-lg">
+                {renderContent()}
+              </div>
 
-              {active === "cuenta" && (
-                <CuentaView value={cuenta} onChange={setCuenta} />
-              )}
-
-              {active === "config" && (
-                <ConfigView
-                  estricta={estricta}
-                  notas={notas}
-                  onEstricta={setEstricta}
-                  onNotas={setNotas}
-                />
-              )}
-            </div>
-
-            {/* RESUMEN (azul claro) */}
-            <ResumenBox
-              empresa={empresa}
-              fechaInicio={fechaInicio}
-              fechaFin={fechaFin}
-              proyecto={proyecto}
-              cuenta={cuenta}
-              estricta={estricta}
-              notas={notas}
-            />
-          </section>
+              {/* Resumen inferior (azulado claro) */}
+              <div className="rounded-2xl bg-blue-50/90 border border-blue-200 p-5 text-blue-900 shadow">
+                <h3 className="text-lg font-semibold mb-3">Resumen de selección</h3>
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
+                  <div>
+                    <span className="font-medium">Formato Importación: </span>
+                    {formatoImport}
+                  </div>
+                  <div>
+                    <span className="font-medium">Formato Exportación: </span>
+                    {formatoExport}
+                  </div>
+                  <div>
+                    <span className="font-medium">Empresa: </span>
+                    {empresaSel}
+                  </div>
+                  <div>
+                    <span className="font-medium">Fecha factura: </span>
+                    {fecha || "—"}
+                  </div>
+                  <div>
+                    <span className="font-medium">Proyecto: </span>
+                    {proyectoSel}
+                  </div>
+                  <div>
+                    <span className="font-medium">Cuenta contable: </span>
+                    {cuentaMostrada}
+                  </div>
+                  <div className="lg:col-span-3">
+                    <span className="font-medium">Fichero: </span>
+                    {fileName || "—"}
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
         </div>
       </div>
     </main>
   );
 }
-
-/* ========= VISTAS ========= */
-
-function EmpresaView({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  return (
-    <div>
-      <h3 className="text-xl font-semibold mb-4">Empresa seleccionada</h3>
-      <div className="space-y-3">
-        <div>
-          <label className="block text-sm font-medium mb-1">Empresa</label>
-          <select
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
-          >
-            <option value="001">Kissoro</option>
-            <option value="002">En Plural Psicología</option>
-          </select>
-        </div>
-        <p className="text-sm text-gray-600">
-          Selecciona la empresa con la que quieres trabajar. Esta selección se aplicará al resto de secciones.
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function FechaView({
-  inicio,
-  fin,
-  onInicio,
-  onFin,
-}: {
-  inicio: string;
-  fin: string;
-  onInicio: (v: string) => void;
-  onFin: (v: string) => void;
-}) {
-  return (
-    <div>
-      <h3 className="text-xl font-semibold mb-4">Fecha factura</h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium mb-1">Fecha inicio</label>
-          <input
-            type="date"
-            value={inicio}
-            onChange={(e) => onInicio(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">Fecha fin</label>
-          <input
-            type="date"
-            value={fin}
-            onChange={(e) => onFin(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
-          />
-        </div>
-      </div>
-      <p className="text-sm text-gray-600 mt-3">
-        Define el rango para filtrar las facturas que quieres consultar o procesar.
-      </p>
-    </div>
-  );
-}
-
-function ProyectoView({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  return (
-    <div>
-      <h3 className="text-xl font-semibold mb-4">Proyecto</h3>
-      <div className="space-y-3">
-        <div>
-          <label className="block text-sm font-medium mb-1">Proyecto</label>
-          <input
-            type="text"
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder="Código o nombre de proyecto"
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
-          />
-        </div>
-        <p className="text-sm text-gray-600">
-          Indica el proyecto relacionado con las facturas a gestionar.
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function CuentaView({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  return (
-    <div>
-      <h3 className="text-xl font-semibold mb-4">Cuenta contable</h3>
-      <div className="space-y-3">
-        <div>
-          <label className="block text-sm font-medium mb-1">Cuenta</label>
-          <input
-            type="text"
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder="Ej. 700000 Ventas"
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
-          />
-        </div>
-        <p className="text-sm text-gray-600">
-          Ajusta la cuenta contable por defecto para las operaciones del proyecto/empresa seleccionada.
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function ConfigView({
-  estricta,
-  notas,
-  onEstricta,
-  onNotas,
-}: {
-  estricta: boolean;
-  notas: string;
-  onEstricta: (v: boolean) => void;
-  onNotas: (v: string) => void;
-}) {
-  return (
-    <div>
-      <h3 className="text-xl font-semibold mb-4">Configuración</h3>
-      <div className="space-y-4">
-        <label className="flex items-center justify-between">
-          <span className="text-sm">Validación estricta</span>
-          <input
-            type="checkbox"
-            checked={estricta}
-            onChange={(e) => onEstricta(e.target.checked)}
-            className="h-5 w-5"
-          />
-        </label>
-        <div>
-          <label className="block text-sm font-medium mb-1">Notas</label>
-          <textarea
-            rows={4}
-            value={notas}
-            onChange={(e) => onNotas(e.target.value)}
-            placeholder="Notas o preferencias…"
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
-          />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ========= RESUMEN ========= */
-
-function ResumenBox({
-  empresa,
-  fechaInicio,
-  fechaFin,
-  proyecto,
-  cuenta,
-  estricta,
-  notas,
-}: {
-  empresa: string;
-  fechaInicio: string;
-  fechaFin: string;
-  proyecto: string;
-  cuenta: string;
-  estricta: boolean;
-  notas: string;
-}) {
-  const empresaNombre =
-    empresa === "001" ? "Kissoro" : empresa === "002" ? "En Plural Psicología" : empresa;
-
-  return (
-    <div className="mt-6 md:mr-6 rounded-2xl border border-sky-200 bg-sky-50/80 backdrop-blur p-5 shadow-sm">
-      <h4 className="text-base font-semibold text-sky-900 mb-3">Resumen de selección</h4>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-y-2 gap-x-6 text-sm text-sky-900">
-        <div>
-          <span className="font-medium">Empresa:</span> {empresaNombre}
-        </div>
-        <div>
-          <span className="font-medium">Rango de fechas:</span>{" "}
-          {fechaInicio || "—"} {fechaFin ? `→ ${fechaFin}` : ""}
-        </div>
-        <div>
-          <span className="font-medium">Proyecto:</span> {proyecto || "—"}
-        </div>
-        <div>
-          <span className="font-medium">Cuenta contable:</span> {cuenta || "—"}
-        </div>
-        <div>
-          <span className="font-medium">Validación estricta:</span> {estricta ? "Sí" : "No"}
-        </div>
-        <div className="md:col-span-2">
-          <span className="font-medium">Notas:</span> {notas ? notas : "—"}
-        </div>
-      </div>
-    </div>
-  );
-}
-
