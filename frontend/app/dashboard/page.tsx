@@ -260,7 +260,7 @@ export default function DashboardPage() {
             {/* ---------- Sidebar ---------- */}
             <aside className="rounded-2xl bg-slate-500/90 backdrop-blur p-4 md:p-5 shadow-lg">
               <div className="flex items-center gap-3 mb-6">
-                <img src="/logo.png" alt="Konyx" className="h-24 w-auto" />
+                <img src="/logo.png" alt="Konyx" className="h-98 w-auto" />
               </div>
 
               <nav className="space-y-1 text-white/90">
