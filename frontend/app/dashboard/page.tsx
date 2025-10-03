@@ -1,15 +1,9 @@
-// app/dashboard/page.tsx
 "use client";
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-type SectionKey =
-  | "empresa"
-  | "fecha"
-  | "proyecto"
-  | "cuenta"
-  | "config";
+type SectionKey = "empresa" | "fecha" | "proyecto" | "cuenta" | "config";
 
 const SECTIONS: { key: SectionKey; label: string }[] = [
   { key: "empresa", label: "Empresa seleccionada" },
@@ -23,14 +17,13 @@ export default function DashboardPage() {
   const router = useRouter();
   const [active, setActive] = useState<SectionKey>("empresa");
 
-  // Filtro de seguridad extra en cliente (además del middleware)
+  // Seguridad en cliente (además del middleware)
   useEffect(() => {
     const hasToken = document.cookie.split("; ").some((c) => c.startsWith("konyx_token="));
     if (!hasToken) router.replace("/");
   }, [router]);
 
   function logout() {
-    // Eliminar cookie y volver al login
     document.cookie =
       "konyx_token=; Path=/; Max-Age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax";
     router.replace("/");
@@ -45,16 +38,8 @@ export default function DashboardPage() {
         backgroundRepeat: "no-repeat",
       }}
     >
-      {/* Cabecera ligera con logo y logout */}
-      <header className="px-4 py-4 flex items-center justify-between">
-        <div className="flex-1 flex justify-center md:justify-start">
-          <img
-            src="/logo.png"
-            alt="Konyx"
-            className="h-12 w-auto drop-shadow-md"
-          />
-        </div>
-
+      {/* Barra superior ligera sólo con botón de logout */}
+      <header className="px-4 py-3 flex items-center justify-end">
         <button
           onClick={logout}
           className="rounded-lg bg-white/80 backdrop-blur px-4 py-2 text-sm font-medium shadow hover:bg-white/90 border border-white/60"
@@ -63,12 +48,17 @@ export default function DashboardPage() {
         </button>
       </header>
 
-      {/* Contenido principal con la estética anterior: panel izq + contenido dcha */}
-      <div className="max-w-6xl mx-auto px-4 pb-8">
+      {/* Layout sin márgenes laterales para que el panel quede totalmente a la izquierda */}
+      <div className="mx-0 px-0">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-          {/* Panel izquierdo (menú) */}
-          <aside className="md:col-span-4">
-            <div className="bg-white/85 backdrop-blur rounded-2xl shadow p-4">
+          {/* PANEL IZQUIERDO – pegado al borde izquierdo */}
+          <aside className="md:col-span-4 md:pl-0">
+            <div className="bg-white/85 backdrop-blur rounded-r-2xl rounded-l-none md:rounded-l-2xl md:ml-0 shadow p-4 md:min-h-[70vh]">
+              {/* Logo dentro del panel (h-24 = 96px) */}
+              <div className="flex items-center gap-3 mb-4">
+                <img src="/logo.png" alt="Konyx" className="h-24 w-auto drop-shadow-md" />
+              </div>
+
               <h2 className="text-lg font-semibold mb-3">Panel</h2>
               <nav className="space-y-2">
                 {SECTIONS.map((s) => (
@@ -98,9 +88,9 @@ export default function DashboardPage() {
             </div>
           </aside>
 
-          {/* Contenido derecho */}
-          <section className="md:col-span-8">
-            <div className="bg-white/90 backdrop-blur rounded-2xl shadow p-6">
+          {/* CONTENIDO DERECHO */}
+          <section className="md:col-span-8 px-4 md:px-0">
+            <div className="bg-white/90 backdrop-blur rounded-2xl shadow p-6 md:mr-6">
               {active === "empresa" && <EmpresaView />}
               {active === "fecha" && <FechaView />}
               {active === "proyecto" && <ProyectoView />}
@@ -114,7 +104,7 @@ export default function DashboardPage() {
   );
 }
 
-/* ======= VISTAS (placeholders conservando estética) ======= */
+/* ======= VISTAS ======= */
 
 function EmpresaView() {
   return (
@@ -129,8 +119,7 @@ function EmpresaView() {
           </select>
         </div>
         <p className="text-sm text-gray-600">
-          Selecciona la empresa con la que quieres trabajar. Esta selección se
-          aplicará al resto de secciones.
+          Selecciona la empresa con la que quieres trabajar. Esta selección se aplicará al resto de secciones.
         </p>
       </div>
     </div>
@@ -158,8 +147,7 @@ function FechaView() {
         </div>
       </div>
       <p className="text-sm text-gray-600 mt-3">
-        Define el rango para filtrar las facturas que quieres consultar o
-        procesar.
+        Define el rango para filtrar las facturas que quieres consultar o procesar.
       </p>
     </div>
   );
@@ -200,8 +188,7 @@ function CuentaView() {
           />
         </div>
         <p className="text-sm text-gray-600">
-          Ajusta la cuenta contable por defecto para las operaciones del
-          proyecto/empresa seleccionada.
+          Ajusta la cuenta contable por defecto para las operaciones del proyecto/empresa seleccionada.
         </p>
       </div>
     </div>
@@ -227,6 +214,9 @@ function ConfigView() {
         </div>
       </div>
     </div>
+  );
+}
+
   );
 }
 
