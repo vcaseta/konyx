@@ -1,59 +1,71 @@
-// app/dashboard/page.tsx
+@@ -1,58 +1,39 @@
+// app/page.tsx
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Login from "./components/Login";
+import { getSavedToken } from "./lib/api";
 
-export default function DashboardPage() {
+export const dynamic = "force-dynamic";
+
+export default function Page() {
   const router = useRouter();
+  const [token, setToken] = useState<string | null>(null);
 
+  // Al cargar, si ya hay token guardado, redirige:
   useEffect(() => {
-    const hasToken = document.cookie.split("; ").some(c => c.startsWith("konyx_token="));
-    if (!hasToken) router.replace("/");
+    const t = getSavedToken();
+    if (t) {
+      setToken(t);
+      router.push("/dashboard");
+    }
   }, [router]);
 
-  function logout() {
-    document.cookie = "konyx_token=; Path=/; Max-Age=0; SameSite=Lax";
-    router.push("/");
-  }
+  // Si acabamos de logearnos, también redirige:
+  useEffect(() => {
+    if (token) {
+      router.push("/dashboard");
+    }
+  }, [token, router]);
 
   return (
     <main
-      className="min-h-screen bg-no-repeat bg-center bg-cover flex items-center justify-start p-8"
-      style={{ backgroundImage: 'url(/fondo.png)' }}
+      className="min-h-screen bg-no-repeat bg-center bg-cover flex items-center justify-center p-4"
+      className="min-h-screen bg-no-repeat bg-center bg-cover flex items-center justify-center p-6"
+      style={{
+        backgroundImage: "url(/fondo.png)",
+        backgroundSize: "100% 100%",
+        backgroundRepeat: "no-repeat",
+      }}
     >
-      {/* Columna izquierda con menú y contenido */}
-      <aside className="w-80 bg-white/85 backdrop-blur rounded-2xl shadow-xl p-6 space-y-4">
-        <h2 className="text-xl font-semibold mb-4">Panel de Control</h2>
-        <nav className="flex flex-col gap-2">
-          <a className="px-3 py-2 rounded hover:bg-indigo-50" href="#empresa">Empresa</a>
-          <a className="px-3 py-2 rounded hover:bg-indigo-50" href="#fecha">Fecha Factura</a>
-          <a className="px-3 py-2 rounded hover:bg-indigo-50" href="#proyecto">Proyecto</a>
-          <a className="px-3 py-2 rounded hover:bg-indigo-50" href="#cuenta">Cuenta Contable</a>
-          <a className="px-3 py-2 rounded hover:bg-indigo-50" href="#config">Configuración</a>
-          <button onClick={logout} className="text-left px-3 py-2 rounded hover:bg-red-50 text-red-600">
-            Cerrar sesión
-          </button>
-        </nav>
-
-        <div className="mt-6 space-y-3 text-sm text-gray-700">
-          <div id="empresa">
-            <p><strong>Empresa seleccionada:</strong> —</p>
-          </div>
-          <div id="fecha">
-            <p><strong>Fecha factura:</strong> —</p>
-          </div>
-          <div id="proyecto">
-            <p><strong>Proyecto:</strong> —</p>
-          </div>
-          <div id="cuenta">
-            <p><strong>Cuenta contable:</strong> —</p>
-          </div>
-          <div id="config">
-            <p><strong>Configuración:</strong> —</p>
-          </div>
+      <div className="w-full max-w-sm">
+        {/* Logo siempre arriba */}
+        {/* Logo SIEMPRE encima del formulario */}
+        <div className="flex justify-center mb-6">
+          <img src="/logo.png" alt="Konyx" className="h-48 w-auto drop-shadow-md" />
+          <img
+            src="/logo.png"
+            alt="Konyx"
+            className="h-24 w-auto"
+          />
         </div>
-      </aside>
+
+        {/* Mientras no haya token, mostramos login */}
+        {!token ? (
+          <Login onOk={(t: string) => setToken(t)} />
+        ) : (
+          <div className="bg-white/90 backdrop-blur rounded-2xl shadow p-6 text-center">
+            <p className="text-sm text-gray-700">Entrando al panel…</p>
+          </div>
+        )}
+        {/* Componente de login: él maneja su propio error y petición */}
+        <Login onOk={(token: string) => {
+          // No guardamos token => forzamos login siempre en cada visita.
+          // Tras login correcto, navegamos al dashboard.
+          router.push("/dashboard");
+        }}/>
+      </div>
     </main>
   );
 }
