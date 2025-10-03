@@ -28,7 +28,7 @@ type MenuKey =
 export default function DashboardPage() {
   const router = useRouter();
 
-  // --- Estado de selección ---
+  // Estado
   const [menu, setMenu] = useState<MenuKey>("formatoImport");
 
   const [formatoImport, setFormatoImport] = useState<FormatoImport>("");
@@ -40,18 +40,17 @@ export default function DashboardPage() {
   const [cuentaOtra, setCuentaOtra] = useState<string>("");
   const [fichero, setFichero] = useState<File | null>(null);
 
-  // Config (placeholder UI)
-  const [cfgPass, setCfgPass] = useState<string>("");
-  const [cfgApiKissoro, setCfgApiKissoro] = useState<string>("");
-  const [cfgApiEnPlural, setCfgApiEnPlural] = useState<string>("");
-  const [cfgFormatoExcel, setCfgFormatoExcel] = useState<string>("");
+  // Config
+  const [cfgPass, setCfgPass] = useState("");
+  const [cfgApiKissoro, setCfgApiKissoro] = useState("");
+  const [cfgApiEnPlural, setCfgApiEnPlural] = useState("");
+  const [cfgFormatoExcel, setCfgFormatoExcel] = useState("");
 
-  // Modal confirmación exportación
+  // Export
   const [showConfirm, setShowConfirm] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportMsg, setExportMsg] = useState<string | null>(null);
 
-  // Reglas para habilitar Exportar
   const exportReady = useMemo(() => {
     const cuentaOK = cuenta === "Otra" ? cuentaOtra.trim().length > 0 : !!cuenta;
     return (
@@ -65,13 +64,11 @@ export default function DashboardPage() {
     );
   }, [formatoImport, formatoExport, empresa, fechaFactura, proyecto, cuenta, cuentaOtra, fichero]);
 
-  // Acción de exportación (estructura lista)
   async function doExport() {
     try {
       setExporting(true);
       setExportMsg(null);
 
-      // Envío como JSON (para fichero, de momento solo el nombre; más adelante FormData si quieres subirlo)
       const payload = {
         formatoImport,
         formatoExport,
@@ -90,28 +87,21 @@ export default function DashboardPage() {
 
       if (!res.ok) throw new Error(`Error ${res.status}`);
       const data = await res.json().catch(() => ({}));
-
-      setExportMsg(
-        data?.message ||
-          "Exportación lanzada correctamente. (Backend por definir)"
-      );
+      setExportMsg(data?.message || "Exportación lanzada correctamente. (Backend pendiente)");
     } catch (err: any) {
-      setExportMsg(
-        `No se pudo exportar: ${err?.message || "error desconocido"}`
-      );
+      setExportMsg(`No se pudo exportar: ${err?.message || "error desconocido"}`);
     } finally {
       setExporting(false);
       setShowConfirm(false);
     }
   }
 
-  // Cerrar sesión
   function logout() {
     router.replace("/");
   }
 
-  // --- UI helpers ---
-  const Item = ({
+  // Botón/Item del menú
+  function Item({
     active,
     disabled,
     onClick,
@@ -122,12 +112,10 @@ export default function DashboardPage() {
     disabled?: boolean;
     onClick?: () => void;
     children: React.ReactNode;
-    highlight?: boolean; // para "Exportar" resaltada
-  }) => {
-    const base =
-      "w-full text-left px-3 py-2 rounded-lg transition outline-none";
-    const normal =
-      "hover:bg-white/10 focus:bg-white/10 text-white/90";
+    highlight?: boolean;
+  }) {
+    const base = "w-full text-left px-3 py-2 rounded-lg transition outline-none";
+    const normal = "hover:bg-white/10 focus:bg-white/10 text-white/90";
     const activeCls = "bg-white/15 text-white font-medium";
     const disabledCls = "opacity-40 cursor-not-allowed";
     const highlightCls = "bg-blue-500/20 text-white border border-blue-300 hover:bg-blue-500/25";
@@ -145,34 +133,24 @@ export default function DashboardPage() {
         {children}
       </button>
     );
-  };
+  }
 
   return (
     <main
       className="min-h-screen bg-no-repeat bg-center bg-cover"
-      style={{
-        backgroundImage: "url(/fondo.png)",
-        backgroundSize: "100% 100%",
-      }}
+      style={{ backgroundImage: "url(/fondo.png)", backgroundSize: "100% 100%" }}
     >
       <div className="min-h-screen bg-black/30">
         <div className="mx-auto max-w-6xl px-4 py-8 grid grid-cols-12 gap-6">
-          {/* --- Sidebar (más estrecho) --- */}
+          {/* Sidebar (estrecho) */}
           <aside className="col-span-12 md:col-span-3">
             <div className="bg-white/10 backdrop-blur rounded-2xl border border-white/15 p-4">
               <div className="flex justify-center mb-4">
-                <img
-                  src="/logo.png"
-                  alt="Konyx"
-                  className="h-24 w-auto"
-                />
+                <img src="/logo.png" alt="Konyx" className="h-24 w-auto" />
               </div>
 
               <div className="space-y-1">
-                <Item
-                  active={menu === "formatoImport"}
-                  onClick={() => setMenu("formatoImport")}
-                >
+                <Item active={menu === "formatoImport"} onClick={() => setMenu("formatoImport")}>
                   Formato Importación
                 </Item>
                 {menu === "formatoImport" && (
@@ -186,10 +164,7 @@ export default function DashboardPage() {
                   </div>
                 )}
 
-                <Item
-                  active={menu === "formatoExport"}
-                  onClick={() => setMenu("formatoExport")}
-                >
+                <Item active={menu === "formatoExport"} onClick={() => setMenu("formatoExport")}>
                   Formato Exportación
                 </Item>
                 {menu === "formatoExport" && (
@@ -203,98 +178,65 @@ export default function DashboardPage() {
                   </div>
                 )}
 
-                <Item
-                  active={menu === "empresa"}
-                  onClick={() => setMenu("empresa")}
-                >
+                <Item active={menu === "empresaIt"} onClick={() => setMenu("empresa")}>
                   Empresa (seleccionar)
                 </Item>
                 {menu === "empresa" && (
                   <div className="ml-2 space-y-1">
-                    <Item onClick={() => setEmpresa("Kissoro")}>
-                      Kissoro {empresa === "Kissoro" ? "✓" : ""}
-                    </Item>
+                    <Item onClick={() => setEmpresa("Kissoro")}>Kissoro {empresa === "Kissoro" ? "✓" : ""}</Item>
                     <Item onClick={() => setEmpresa("En Plural Psicologia")}>
-                      En Plural Psicologia{" "}
-                      {empresa === "En Plural Psicologia" ? "✓" : ""}
+                      En Plural Psicologia {empresa === "En Plural Psicologia" ? "✓" : ""}
                     </Item>
                   </div>
                 )}
 
-                <Item
-                  active={menu === "fecha"}
-                  onClick={() => setMenu("fecha")}
-                >
+                <Item active={menu === "fecha"} onClick={() => setMenu("fecha")}>
                   Fecha factura
                 </Item>
 
-                <Item
-                  active={menu === "proyecto"}
-                  onClick={() => setMenu("proyecto")}
-                >
+                <Item active={menu === "proyecto"} onClick={() => setMenu("proyecto")}>
                   Proyecto
                 </Item>
                 {menu === "proyecto" && (
                   <div className="ml-2 space-y-1">
                     <Item onClick={() => setProyecto("Servicios de Psicologia")}>
-                      Servicios de Psicologia{" "}
-                      {proyecto === "Servicios de Psicologia" ? "✓" : ""}
+                      Servicios de Psicologia {proyecto === "Servicios de Psicologia" ? "✓" : ""}
                     </Item>
                     <Item onClick={() => setProyecto("Formacion")}>
                       Formacion {proyecto === "Formacion" ? "✓" : ""}
                     </Item>
                     <Item onClick={() => setProyecto("Administracion SL")}>
-                      Administracion SL{" "}
-                      {proyecto === "Administracion SL" ? "✓" : ""}
+                      Administracion SL {proyecto === "Administracion SL" ? "✓" : ""}
                     </Item>
                   </div>
                 )}
 
-                <Item
-                  active={menu === "cuenta"}
-                  onClick={() => setMenu("cuenta")}
-                >
+                <Item active={menu === "cuenta"} onClick={() => setMenu("cuenta")}>
                   Cuenta contable
                 </Item>
                 {menu === "cuenta" && (
                   <div className="ml-2 space-y-1">
-                    <Item
-                      onClick={() =>
-                        setCuenta("70500000 Prestaciones de servicios")
-                      }
-                    >
-                      70500000 Prestaciones de servicios{" "}
-                      {cuenta === "70500000 Prestaciones de servicios" ? "✓" : ""}
+                    <Item onClick={() => setCuenta("70500000 Prestaciones de servicios")}>
+                      70500000 Prestaciones de servicios
+                      {cuenta === "70500000 Prestaciones de servicios" ? " ✓" : ""}
                     </Item>
-                    <Item
-                      onClick={() =>
-                        setCuenta("70000000 Venta de mercaderías")
-                      }
-                    >
-                      70000000 Venta de mercaderías{" "}
-                      {cuenta === "70000000 Venta de mercaderías" ? "✓" : ""}
+                    <Item onClick={() => setCuenta("70000000 Venta de mercaderías")}>
+                      70000000 Venta de mercaderías
+                      {cuenta === "70000000 Venta de mercaderías" ? " ✓" : ""}
                     </Item>
-                    <Item onClick={() => setCuenta("Otra")}>
-                      Otra {cuenta === "Otra" ? "✓" : ""}
-                    </Item>
+                    <Item onClick={() => setCuenta("Otra")}>Otra {cuenta === "Otra" ? "✓" : ""}</Item>
                   </div>
                 )}
 
-                <Item
-                  active={menu === "fichero"}
-                  onClick={() => setMenu("fichero")}
-                >
+                <Item active={menu === "fichero"} onClick={() => setMenu("fichero")}>
                   Fichero de datos
                 </Item>
 
-                <Item
-                  active={menu === "config"}
-                  onClick={() => setMenu("config")}
-                >
+                <Item active={menu === "config"} onClick={() => setMenu("config")}>
                   Configuración
                 </Item>
 
-                {/* Exportar */}
+                {/* Exportar: visible siempre; deshabilitada hasta estar listo; resaltada cuando ready */}
                 <Item
                   active={menu === "exportar"}
                   onClick={() => setMenu("exportar")}
@@ -304,7 +246,6 @@ export default function DashboardPage() {
                   Exportar
                 </Item>
 
-                {/* Cerrar sesión */}
                 <div className="pt-2">
                   <Item onClick={logout}>Cerrar sesión</Item>
                 </div>
@@ -312,38 +253,27 @@ export default function DashboardPage() {
             </div>
           </aside>
 
-          {/* --- Contenido central --- */}
+          {/* Contenido */}
           <section className="col-span-12 md:col-span-9 space-y-4">
             <div className="bg-white/90 backdrop-blur rounded-2xl shadow p-6">
               {menu === "formatoImport" && (
                 <div>
-                  <h2 className="text-xl font-semibold mb-4">
-                    Formato Importación
-                  </h2>
-                  <p className="text-sm text-gray-600">
-                    Selecciona el formato desde el que vas a importar los datos.
-                  </p>
+                  <h2 className="text-xl font-semibold mb-4">Formato Importación</h2>
+                  <p className="text-sm text-gray-600">Selecciona el formato desde el que vas a importar los datos.</p>
                 </div>
               )}
 
               {menu === "formatoExport" && (
                 <div>
-                  <h2 className="text-xl font-semibold mb-4">
-                    Formato Exportación
-                  </h2>
-                  <p className="text-sm text-gray-600">
-                    Selecciona el destino de la exportación.
-                  </p>
+                  <h2 className="text-xl font-semibold mb-4">Formato Exportación</h2>
+                  <p className="text-sm text-gray-600">Selecciona el destino de la exportación.</p>
                 </div>
               )}
 
               {menu === "empresa" && (
                 <div>
                   <h2 className="text-xl font-semibold mb-4">Empresa</h2>
-                  <p className="text-sm text-gray-600">
-                    Has de elegir la empresa para la que se realizará la
-                    exportación.
-                  </p>
+                  <p className="text-sm text-gray-600">Elige la empresa para la que se realizará la exportación.</p>
                 </div>
               )}
 
@@ -362,9 +292,7 @@ export default function DashboardPage() {
               {menu === "proyecto" && (
                 <div>
                   <h2 className="text-xl font-semibold mb-4">Proyecto</h2>
-                  <p className="text-sm text-gray-600">
-                    Selecciona el proyecto asociado a la operación.
-                  </p>
+                  <p className="text-sm text-gray-600">Selecciona el proyecto asociado a la operación.</p>
                 </div>
               )}
 
@@ -389,9 +317,7 @@ export default function DashboardPage() {
               {menu === "fichero" && (
                 <div className="space-y-3">
                   <h2 className="text-xl font-semibold">Fichero de datos</h2>
-                  <p className="text-sm text-gray-600">
-                    Importa un fichero Excel o CSV desde tu equipo.
-                  </p>
+                  <p className="text-sm text-gray-600">Importa un fichero Excel o CSV desde tu equipo.</p>
                   <input
                     type="file"
                     accept=".xlsx,.xls,.csv"
@@ -458,14 +384,11 @@ export default function DashboardPage() {
                 <div className="space-y-3">
                   <h2 className="text-xl font-semibold">Exportar</h2>
                   {!exportReady ? (
-                    <p className="text-sm text-gray-600">
-                      Completa todos los datos para poder exportar.
-                    </p>
+                    <p className="text-sm text-gray-600">Completa todos los datos para poder exportar.</p>
                   ) : (
                     <>
                       <p className="text-sm text-gray-700">
-                        Todo listo. Pulsa en{" "}
-                        <b>Confirmar exportación</b> para continuar.
+                        Todo listo. Pulsa en <b>Confirmar exportación</b> para continuar.
                       </p>
                       <button
                         type="button"
@@ -480,41 +403,31 @@ export default function DashboardPage() {
               )}
             </div>
 
-            {/* --- Resumen inferior (azulado claro) --- */}
+            {/* Resumen */}
             <div className="bg-blue-50/90 rounded-2xl border border-blue-200 p-4 text-sm text-blue-900">
               <h3 className="font-semibold mb-2">Resumen de selección</h3>
               <div className="grid md:grid-cols-2 gap-x-6 gap-y-2">
                 <p>
-                  <b>Formato Importación:</b>{" "}
-                  {formatoImport || <span className="text-blue-500">—</span>}
+                  <b>Formato Importación:</b> {formatoImport || <span className="text-blue-500">—</span>}
                 </p>
                 <p>
-                  <b>Formato Exportación:</b>{" "}
-                  {formatoExport || <span className="text-blue-500">—</span>}
+                  <b>Formato Exportación:</b> {formatoExport || <span className="text-blue-500">—</span>}
                 </p>
                 <p>
-                  <b>Empresa:</b>{" "}
-                  {empresa || <span className="text-blue-500">—</span>}
+                  <b>Empresa:</b> {empresa || <span className="text-blue-500">—</span>}
                 </p>
                 <p>
-                  <b>Fecha factura:</b>{" "}
-                  {fechaFactura || <span className="text-blue-500">—</span>}
+                  <b>Fecha factura:</b> {fechaFactura || <span className="text-blue-500">—</span>}
                 </p>
                 <p>
-                  <b>Proyecto:</b>{" "}
-                  {proyecto || <span className="text-blue-500">—</span>}
+                  <b>Proyecto:</b> {proyecto || <span className="text-blue-500">—</span>}
                 </p>
                 <p>
                   <b>Cuenta contable:</b>{" "}
-                  {cuenta
-                    ? cuenta === "Otra"
-                      ? cuentaOtra || <span className="text-blue-500">—</span>
-                      : cuenta
-                    : <span className="text-blue-500">—</span>}
+                  {cuenta ? (cuenta === "Otra" ? (cuentaOtra || <span className="text-blue-500">—</span>) : cuenta) : <span className="text-blue-500">—</span>}
                 </p>
                 <p className="md:col-span-2">
-                  <b>Fichero:</b>{" "}
-                  {fichero?.name || <span className="text-blue-500">—</span>}
+                  <b>Fichero:</b> {fichero?.name || <span className="text-blue-500">—</span>}
                 </p>
               </div>
             </div>
@@ -522,20 +435,14 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Modal de confirmación */}
+      {/* Modal Confirmación */}
       {showConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-xl shadow-lg w-full max-w-md p-6 space-y-4">
             <h3 className="text-lg font-semibold">Confirmar exportación</h3>
-            <p className="text-sm text-gray-700">
-              ¿Quieres exportar los datos seleccionados?
-            </p>
+            <p className="text-sm text-gray-700">¿Quieres exportar los datos seleccionados?</p>
 
-            {exportMsg && (
-              <p className="text-sm rounded border px-3 py-2 bg-gray-50">
-                {exportMsg}
-              </p>
-            )}
+            {exportMsg && <p className="text-sm rounded border px-3 py-2 bg-gray-50">{exportMsg}</p>}
 
             <div className="flex gap-3 justify-end">
               <button
@@ -558,10 +465,6 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
-    </main>
-  );
-}
-
     </main>
   );
 }
