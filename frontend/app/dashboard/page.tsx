@@ -59,7 +59,7 @@ function setStoredApi(key: string, v: string) {
 export default function DashboardPage() {
   const router = useRouter();
 
-  // Requiere login: si no hay token de esta sesión, redirige a /
+  // Protección: exige token de sesión
   useEffect(() => {
     const t = sessionStorage.getItem("token");
     if (!t) router.replace("/");
@@ -68,7 +68,7 @@ export default function DashboardPage() {
   // Menú activo
   const [menu, setMenu] = useState<MenuKey>("formatoImport");
 
-  // Selecciones
+  // Selecciones (variables de la sesión)
   const [formatoImport, setFormatoImport] =
     useState<(typeof FORMATO_IMPORT_OPTS)[number] | null>(null);
   const [formatoExport, setFormatoExport] =
@@ -106,23 +106,35 @@ export default function DashboardPage() {
   const [apiEnPluralNuevo, setApiEnPluralNuevo] = useState("");
   const [apiEnPluralMsg, setApiEnPluralMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
-  // Cargar valores vigentes al entrar
+  // Cargar valores persistentes (no se reinician entre sesiones)
   useEffect(() => {
-    // contraseña (si no existe, se inicializa a "admin")
-    if (!localStorage.getItem(PASS_KEY)) {
-      setStoredPass("admin");
-    }
-    // APIs vigentes
+    if (!localStorage.getItem(PASS_KEY)) setStoredPass("admin");
     setApiKissoroVigente(getStoredApi(API_KISSORO_KEY));
     setApiEnPluralVigente(getStoredApi(API_ENPLURAL_KEY));
+  }, []);
+
+  // Al entrar con nueva sesión, resetear las partes variables (NO APIs/contraseña)
+  useEffect(() => {
+    const needsReset = sessionStorage.getItem("reset-dashboard-state") === "1";
+    if (needsReset) {
+      setMenu("formatoImport");
+      setFormatoImport(null);
+      setFormatoExport(null);
+      setEmpresa(null);
+      setFechaFactura("");
+      setProyecto(null);
+      setCuenta(null);
+      setCuentaOtra("");
+      setFicheroNombre("");
+      // limpiamos el flag de reseteo para no repetirlo
+      sessionStorage.removeItem("reset-dashboard-state");
+    }
   }, []);
 
   // Habilitación de Exportar
   const exportReady = useMemo(() => {
     const cuentaOk =
-      cuenta === "Otra (introducir)"
-        ? cuentaOtra.trim().length > 0
-        : !!cuenta;
+      cuenta === "Otra (introducir)" ? !!cuentaOtra.trim() : !!cuenta;
     return (
       !!formatoImport &&
       !!formatoExport &&
@@ -206,9 +218,11 @@ export default function DashboardPage() {
     setApiEnPluralMsg({ type: "ok", text: "API En Plural Psicologia actualizado." });
   }
 
-  // Cerrar sesión
+  // Cerrar sesión: limpiar token y todo el estado de la sesión
   function logout() {
-    sessionStorage.removeItem("token");
+    // Borra TODO lo de sessionStorage (token + flags de sesión)
+    sessionStorage.clear();
+    // Navegación limpia al login
     router.replace("/");
   }
 
@@ -263,7 +277,7 @@ export default function DashboardPage() {
               </Item>
               <Item active={menu === "fichero"} onClick={() => setMenu("fichero")}>
                 Fichero de datos
-              </Item>
+              </Item }
               <Item active={menu === "config"} onClick={() => setMenu("config")}>
                 Configuración
               </Item>
@@ -565,7 +579,7 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* Resumen inferior (azulado algo más oscuro) */}
+          {/* Resumen inferior */}
           <div className="bg-indigo-100/90 rounded-2xl shadow p-6 border border-indigo-200 mt-8">
             <h3 className="text-base font-semibold text-indigo-800 mb-3">
               Resumen de selección
@@ -600,7 +614,7 @@ function Item({
   onClick: () => void;
   children: React.ReactNode;
 }) {
-  // Activo en lila; hover en lila claro — tal como acordamos
+  // Activo en lila; hover en lila claro
   return (
     <button
       type="button"
@@ -658,3 +672,4 @@ function SummaryItem({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
+
