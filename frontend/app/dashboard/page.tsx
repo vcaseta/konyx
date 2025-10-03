@@ -86,9 +86,7 @@ export default function DashboardPage() {
       setMenu("formatoImport");
       return;
     }
-    // Aquí se invocará el backend (en el futuro):
-    // Ejemplo:
-    // await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/export`, { method: "POST", body: JSON.stringify({...}) })
+    // Aquí se invocará el backend (en el futuro)
     alert("Exportación iniciada. (Conectaremos el backend en el siguiente paso)");
     setMenu("formatoImport");
   }
@@ -171,7 +169,7 @@ export default function DashboardPage() {
 
         {/* ------------ Contenido (derecha) ------------ */}
         <section className="space-y-6">
-          {/* Panel de selección según menú (a la derecha, no debajo) */}
+          {/* Panel de selección según menú (a la derecha) */}
           <div className="bg-white/90 backdrop-blur rounded-2xl shadow p-6">
             {menu === "formatoImport" && (
               <div>
@@ -179,7 +177,7 @@ export default function DashboardPage() {
                 <OptionGrid
                   options={FORMATO_IMPORT_OPTS}
                   value={formatoImport}
-                  onChange={setFormatoImport}
+                  onChange={(v) => setFormatoImport(v)}
                 />
               </div>
             )}
@@ -190,7 +188,7 @@ export default function DashboardPage() {
                 <OptionGrid
                   options={FORMATO_EXPORT_OPTS}
                   value={formatoExport}
-                  onChange={setFormatoExport}
+                  onChange={(v) => setFormatoExport(v)}
                 />
               </div>
             )}
@@ -198,7 +196,11 @@ export default function DashboardPage() {
             {menu === "empresa" && (
               <div>
                 <h2 className="text-lg font-semibold mb-4">Empresa</h2>
-                <OptionGrid options={EMPRESAS} value={empresa} onChange={setEmpresa} />
+                <OptionGrid
+                  options={EMPRESAS}
+                  value={empresa}
+                  onChange={(v) => setEmpresa(v)}
+                />
               </div>
             )}
 
@@ -217,14 +219,22 @@ export default function DashboardPage() {
             {menu === "proyecto" && (
               <div>
                 <h2 className="text-lg font-semibold mb-4">Proyecto</h2>
-                <OptionGrid options={PROYECTOS} value={proyecto} onChange={setProyecto} />
+                <OptionGrid
+                  options={PROYECTOS}
+                  value={proyecto}
+                  onChange={(v) => setProyecto(v)}
+                />
               </div>
             )}
 
             {menu === "cuenta" && (
               <div>
                 <h2 className="text-lg font-semibold mb-4">Cuenta contable</h2>
-                <OptionGrid options={CUENTAS} value={cuenta} onChange={setCuenta} />
+                <OptionGrid
+                  options={CUENTAS}
+                  value={cuenta}
+                  onChange={(v) => setCuenta(v)}
+                />
                 {cuenta === "Otra (introducir)" && (
                   <div className="mt-4">
                     <label className="block text-sm font-medium mb-1">Otra cuenta</label>
@@ -395,7 +405,7 @@ function Item({
   );
 }
 
-/** Cuadricula de opciones con estilo lila y opción seleccionada remarcada */
+/** Cuadrícula de opciones con estilo lila y opción seleccionada remarcada */
 function OptionGrid<T extends string>({
   options,
   value,
