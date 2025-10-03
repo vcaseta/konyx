@@ -1,31 +1,22 @@
+// app/components/Login.tsx
 "use client";
 
 import { useState } from "react";
 import { apiLogin } from "../lib/api";
-import { useRouter } from "next/navigation";
 
 export default function Login({ onOk }: { onOk: (token: string) => void }) {
   const [user, setUser] = useState("");
   const [pass, setPass] = useState("");
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const router = useRouter();
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErr(null);
     setLoading(true);
     try {
-      const token = await apiLogin(user, pass); // Debe lanzar error si 401/404
-      if (!token || typeof token !== "string") {
-        throw new Error("Credenciales inválidas");
-      }
-
-      // Cookie de sesión (se borra al cerrar el navegador)
-      document.cookie = `konyx_token=${token}; Path=/; SameSite=Lax`;
-
-      onOk(token);          // por si mantienes estado local
-      router.push("/dashboard"); // navegación
+      const token = await apiLogin(user, pass);
+      onOk(token); // NO ocultamos el cuadro aquí; page.tsx decide navegación
     } catch (error: any) {
       setErr(error?.message || "No se pudo iniciar sesión");
     } finally {
@@ -77,4 +68,5 @@ export default function Login({ onOk }: { onOk: (token: string) => void }) {
     </form>
   );
 }
+
 
