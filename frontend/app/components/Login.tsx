@@ -15,10 +15,11 @@ export default function Login({ onOk }: { onOk: (token: string) => void }) {
     setErr(null);
     setLoading(true);
     try {
-      const token = await apiLogin(user, pass);
-      onOk(token); // solo si NO lanza error
+      const token = await apiLogin(user, pass); // lanza error si falla
+      if (!token) throw new Error("Token vacío");
+      onOk(token); // sólo se llama si hubo éxito real
     } catch (error: any) {
-      setErr(error?.message || "Credenciales inválidas");
+      setErr(error?.message || "No se pudo iniciar sesión");
     } finally {
       setLoading(false);
     }
