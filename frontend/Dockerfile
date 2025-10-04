@@ -2,47 +2,49 @@
 FROM node:20-alpine AS deps
 WORKDIR /app
 
-# Copia package.json y package-lock.json si existe
+# Copiar el package.json y package-lock.json para instalar dependencias
 COPY package.json package-lock.json* ./
 
-# Instalamos todas las dependencias (sin requerir package-lock.json)
+# Instalar las dependencias de la aplicación, sin problemas de dependencias incompatibles
 RUN npm install --legacy-peer-deps
 
 # ---------- Stage 2: Build ----------
 FROM node:20-alpine AS builder
 WORKDIR /app
 
-# Copiamos node_modules desde deps
+# Copiar node_modules desde deps
 COPY --from=deps /app/node_modules ./node_modules
 
-# Copiamos todo el código
+# Copiar todo el código fuente del proyecto
 COPY . .
 
-# Variables de entorno opcionales durante build
+# Variables de entorno opcionales durante la construcción
 ARG NEXT_PUBLIC_BACKEND_URL
 ARG NEXT_PUBLIC_APP_NAME
 ARG NEXT_PUBLIC_COMPANIES
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Construcción de Next.js en modo standalone
+# Construcción de la aplicación Next.js en modo standalone
 RUN npm run build
 
 # ---------- Stage 3: Runtime ----------
 FROM node:20-alpine AS runner
 WORKDIR /app
 
-# Variables de entorno necesarias para producción
+# Variables de entorno para producción
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
-# Copiamos la build standalone y archivos públicos
+# Copiar la build generada y archivos públicos
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
 
+# Exponer el puerto
 EXPOSE 3000
 
-CMD ["npm", "run", "start"]
+# Ejecutar la aplicación Next.js en modo standalone
+CMD ["node", "server.js"]  # Asegúrate de que el archivo server.js existe
 
