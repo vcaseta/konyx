@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { apiLogin } from "../lib/api";
 
-export default function Login({ onOk }: { onOk: (token: string) => void }) {
+export default function Login({ onOk }: { onOk: () => void }) {
   const [user, setUser] = useState("");
   const [pass, setPass] = useState("");
   const [loading, setLoading] = useState(false);
@@ -13,11 +12,15 @@ export default function Login({ onOk }: { onOk: (token: string) => void }) {
     e.preventDefault();
     setErr(null);
     setLoading(true);
+
     try {
-      const token = await apiLogin(user, pass);
-      onOk(token);
-    } catch (error: any) {
-      setErr(error?.message || "No se pudo iniciar sesión");
+      // Usuario y contraseña fijos
+      if (user === "admin" && pass === "konyx123") {
+        sessionStorage.setItem("konyx_session", "1"); // sesión temporal
+        onOk(); // redirige al dashboard
+      } else {
+        setErr("Usuario o contraseña incorrecta");
+      }
     } finally {
       setLoading(false);
     }
