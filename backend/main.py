@@ -1,28 +1,20 @@
-import os
-import json
+import json, os
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 from datetime import datetime, timedelta
 import jwt
 
-# ------------------ Config ------------------
-DATA_FILE = "data.json"  # JSON local para persistencia
+APP_USER = os.getenv("APP_USER", "admin")
+APP_PASS = os.getenv("APP_PASS", "admin")
 SECRET_KEY = os.getenv("SECRET_KEY", "konyx-super-secreto")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
-# Inicializa archivo JSON si no existe
-if not os.path.exists(DATA_FILE):
-    with open(DATA_FILE, "w") as f:
-        json.dump({"user": os.getenv("APP_USER", "admin"),
-                   "pass": os.getenv("APP_PASS", "admin"),
-                   "apis": {"kissoro": "", "enplural": ""}}, f)
+DATA_FILE = "data.json"
 
-# ------------------ App ------------------
-app = FastAPI(title="Konyx Backend")
+app = FastAPI(title="Konyx API")
 
-# ------------------ Modelos ------------------
 class LoginBody(BaseModel):
     user: str
     password: str
@@ -30,15 +22,6 @@ class LoginBody(BaseModel):
 class TokenResponse(BaseModel):
     token: str
 
-class ChangePasswordBody(BaseModel):
-    old_password: str
-    new_password: str
-
-class ApisBody(BaseModel):
-    kissoro: str
-    enplural: str
-
-# ------------------ Seguridad ------------------
 bearer_scheme = HTTPBearer()
 
 def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)):
@@ -47,23 +30,24 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(bearer_
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username = payload.get("sub")
         if not username:
-            raise HTTPException(status_code=401, detail="Token inválido (sin usuario)")
+            raise HTTPException(status_code=401, detail="Token inválido")
         return {"user": username}
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expirado")
     except jwt.PyJWTError:
         raise HTTPException(status_code=401, detail="Token inválido")
 
-# ------------------ Helpers ------------------
 def read_data():
-    with open(DATA_FILE, "r") as f:
+    if not os.path.exists(DATA_FILE):
+        with open(DATA_FILE, "w") as f:
+            json.dump({"password": APP_PASS, "apis": {"kissoro": "", "enplural": ""}}, f)
+    with open(DATA_FILE) as f:
         return json.load(f)
 
 def write_data(data):
     with open(DATA_FILE, "w") as f:
-        json.dump(data, f, indent=2)
+        json.dump(data, f)
 
-# ------------------ Endpoints ------------------
 @app.get("/ping")
 def ping():
     return {"ok": True}
@@ -71,35 +55,37 @@ def ping():
 @app.post("/auth/login", response_model=TokenResponse)
 def login(body: LoginBody):
     data = read_data()
-    if body.user == data["user"] and body.password == data["pass"]:
+    if body.user == APP_USER and body.password == data.get("password", APP_PASS):
         expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         payload = {"sub": body.user, "exp": expire}
         token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
         return {"token": token}
     raise HTTPException(status_code=401, detail="Credenciales inválidas")
 
-@app.post("/auth/change-password")
-def change_password(body: ChangePasswordBody, user=Depends(get_current_user)):
-    data = read_data()
-    if body.old_password != data["pass"]:
-        raise HTTPException(status_code=400, detail="Contraseña actual incorrecta")
-    data["pass"] = body.new_password
-    write_data(data)
-    return {"ok": True, "msg": "Contraseña cambiada correctamente"}
+@app.get("/auth/me")
+def me(user_data: dict = Depends(get_current_user)):
+    return {"user": user_data["user"]}
 
 @app.get("/auth/apis")
-def get_apis(user=Depends(get_current_user)):
+def get_apis(user_data: dict = Depends(get_current_user)):
     data = read_data()
-    return data["apis"]
+    return data.get("apis", {})
 
 @app.post("/auth/apis")
-def set_apis(body: ApisBody, user=Depends(get_current_user)):
+def set_apis(body: dict, user_data: dict = Depends(get_current_user)):
     data = read_data()
-    data["apis"]["kissoro"] = body.kissoro
-    data["apis"]["enplural"] = body.enplural
+    data["apis"]["kissoro"] = body.get("kissoro", data["apis"].get("kissoro", ""))
+    data["apis"]["enplural"] = body.get("enplural", data["apis"].get("enplural", ""))
     write_data(data)
-    return {"ok": True, "msg": "APIs actualizados correctamente"}
+    return data["apis"]
 
-@app.get("/auth/me")
-def read_me(user=Depends(get_current_user)):
-    return {"user": user["user"]}
+@app.post("/auth/change-password")
+def change_password(body: dict, user_data: dict = Depends(get_current_user)):
+    data = read_data()
+    old_pass = body.get("old_password")
+    new_pass = body.get("new_password")
+    if old_pass != data.get("password", APP_PASS):
+        raise HTTPException(status_code=400, detail="Contraseña actual incorrecta")
+    data["password"] = new_pass
+    write_data(data)
+    return {"ok": True}
