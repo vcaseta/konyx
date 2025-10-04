@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import Login from "./components/Login";
+import Cookies from "js-cookie";
 
 export const dynamic = "force-dynamic";
 
@@ -9,9 +10,9 @@ export default function Page() {
   const router = useRouter();
 
   async function handleOk(token: string) {
+    // Guardar JWT en cookie (1 día de expiración)
     try {
-      // Guardamos token en sesión y señal de reset de dashboard
-      sessionStorage.setItem("token", token);
+      Cookies.set("konyx_token", token, { expires: 1 });
       sessionStorage.setItem("reset-dashboard-state", "1");
     } catch {}
     router.push("/dashboard");
@@ -27,16 +28,14 @@ export default function Page() {
       }}
     >
       <div className="w-full max-w-sm">
+        {/* Logo dentro del cuadro de login */}
         <div className="flex justify-center mb-6">
-          <img
-            src="/logo.png"
-            alt="Konyx"
-            className="h-24 w-auto drop-shadow-md"
-          />
+          <img src="/logo.png" alt="Konyx" className="h-24 w-auto drop-shadow-md" />
         </div>
+
+        {/* Formulario de login */}
         <Login onOk={handleOk} />
       </div>
     </main>
   );
 }
-
