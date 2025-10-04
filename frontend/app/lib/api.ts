@@ -6,7 +6,7 @@ export async function apiLogin(username: string, password: string): Promise<stri
     method: "POST",
     headers: { "Content-Type": "application/json" },
     cache: "no-store",
-    body: JSON.stringify({ username, password }), // <- CAMBIO CLAVE AQUÍ
+    body: JSON.stringify({ user: username, password }), // <- CAMBIO CORRECTO PARA TU BACKEND
   });
 
   if (!res.ok) {
@@ -19,7 +19,6 @@ export async function apiLogin(username: string, password: string): Promise<stri
   }
 
   const data = await res.json();
-  // Acepta distintos nombres por si tu backend cambia
   const token =
     data?.token ||
     data?.access_token ||
