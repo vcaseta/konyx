@@ -3,7 +3,6 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import Cookies from "js-cookie";
 
 /* ------------------ Constantes ------------------ */
 type MenuKey =
@@ -60,68 +59,7 @@ function setStoredApi(key: string, v: string) {
 export default function DashboardPage() {
   const router = useRouter();
 
-  // Validación de token JWT al cargar la página
-  
-  useEffect(() => {
-  const session = sessionStorage.getItem("konyx_session"); // sesión temporal
-  if (!session) {
-    router.replace("/"); // si no hay sesión, redirige a login
-  }
-}, [router])
-
-    // Menú activo
-  const [menu, setMenu] = useState<MenuKey>("formatoImport");
-
-  // Selecciones
-  const [formatoImport, setFormatoImport] =
-    useState<(typeof FORMATO_IMPORT_OPTS)[number] | null>(null);
-  const [formatoExport, setFormatoExport] =
-    useState<(typeof FORMATO_EXPORT_OPTS)[number] | null>(null);
-
-  const [empresa, setEmpresa] = useState<(typeof EMPRESAS)[number] | null>(null);
-  const [fechaFactura, setFechaFactura] = useState<string>("");
-  const [proyecto, setProyecto] =
-    useState<(typeof PROYECTOS)[number] | null>(null);
-
-  const [cuenta, setCuenta] = useState<(typeof CUENTAS)[number] | null>(null);
-  const [cuentaOtra, setCuentaOtra] = useState<string>("");
-
-  const [ficheroNombre, setFicheroNombre] = useState<string>("");
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-
-  const onPickFileClick = () => fileInputRef.current?.click();
-  const onPickFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    setFicheroNombre(f ? f.name : "");
-  };
-
-  // Configuración: Contraseña
-  const [passActual, setPassActual] = useState("");
-  const [passNueva, setPassNueva] = useState("");
-  const [passConfirma, setPassConfirma] = useState("");
-  const [passMsg, setPassMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
-
-  // Configuración: APIs (vigente solo lectura, nuevo editable + “Cambio”)
-  const [apiKissoroVigente, setApiKissoroVigente] = useState("");
-  const [apiKissoroNuevo, setApiKissoroNuevo] = useState("");
-  const [apiKissoroMsg, setApiKissoroMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
-
-  const [apiEnPluralVigente, setApiEnPluralVigente] = useState("");
-  const [apiEnPluralNuevo, setApiEnPluralNuevo] = useState("");
-  const [apiEnPluralMsg, setApiEnPluralMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
-
-  // Cargar valores vigentes al entrar
-  useEffect(() => {
-    // contraseña (si no existe, se inicializa a "admin")
-    if (!localStorage.getItem(PASS_KEY)) {
-      setStoredPass("admin");
-    }
-    // APIs vigentes
-    setApiKissoroVigente(getStoredApi(API_KISSORO_KEY));
-    setApiEnPluralVigente(getStoredApi(API_ENPLURAL_KEY));
-  }, []);
-
-  // Habilitación de Exportar
+   // Habilitación de Exportar
   const exportReady = useMemo(() => {
     const cuentaOk =
       cuenta === "Otra (introducir)"
