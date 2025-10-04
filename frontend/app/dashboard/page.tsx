@@ -20,16 +20,8 @@ type MenuKey =
 const FORMATO_IMPORT_OPTS = ["Eholo", "Gestoria"] as const;
 const FORMATO_EXPORT_OPTS = ["Holded", "Gestoria"] as const;
 const EMPRESAS = ["Kissoro", "En Plural Psicologia"] as const;
-const PROYECTOS = [
-  "Servicios de Psicologia",
-  "Formacion",
-  "Administracion SL",
-] as const;
-const CUENTAS = [
-  "70500000 Prestaciones de servicios",
-  "70000000 Venta de mercaderías",
-  "Otra (introducir)",
-] as const;
+const PROYECTOS = ["Servicios de Psicologia", "Formacion", "Administracion SL"] as const;
+const CUENTAS = ["70500000 Prestaciones de servicios", "70000000 Venta de mercaderías", "Otra (introducir)"] as const;
 
 /* ------------------ Dashboard ------------------ */
 export default function DashboardPage() {
@@ -50,7 +42,7 @@ export default function DashboardPage() {
     }
   }, [router]);
 
-  if (!authChecked) return null; // bloquea render hasta validar token
+  if (!authChecked) return null;
 
   // Menú activo
   const [menu, setMenu] = useState<MenuKey>("formatoImport");
@@ -189,7 +181,7 @@ export default function DashboardPage() {
   }
 
   function logout() {
-    sessionStorage.removeItem("konyx_session"); // token se elimina, sesión se cierra al cerrar pestaña
+    sessionStorage.removeItem("konyx_session");
     router.replace("/");
   }
 
@@ -202,11 +194,12 @@ export default function DashboardPage() {
     const yyyy = d.getFullYear();
     return `${dd}-${mm}-${yyyy}`;
   }
-  
+
   /* ------------------ JSX principal ------------------ */
   return (
     <main className="min-h-screen bg-no-repeat bg-center bg-cover p-4" style={{ backgroundImage: "url(/fondo.png)", backgroundSize: "100% 100%", backgroundRepeat: "no-repeat" }}>
       <div className="mx-auto max-w-7xl grid grid-cols-1 md:grid-cols-[260px_1fr] gap-6">
+
         {/* Sidebar */}
         <aside className="md:sticky md:top-6">
           <div className="bg-slate-500/90 backdrop-blur rounded-2xl shadow p-4">
@@ -232,28 +225,31 @@ export default function DashboardPage() {
 
         {/* Contenido principal */}
         <section className="space-y-6">
-          {/* Paneles condicionales */}
+          {/* Formato Importación */}
           {menu === "formatoImport" && (
             <div className="bg-white/90 backdrop-blur rounded-2xl shadow p-6">
               <h2 className="text-lg font-semibold mb-4">Formato Importación</h2>
-              <OptionGrid options={FORMATO_IMPORT_OPTS} value={formatoImport} onChange={setFormatoImport} />
+              <OptionGrid options={FORMATO_IMPORT_OPTS} value={formatoImport} onChange={(v) => setFormatoImport(v)} />
             </div>
           )}
 
+          {/* Formato Exportación */}
           {menu === "formatoExport" && (
             <div className="bg-white/90 backdrop-blur rounded-2xl shadow p-6">
               <h2 className="text-lg font-semibold mb-4">Formato Exportación</h2>
-              <OptionGrid options={FORMATO_EXPORT_OPTS} value={formatoExport} onChange={setFormatoExport} />
+              <OptionGrid options={FORMATO_EXPORT_OPTS} value={formatoExport} onChange={(v) => setFormatoExport(v)} />
             </div>
           )}
 
+          {/* Empresa */}
           {menu === "empresa" && (
             <div className="bg-white/90 backdrop-blur rounded-2xl shadow p-6">
               <h2 className="text-lg font-semibold mb-4">Empresa</h2>
-              <OptionGrid options={EMPRESAS} value={empresa} onChange={setEmpresa} />
+              <OptionGrid options={EMPRESAS} value={empresa} onChange={(v) => setEmpresa(v)} />
             </div>
           )}
 
+          {/* Fecha */}
           {menu === "fecha" && (
             <div className="bg-white/90 backdrop-blur rounded-2xl shadow p-6">
               <h2 className="text-lg font-semibold mb-4">Fecha factura</h2>
@@ -261,17 +257,19 @@ export default function DashboardPage() {
             </div>
           )}
 
+          {/* Proyecto */}
           {menu === "proyecto" && (
             <div className="bg-white/90 backdrop-blur rounded-2xl shadow p-6">
               <h2 className="text-lg font-semibold mb-4">Proyecto</h2>
-              <OptionGrid options={PROYECTOS} value={proyecto} onChange={setProyecto} />
+              <OptionGrid options={PROYECTOS} value={proyecto} onChange={(v) => setProyecto(v)} />
             </div>
           )}
 
+          {/* Cuenta */}
           {menu === "cuenta" && (
             <div className="bg-white/90 backdrop-blur rounded-2xl shadow p-6">
               <h2 className="text-lg font-semibold mb-4">Cuenta contable</h2>
-              <OptionGrid options={CUENTAS} value={cuenta} onChange={setCuenta} />
+              <OptionGrid options={CUENTAS} value={cuenta} onChange={(v) => setCuenta(v)} />
               {cuenta === "Otra (introducir)" && (
                 <div className="mt-4">
                   <label className="block text-sm font-medium mb-1">Otra cuenta</label>
@@ -281,21 +279,24 @@ export default function DashboardPage() {
             </div>
           )}
 
+          {/* Fichero */}
           {menu === "fichero" && (
             <div className="bg-white/90 backdrop-blur rounded-2xl shadow p-6">
               <h2 className="text-lg font-semibold mb-4">Fichero de datos</h2>
               <label className="inline-flex items-center gap-3 px-4 py-2 rounded-lg border border-indigo-300 hover:bg-indigo-50 cursor-pointer">
                 <span className="text-indigo-700 font-medium">Seleccionar Excel</span>
-                <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={onPickFile} />
+                <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={(e) => setFicheroNombre(e.target.files?.[0]?.name || "")} />
               </label>
               {ficheroNombre && <p className="mt-2 text-sm text-indigo-700 font-semibold">{ficheroNombre}</p>}
             </div>
           )}
 
+          {/* Configuración */}
           {menu === "config" && (
-            <div className="bg-white/90 backdrop-blur rounded-2xl shadow p-6 space-y-6">
+            <div className="bg-white/90 backdrop-blur rounded-2xl shadow p-6 space-y-8">
               <h2 className="text-lg font-semibold">Configuración</h2>
-              {/* Cambio contraseña */}
+
+              {/* Cambio de contraseña */}
               <div className="space-y-3">
                 <h3 className="text-sm font-semibold">Cambio de contraseña</h3>
                 <div className="grid md:grid-cols-[1fr_1fr_1fr_auto] gap-3 items-center">
@@ -306,20 +307,22 @@ export default function DashboardPage() {
                 </div>
                 {passMsg && <p className={`text-sm ${passMsg.type === "ok" ? "text-green-700" : "text-red-700"}`}>{passMsg.text}</p>}
               </div>
+
               {/* APIs */}
               <div className="space-y-3">
                 <h3 className="text-sm font-semibold">API Holded Kissoro</h3>
                 <div className="grid md:grid-cols-[1fr_1fr_auto] gap-3 items-center">
-                  <input type="text" value={apiKissoroVigente} readOnly className="rounded-lg border border-indigo-300 px-3 py-2 bg-gray-100 text-gray-600" />
+                  <input type="text" value={apiKissoroVigente} readOnly placeholder="API vigente" className="rounded-lg border border-indigo-300 px-3 py-2 bg-gray-100 text-gray-600" />
                   <input type="text" value={apiKissoroNuevo} onChange={(e) => setApiKissoroNuevo(e.target.value)} placeholder="Nuevo API" className="rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                   <button type="button" onClick={onCambioApis} className="px-4 py-2 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700">Cambio</button>
                 </div>
-                {apiKissoroMsg && <p className={`text-sm ${apiKissoroMsg.type === "ok" ? "text-green-700" : "text-red-700"}`}>{apiKissoroMsg.text}</p>}
+                           {apiKissoroMsg && <p className={`text-sm ${apiKissoroMsg.type === "ok" ? "text-green-700" : "text-red-700"}`}>{apiKissoroMsg.text}</p>}
               </div>
+
               <div className="space-y-3">
                 <h3 className="text-sm font-semibold">API Holded En Plural Psicologia</h3>
                 <div className="grid md:grid-cols-[1fr_1fr_auto] gap-3 items-center">
-                  <input type="text" value={apiEnPluralVigente} readOnly className="rounded-lg border border-indigo-300 px-3 py-2 bg-gray-100 text-gray-600" />
+                  <input type="text" value={apiEnPluralVigente} readOnly placeholder="API vigente" className="rounded-lg border border-indigo-300 px-3 py-2 bg-gray-100 text-gray-600" />
                   <input type="text" value={apiEnPluralNuevo} onChange={(e) => setApiEnPluralNuevo(e.target.value)} placeholder="Nuevo API" className="rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                   <button type="button" onClick={onCambioApis} className="px-4 py-2 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700">Cambio</button>
                 </div>
@@ -328,6 +331,7 @@ export default function DashboardPage() {
             </div>
           )}
 
+          {/* Exportar */}
           {menu === "exportar" && (
             <div className="bg-white/90 backdrop-blur rounded-2xl shadow p-6">
               <h2 className="text-lg font-semibold mb-4">Exportar</h2>
@@ -339,6 +343,7 @@ export default function DashboardPage() {
             </div>
           )}
 
+          {/* Cerrar sesión */}
           {menu === "cerrar" && (
             <div className="bg-white/90 backdrop-blur rounded-2xl shadow p-6">
               <h2 className="text-lg font-semibold mb-4">Cerrar Sesión</h2>
@@ -392,3 +397,4 @@ function SummaryItem({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
+   
