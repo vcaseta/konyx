@@ -1,4 +1,3 @@
-// app/dashboard/page.tsx
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -35,21 +34,8 @@ const CUENTAS = [
 export default function DashboardPage() {
   const router = useRouter();
 
-  // Mounted para evitar render en SSR
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-
-  // Validación de sesión al cargar la página (solo en cliente)
-  useEffect(() => {
-    if (!mounted) return;
-    const token = sessionStorage.getItem("konyx_session");
-    if (!token) router.replace("/"); // si no hay sesión, redirige a login
-  }, [router, mounted]);
-
-  // Menú activo
+  // Estado del menú y selecciones
   const [menu, setMenu] = useState<MenuKey>("formatoImport");
-
-  // Selecciones
   const [formatoImport, setFormatoImport] = useState<(typeof FORMATO_IMPORT_OPTS)[number] | null>(null);
   const [formatoExport, setFormatoExport] = useState<(typeof FORMATO_EXPORT_OPTS)[number] | null>(null);
   const [empresa, setEmpresa] = useState<(typeof EMPRESAS)[number] | null>(null);
@@ -81,31 +67,37 @@ export default function DashboardPage() {
   const [apiEnPluralNuevo, setApiEnPluralNuevo] = useState("");
   const [apiEnPluralMsg, setApiEnPluralMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
-  const token = mounted ? sessionStorage.getItem("konyx_session") : null;
+  // Token de sesión
+  const [token, setToken] = useState<string | null>(null);
 
-
-  // Cargar APIs desde backend
+  // ------------------ Validación de sesión y carga de APIs ------------------
   useEffect(() => {
-    if (!token) return;
+    if (typeof window === "undefined") return; // evita SSR
+    const sessionToken = sessionStorage.getItem("konyx_session");
+    if (!sessionToken) {
+      router.replace("/"); // no hay sesión → login
+      return;
+    }
+    setToken(sessionToken);
 
+    // Cargar APIs desde backend
     async function fetchApis() {
       try {
-        const res = await fetch("/auth/apis", {
-          headers: { Authorization: `Bearer ${token}` },
+        const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/apis`, {
+          headers: { Authorization: `Bearer ${sessionToken}` },
         });
         if (!res.ok) throw new Error("Error al cargar APIs");
         const data = await res.json();
-        setApiKissoroVigente(data.kissoro);
-        setApiEnPluralVigente(data.enplural);
+        setApiKissoroVigente(data.kissoro || "");
+        setApiEnPluralVigente(data.enplural || "");
       } catch (error) {
         console.error(error);
       }
     }
 
     fetchApis();
-  }, [token]);
-
-  // Habilitación de Exportar
+  }, [router]);
+  // ------------------ Habilitación de Exportar ------------------
   const exportReady = useMemo(() => {
     const cuentaOk =
       cuenta === "Otra (introducir)"
@@ -146,14 +138,14 @@ export default function DashboardPage() {
     setMenu("formatoImport");
   }
 
-  // Guardar APIs en backend
+  // ------------------ Guardar APIs en backend ------------------
   async function onCambioApis() {
     setApiKissoroMsg(null);
     setApiEnPluralMsg(null);
     if (!token) return;
 
     try {
-      const res = await fetch("/auth/apis", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/apis`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -178,7 +170,7 @@ export default function DashboardPage() {
     }
   }
 
-  // Cambio de contraseña
+  // ------------------ Cambio de contraseña ------------------
   async function onCambioPassword() {
     setPassMsg(null);
     if (!token) return;
@@ -193,7 +185,7 @@ export default function DashboardPage() {
     }
 
     try {
-      const res = await fetch("/auth/change-password", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/change-password`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -214,13 +206,13 @@ export default function DashboardPage() {
     }
   }
 
-  // Logout
+  // ------------------ Logout ------------------
   function logout() {
     if (typeof window !== "undefined") sessionStorage.removeItem("konyx_session");
     router.replace("/");
   }
 
-  // Formatea fecha DD-MM-YYYY
+  // Formatea fecha DD-MM-YYYY para resumen
   function fmtFecha(fechaIso: string) {
     if (!fechaIso) return "—";
     const d = new Date(fechaIso);
@@ -230,7 +222,6 @@ export default function DashboardPage() {
     const yyyy = d.getFullYear();
     return `${dd}-${mm}-${yyyy}`;
   }
-
   return (
     <main
       className="min-h-screen bg-no-repeat bg-center bg-cover p-4"
@@ -241,7 +232,7 @@ export default function DashboardPage() {
       }}
     >
       <div className="mx-auto max-w-7xl grid grid-cols-1 md:grid-cols-[260px_1fr] gap-6">
-        {/* Sidebar */}
+        {/* ------------ Sidebar ------------ */}
         <aside className="md:sticky md:top-6">
           <div className="bg-slate-500/90 backdrop-blur rounded-2xl shadow p-4">
             <div className="flex justify-center mb-4">
@@ -275,7 +266,6 @@ export default function DashboardPage() {
                 Configuración
               </Item>
 
-              {/* Exportar */}
               <button
                 type="button"
                 onClick={onExportAsk}
@@ -298,9 +288,10 @@ export default function DashboardPage() {
             </nav>
           </div>
         </aside>
-        {/* Contenido principal (derecha) */}
+
+        {/* ------------ Contenido (derecha) ------------ */}
         <section className="space-y-6">
-          {/* Panel de selección */}
+          {/* Paneles de selección */}
           <div className="bg-white/90 backdrop-blur rounded-2xl shadow p-6">
             {menu === "formatoImport" && (
               <div>
@@ -308,7 +299,7 @@ export default function DashboardPage() {
                 <OptionGrid
                   options={FORMATO_IMPORT_OPTS}
                   value={formatoImport}
-                  onChange={(v) => setFormatoImport(v)}
+                  onChange={setFormatoImport}
                 />
               </div>
             )}
@@ -319,7 +310,7 @@ export default function DashboardPage() {
                 <OptionGrid
                   options={FORMATO_EXPORT_OPTS}
                   value={formatoExport}
-                  onChange={(v) => setFormatoExport(v)}
+                  onChange={setFormatoExport}
                 />
               </div>
             )}
@@ -330,7 +321,7 @@ export default function DashboardPage() {
                 <OptionGrid
                   options={EMPRESAS}
                   value={empresa}
-                  onChange={(v) => setEmpresa(v)}
+                  onChange={setEmpresa}
                 />
               </div>
             )}
@@ -353,7 +344,7 @@ export default function DashboardPage() {
                 <OptionGrid
                   options={PROYECTOS}
                   value={proyecto}
-                  onChange={(v) => setProyecto(v)}
+                  onChange={setProyecto}
                 />
               </div>
             )}
@@ -364,7 +355,7 @@ export default function DashboardPage() {
                 <OptionGrid
                   options={CUENTAS}
                   value={cuenta}
-                  onChange={(v) => setCuenta(v)}
+                  onChange={setCuenta}
                 />
                 {cuenta === "Otra (introducir)" && (
                   <div className="mt-4">
@@ -391,7 +382,7 @@ export default function DashboardPage() {
                     type="file"
                     accept=".xlsx,.xls"
                     className="hidden"
-                    onChange={(e) => setFicheroNombre(e.target.files?.[0]?.name || "")}
+                    onChange={onPickFile}
                   />
                 </label>
                 {ficheroNombre && (
@@ -473,31 +464,6 @@ export default function DashboardPage() {
                   {apiKissoroMsg && (
                     <p className={`text-sm ${apiKissoroMsg.type === "ok" ? "text-green-700" : "text-red-700"}`}>
                       {apiKissoroMsg.text}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-3">
-                  <h3 className="text-sm font-semibold">API Holded En Plural Psicologia</h3>
-                  <div className="grid md:grid-cols-[1fr_1fr_auto] gap-3 items-center">
-                    <input
-                      type="text"
-                      value={apiEnPluralVigente}
-                      readOnly
-                      placeholder="API vigente"
-                      className="rounded-lg border border-indigo-300 px-3 py-2 bg-gray-100 text-gray-600"
-                    />
-                    <input
-                      type="text"
-                      value={apiEnPluralNuevo}
-                      onChange={(e) => setApiEnPluralNuevo(e.target.value)}
-                      placeholder="Nuevo API"
-                      className="rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    />
-                  </div>
-                  {apiEnPluralMsg && (
-                    <p className={`text-sm ${apiEnPluralMsg.type === "ok" ? "text-green-700" : "text-red-700"}`}>
-                      {apiEnPluralMsg.text}
                     </p>
                   )}
                 </div>
