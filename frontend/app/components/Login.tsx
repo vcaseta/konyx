@@ -11,10 +11,16 @@ export default function Login({ onOk }: { onOk: (token: string) => Promise<void>
   // Inicializar usuario y contraseña desde .env si no existen
   useEffect(() => {
     if (!localStorage.getItem("konyx.user")) {
-      localStorage.setItem("konyx.user", process.env.NEXT_PUBLIC_DEFAULT_USER ?? "admin");
+      localStorage.setItem(
+        "konyx.user",
+        process.env.NEXT_PUBLIC_APP_USER ?? "admin"
+      );
     }
     if (!localStorage.getItem("konyx.pass")) {
-      localStorage.setItem("konyx.pass", process.env.NEXT_PUBLIC_DEFAULT_PASS ?? "konyx123");
+      localStorage.setItem(
+        "konyx.pass",
+        process.env.NEXT_PUBLIC_APP_PASS ?? "admin"
+      );
     }
   }, []);
 
@@ -80,18 +86,4 @@ export default function Login({ onOk }: { onOk: (token: string) => Promise<void>
             onChange={(e) => setPass(e.target.value)}
             placeholder="••••••"
             className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            autoComplete="new-password"
-          />
-        </div>
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full rounded-lg bg-indigo-600 text-white font-medium py-2 hover:bg-indigo-700 disabled:opacity-50"
-        >
-          {loading ? "Entrando..." : "Entrar"}
-        </button>
-      </div>
-    </form>
-  );
-}
+            autoComplete="new-
