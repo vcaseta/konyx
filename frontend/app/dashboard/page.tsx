@@ -1,4 +1,3 @@
-// app/dashboard/page.tsx
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -34,35 +33,23 @@ export default function DashboardPage() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const t = sessionStorage.getItem("konyx_session");
-    if (!t) {
-      router.replace("/"); // sin sesión, redirige a login
-    } else {
-      setToken(t);
-      setAuthChecked(true);
-    }
+    if (!t) router.replace("/");
+    else { setToken(t); setAuthChecked(true); }
   }, [router]);
 
   if (!authChecked) return null;
 
-  // Menú activo
+  /* ------------------ Estados del dashboard ------------------ */
   const [menu, setMenu] = useState<MenuKey>("formatoImport");
-
-  // Selecciones
-  const [formatoImport, setFormatoImport] = useState<(typeof FORMATO_IMPORT_OPTS)[number] | null>(null);
-  const [formatoExport, setFormatoExport] = useState<(typeof FORMATO_EXPORT_OPTS)[number] | null>(null);
-  const [empresa, setEmpresa] = useState<(typeof EMPRESAS)[number] | null>(null);
+  const [formatoImport, setFormatoImport] = useState<typeof FORMATO_IMPORT_OPTS[number] | null>(null);
+  const [formatoExport, setFormatoExport] = useState<typeof FORMATO_EXPORT_OPTS[number] | null>(null);
+  const [empresa, setEmpresa] = useState<typeof EMPRESAS[number] | null>(null);
   const [fechaFactura, setFechaFactura] = useState<string>("");
-  const [proyecto, setProyecto] = useState<(typeof PROYECTOS)[number] | null>(null);
-  const [cuenta, setCuenta] = useState<(typeof CUENTAS)[number] | null>(null);
+  const [proyecto, setProyecto] = useState<typeof PROYECTOS[number] | null>(null);
+  const [cuenta, setCuenta] = useState<typeof CUENTAS[number] | null>(null);
   const [cuentaOtra, setCuentaOtra] = useState<string>("");
   const [ficheroNombre, setFicheroNombre] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-
-  const onPickFileClick = () => fileInputRef.current?.click();
-  const onPickFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    setFicheroNombre(f ? f.name : "");
-  };
 
   // Configuración: contraseña
   const [passActual, setPassActual] = useState("");
@@ -70,131 +57,77 @@ export default function DashboardPage() {
   const [passConfirma, setPassConfirma] = useState("");
   const [passMsg, setPassMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
-  // Configuración: APIs
-  const [apiKissoroVigente, setApiKissoroVigente] = useState("");
+  // Configuración: APIs (inicializadas desde .env)
+  const [apiKissoroVigente, setApiKissoroVigente] = useState<string>(process.env.NEXT_PUBLIC_API_KISSORO ?? "");
   const [apiKissoroNuevo, setApiKissoroNuevo] = useState("");
   const [apiKissoroMsg, setApiKissoroMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
-  const [apiEnPluralVigente, setApiEnPluralVigente] = useState("");
+  const [apiEnPluralVigente, setApiEnPluralVigente] = useState<string>(process.env.NEXT_PUBLIC_API_ENPLURAL ?? "");
   const [apiEnPluralNuevo, setApiEnPluralNuevo] = useState("");
   const [apiEnPluralMsg, setApiEnPluralMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
-  // Cargar APIs
+  /* ------------------ Efectos ------------------ */
+  // Cargar APIs desde backend
   useEffect(() => {
     if (!token) return;
     async function fetchApis() {
       try {
-        const res = await fetch("/auth/apis", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!res.ok) throw new Error("Error al cargar APIs");
+        const res = await fetch("/auth/apis", { headers: { Authorization: `Bearer ${token}` } });
+        if (!res.ok) return;
         const data = await res.json();
-        setApiKissoroVigente(data?.kissoro ?? "");
-        setApiEnPluralVigente(data?.enplural ?? "");
-      } catch (error) {
-        console.error(error);
+        setApiKissoroVigente(data.kissoro ?? apiKissoroVigente);
+        setApiEnPluralVigente(data.enplural ?? apiEnPluralVigente);
+      } catch {
+        // fallback a .env
       }
     }
     fetchApis();
   }, [token]);
 
-  // Habilitación de Exportar
+  /* ------------------ Helpers ------------------ */
   const exportReady = useMemo(() => {
     const cuentaOk = cuenta === "Otra (introducir)" ? cuentaOtra.trim().length > 0 : !!cuenta;
     return !!formatoImport && !!formatoExport && !!empresa && !!fechaFactura && !!proyecto && cuentaOk && !!ficheroNombre;
   }, [formatoImport, formatoExport, empresa, fechaFactura, proyecto, cuenta, cuentaOtra, ficheroNombre]);
 
-  function onExportAsk() {
-    if (!exportReady) return;
-    setMenu("exportar");
-  }
-
-  function onConfirmExport(ok: boolean) {
-    if (!ok) {
-      setMenu("formatoImport");
-      return;
-    }
-    alert("Exportación iniciada (conectaremos backend después).");
-    setMenu("formatoImport");
-  }
+  const onPickFile = (e: React.ChangeEvent<HTMLInputElement>) => setFicheroNombre(e.target.files?.[0]?.name ?? "");
+  const onExportAsk = () => { if (exportReady) setMenu("exportar"); };
+  const onConfirmExport = (ok: boolean) => { if (!ok) { setMenu("formatoImport"); return; } alert("Exportación iniciada"); setMenu("formatoImport"); };
+  const logout = () => { sessionStorage.removeItem("konyx_session"); router.replace("/"); };
+  const fmtFecha = (fechaIso: string) => { if (!fechaIso) return "—"; const d = new Date(fechaIso+"T00:00"); if (isNaN(d.getTime())) return "—"; return `${String(d.getDate()).padStart(2,"0")}-${String(d.getMonth()+1).padStart(2,"0")}-${d.getFullYear()}`; };
 
   async function onCambioApis() {
-    setApiKissoroMsg(null);
-    setApiEnPluralMsg(null);
-    if (!token) return;
-
+    setApiKissoroMsg(null); setApiEnPluralMsg(null); if (!token) return;
     try {
       const res = await fetch("/auth/apis", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          kissoro: apiKissoroNuevo || apiKissoroVigente,
-          enplural: apiEnPluralNuevo || apiEnPluralVigente,
-        }),
+        method:"POST",
+        headers:{ "Content-Type":"application/json", Authorization:`Bearer ${token}` },
+        body: JSON.stringify({ kissoro: apiKissoroNuevo || apiKissoroVigente, enplural: apiEnPluralNuevo || apiEnPluralVigente }),
       });
-      if (!res.ok) throw new Error("Error al actualizar APIs");
+      if(!res.ok) throw new Error("Error al actualizar APIs");
       setApiKissoroVigente(apiKissoroNuevo || apiKissoroVigente);
       setApiEnPluralVigente(apiEnPluralNuevo || apiEnPluralVigente);
-      setApiKissoroNuevo("");
-      setApiEnPluralNuevo("");
-      setApiKissoroMsg({ type: "ok", text: "API Kissoro actualizado." });
-      setApiEnPluralMsg({ type: "ok", text: "API En Plural actualizado." });
-    } catch (error: any) {
-      setApiKissoroMsg({ type: "err", text: error.message });
-      setApiEnPluralMsg({ type: "err", text: error.message });
-    }
+      setApiKissoroNuevo(""); setApiEnPluralNuevo("");
+      setApiKissoroMsg({type:"ok", text:"API Kissoro actualizado."});
+      setApiEnPluralMsg({type:"ok", text:"API En Plural actualizado."});
+    } catch(error:any){ setApiKissoroMsg({type:"err", text:error.message}); setApiEnPluralMsg({type:"err", text:error.message}); }
   }
 
   async function onCambioPassword() {
-    setPassMsg(null);
-    if (!token) return;
-
-    if (!passActual || !passNueva || !passConfirma) {
-      setPassMsg({ type: "err", text: "Rellena todos los campos" });
-      return;
-    }
-    if (passNueva !== passConfirma) {
-      setPassMsg({ type: "err", text: "La nueva contraseña y su confirmación no coinciden." });
-      return;
-    }
-
+    setPassMsg(null); if(!token) return;
+    if(!passActual || !passNueva || !passConfirma) { setPassMsg({type:"err", text:"Rellena todos los campos"}); return; }
+    if(passNueva !== passConfirma) { setPassMsg({type:"err", text:"La nueva contraseña y su confirmación no coinciden."}); return; }
     try {
       const res = await fetch("/auth/change-password", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ old_password: passActual, new_password: passNueva }),
+        method:"POST",
+        headers:{ "Content-Type":"application/json", Authorization:`Bearer ${token}` },
+        body: JSON.stringify({ old_password:passActual, new_password:passNueva }),
       });
-      if (!res.ok) throw new Error("Error al cambiar contraseña");
-      setPassMsg({ type: "ok", text: "Contraseña actualizada correctamente" });
-      setPassActual("");
-      setPassNueva("");
-      setPassConfirma("");
-    } catch (error: any) {
-      setPassMsg({ type: "err", text: error.message });
-    }
+      if(!res.ok) throw new Error("Error al cambiar contraseña");
+      setPassMsg({type:"ok", text:"Contraseña actualizada correctamente"}); setPassActual(""); setPassNueva(""); setPassConfirma("");
+    } catch(error:any){ setPassMsg({type:"err", text:error.message}); }
   }
-
-  function logout() {
-    sessionStorage.removeItem("konyx_session");
-    router.replace("/");
-  }
-
-  function fmtFecha(fechaIso: string) {
-    if (!fechaIso) return "—";
-    const d = new Date(fechaIso + "T00:00");
-    if (Number.isNaN(d.getTime())) return "—";
-    const dd = String(d.getDate()).padStart(2, "0");
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const yyyy = d.getFullYear();
-    return `${dd}-${mm}-${yyyy}`;
-  }
-
+  
   /* ------------------ JSX principal ------------------ */
   return (
     <main className="min-h-screen bg-no-repeat bg-center bg-cover p-4" style={{ backgroundImage: "url(/fondo.png)", backgroundSize: "100% 100%", backgroundRepeat: "no-repeat" }}>
