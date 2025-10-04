@@ -289,3 +289,109 @@ export function PanelFile({ value, onPickFile, onPickFileClick }: PanelFileProps
   );
 }
 
+interface PanelConfigProps {
+  passActual: string;
+  passNueva: string;
+  passConfirma: string;
+  setPassActual: (v: string) => void;
+  setPassNueva: (v: string) => void;
+  setPassConfirma: (v: string) => void;
+  passMsg: { type: "ok" | "err"; text: string } | null;
+  onCambioPassword: () => void;
+
+  apiKissoroVigente: string;
+  apiKissoroNuevo: string;
+  setApiKissoroNuevo: (v: string) => void;
+  apiKissoroMsg: { type: "ok" | "err"; text: string } | null;
+
+  apiEnPluralVigente: string;
+  apiEnPluralNuevo: string;
+  setApiEnPluralNuevo: (v: string) => void;
+  apiEnPluralMsg: { type: "ok" | "err"; text: string } | null;
+
+  onCambioApis: () => void;
+}
+export function PanelConfig({
+  passActual, passNueva, passConfirma, setPassActual, setPassNueva, setPassConfirma, passMsg, onCambioPassword,
+  apiKissoroVigente, apiKissoroNuevo, setApiKissoroNuevo, apiKissoroMsg,
+  apiEnPluralVigente, apiEnPluralNuevo, setApiEnPluralNuevo, apiEnPluralMsg, onCambioApis
+}: PanelConfigProps) {
+  return (
+    <div className="bg-white/90 backdrop-blur rounded-2xl shadow p-6 space-y-8">
+      <h2 className="text-lg font-semibold">Configuración</h2>
+
+      {/* Cambio de contraseña */}
+      <div className="space-y-3">
+        <h3 className="text-sm font-semibold">Cambio de contraseña</h3>
+        <div className="grid md:grid-cols-[1fr_1fr_1fr_auto] gap-3 items-center">
+          <input type="password" value={passActual} onChange={e => setPassActual(e.target.value)} placeholder="Contraseña actual" className="rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
+          <input type="password" value={passNueva} onChange={e => setPassNueva(e.target.value)} placeholder="Nueva contraseña" className="rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
+          <input type="password" value={passConfirma} onChange={e => setPassConfirma(e.target.value)} placeholder="Confirmar nueva contraseña" className="rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
+          <button type="button" onClick={onCambioPassword} className="px-4 py-2 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700">Cambio</button>
+        </div>
+        {passMsg && <p className={`text-sm ${passMsg.type==="ok"?"text-green-700":"text-red-700"}`}>{passMsg.text}</p>}
+      </div>
+
+      {/* APIs */}
+      <div className="space-y-3">
+        <h3 className="text-sm font-semibold">API Holded Kissoro</h3>
+        <div className="grid md:grid-cols-[1fr_1fr_auto] gap-3 items-center">
+          <input type="text" value={apiKissoroVigente} readOnly className="rounded-lg border border-indigo-300 px-3 py-2 bg-gray-100 text-gray-600"/>
+          <input type="text" value={apiKissoroNuevo} onChange={e => setApiKissoroNuevo(e.target.value)} placeholder="Nuevo API" className="rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
+          <button type="button" onClick={onCambioApis} className="px-4 py-2 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700">Cambio</button>
+        </div>
+        {apiKissoroMsg && <p className={`text-sm ${apiKissoroMsg.type==="ok"?"text-green-700":"text-red-700"}`}>{apiKissoroMsg.text}</p>}
+      </div>
+
+      <div className="space-y-3">
+        <h3 className="text-sm font-semibold">API Holded En Plural Psicologia</h3>
+        <div className="grid md:grid-cols-[1fr_1fr_auto] gap-3 items-center">
+          <input type="text" value={apiEnPluralVigente} readOnly className="rounded-lg border border-indigo-300 px-3 py-2 bg-gray-100 text-gray-600"/>
+          <input type="text" value={apiEnPluralNuevo} onChange={e => setApiEnPluralNuevo(e.target.value)} placeholder="Nuevo API" className="rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
+          <button type="button" onClick={onCambioApis} className="px-4 py-2 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700">Cambio</button>
+        </div>
+        {apiEnPluralMsg && <p className={`text-sm ${apiEnPluralMsg.type==="ok"?"text-green-700":"text-red-700"}`}>{apiEnPluralMsg.text}</p>}
+      </div>
+    </div>
+  );
+}
+
+/* ------------------ Panel Exportar ------------------ */
+interface PanelExportProps { onConfirm: (ok: boolean) => void }
+export function PanelExport({ onConfirm }: PanelExportProps) {
+  return (
+    <div className="bg-white/90 backdrop-blur rounded-2xl shadow p-6">
+      <h2 className="text-lg font-semibold mb-4">Exportar</h2>
+      <p className="text-sm text-gray-700 mb-4">¿Deseas exportar los datos con la configuración seleccionada?</p>
+      <div className="flex gap-3">
+        <button onClick={() => onConfirm(true)} className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700">Sí, exportar</button>
+        <button onClick={() => onConfirm(false)} className="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50">No, cancelar</button>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------ Panel Cerrar sesión ------------------ */
+interface PanelCerrarProps { onConfirm: ()=>void; onCancel: ()=>void }
+export function PanelCerrar({ onConfirm, onCancel }: PanelCerrarProps) {
+  return (
+    <div className="bg-white/90 backdrop-blur rounded-2xl shadow p-6">
+      <h2 className="text-lg font-semibold mb-4">Cerrar Sesión</h2>
+      <p className="text-sm text-gray-700 mb-4">¿Seguro que quieres cerrar sesión?</p>
+      <div className="flex gap-3">
+        <button onClick={onConfirm} className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700">Sí</button>
+        <button onClick={onCancel} className="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50">No</button>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------ Resumen inferior ------------------ */
+export function ResumenInferior() {
+  return (
+    <div className="bg-indigo-100/90 rounded-2xl shadow p-6 border border-indigo-200 mt-8">
+      <h3 className="text-base font-semibold text-indigo-800 mb-3">Resumen de selección</h3>
+      {/* Aquí puedes mapear valores desde el estado si quieres */}
+    </div>
+  );
+}
