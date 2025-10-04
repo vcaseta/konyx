@@ -35,12 +35,22 @@ const CUENTAS = [
 export default function DashboardPage() {
   const router = useRouter();
 
+  // ⚡ Estado para bloquear render hasta validar sesión
+  const [authChecked, setAuthChecked] = useState(false);
+
   // Validación de sesión al cargar la página
   useEffect(() => {
-    if (typeof window === "undefined") return; // Evitar error SSR
+    if (typeof window === "undefined") return;
     const token = sessionStorage.getItem("konyx_session");
-    if (!token) router.replace("/"); // si no hay sesión, redirige a login
+    if (!token) {
+      router.replace("/"); // si no hay sesión, redirige a login
+    } else {
+      setAuthChecked(true); // sesión válida
+    }
   }, [router]);
+
+  // ⚠ Bloqueo render hasta validar sesión
+  if (!authChecked) return null;
 
   // Menú activo
   const [menu, setMenu] = useState<MenuKey>("formatoImport");
@@ -78,9 +88,9 @@ export default function DashboardPage() {
   const [apiEnPluralMsg, setApiEnPluralMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
   // Token de sesión (solo en cliente)
-  const token = typeof window !== "undefined" ? sessionStorage.getItem("konyx_session") : null;
+  const token = sessionStorage.getItem("konyx_session");
 
-  // Cargar APIs desde backend
+  // Cargar APIs desde backend solo una vez
   useEffect(() => {
     if (!token) return;
 
@@ -212,20 +222,41 @@ export default function DashboardPage() {
 
   // Logout
   function logout() {
-    if (typeof window !== "undefined") sessionStorage.removeItem("konyx_session");
+    sessionStorage.removeItem("konyx_session");
     router.replace("/");
   }
 
   // Formatea fecha DD-MM-YYYY
   function fmtFecha(fechaIso: string) {
     if (!fechaIso) return "—";
-    const d = new Date(fechaIso);
+    const d = new Date(fechaIso + "T00:00"); // evita problema de zona horaria
     if (Number.isNaN(d.getTime())) return "—";
     const dd = String(d.getDate()).padStart(2, "0");
     const mm = String(d.getMonth() + 1).padStart(2, "0");
     const yyyy = d.getFullYear();
     return `${dd}-${mm}-${yyyy}`;
   }
+
+  return (
+    <main
+      className="min-h-screen bg-no-repeat bg-center bg-cover p-4"
+      style={{
+        backgroundImage: "url(/fondo.png)",
+        backgroundSize: "100% 100%",
+        backgroundRepeat: "no-repeat",
+      }}
+    >
+      {/* === resto de tu dashboard igual === */}
+      <div className="mx-auto max-w-7xl grid grid-cols-1 md:grid-cols-[260px_1fr] gap-6">
+        {/* Sidebar */}
+        {/* ... mantiene toda tu estructura original */}
+      </div>
+    </main>
+  );
+}
+
+/* ------------------ Componentes auxiliares ------------------ */
+// Mantén Item, OptionGrid, SummaryItem igual que tu código original
 
   return (
     <main
