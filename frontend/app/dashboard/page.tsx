@@ -1,70 +1,126 @@
-// ------------------ Estados principales ------------------
-const [menu, setMenu] = useState<MenuKey>("formatoImport");
+// app/dashboard/page.tsx
+"use client";
 
-// Selecciones
-const [formatoImport, setFormatoImport] =
-  useState<(typeof FORMATO_IMPORT_OPTS)[number] | null>(null);
-const [formatoExport, setFormatoExport] =
-  useState<(typeof FORMATO_EXPORT_OPTS)[number] | null>(null);
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import Cookies from "js-cookie";
 
-const [empresa, setEmpresa] = useState<(typeof EMPRESAS)[number] | null>(null);
-const [fechaFactura, setFechaFactura] = useState<string>("");
-const [proyecto, setProyecto] =
-  useState<(typeof PROYECTOS)[number] | null>(null);
+/* ------------------ Constantes ------------------ */
+type MenuKey =
+  | "formatoImport"
+  | "formatoExport"
+  | "empresa"
+  | "fecha"
+  | "proyecto"
+  | "cuenta"
+  | "fichero"
+  | "config"
+  | "exportar"
+  | "cerrar";
 
-const [cuenta, setCuenta] = useState<(typeof CUENTAS)[number] | null>(null);
-const [cuentaOtra, setCuentaOtra] = useState<string>("");
+const FORMATO_IMPORT_OPTS = ["Eholo", "Gestoria"] as const;
+const FORMATO_EXPORT_OPTS = ["Holded", "Gestoria"] as const;
+const EMPRESAS = ["Kissoro", "En Plural Psicologia"] as const;
+const PROYECTOS = [
+  "Servicios de Psicologia",
+  "Formacion",
+  "Administracion SL",
+] as const;
+const CUENTAS = [
+  "70500000 Prestaciones de servicios",
+  "70000000 Venta de mercaderías",
+  "Otra (introducir)",
+] as const;
 
-const [ficheroNombre, setFicheroNombre] = useState<string>("");
-const fileInputRef = useRef<HTMLInputElement | null>(null);
+/* ------------------ Helpers de storage (demo) ------------------ */
+const PASS_KEY = "konyx.pass";
+const API_KISSORO_KEY = "konyx.api.kissoro";
+const API_ENPLURAL_KEY = "konyx.api.enplural";
 
-// Configuración: Contraseña
-const [passActual, setPassActual] = useState("");
-const [passNueva, setPassNueva] = useState("");
-const [passConfirma, setPassConfirma] = useState("");
-const [passMsg, setPassMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+function getStoredPass(): string {
+  if (typeof window === "undefined") return "admin";
+  const v = localStorage.getItem(PASS_KEY);
+  return v ?? "admin";
+}
+function setStoredPass(v: string) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(PASS_KEY, v);
+}
 
-// Configuración: APIs
-const [apiKissoroVigente, setApiKissoroVigente] = useState("");
-const [apiKissoroNuevo, setApiKissoroNuevo] = useState("");
-const [apiKissoroMsg, setApiKissoroMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
-
-const [apiEnPluralVigente, setApiEnPluralVigente] = useState("");
-const [apiEnPluralNuevo, setApiEnPluralNuevo] = useState("");
-const [apiEnPluralMsg, setApiEnPluralMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
-
-// ------------------ Habilitación de exportar ------------------
-const exportReady = useMemo(() => {
-  const cuentaOk =
-    cuenta === "Otra (introducir)"
-      ? cuentaOtra.trim().length > 0
-      : !!cuenta;
-  return (
-    !!formatoImport &&
-    !!formatoExport &&
-    !!empresa &&
-    !!fechaFactura &&
-    !!proyecto &&
-    cuentaOk &&
-    !!ficheroNombre
-  );
-}, [
-  formatoImport,
-  formatoExport,
-  empresa,
-  fechaFactura,
-  proyecto,
-  cuenta,
-  cuentaOtra,
-  ficheroNombre,
-]);
-
+function getStoredApi(key: string): string {
+  if (typeof window === "undefined") return "";
+  return localStorage.getItem(key) ?? "";
+}
+function setStoredApi(key: string, v: string) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(key, v);
+}
 
 /* ------------------ Página ------------------ */
 export default function DashboardPage() {
   const router = useRouter();
 
-   // Habilitación de Exportar
+  // Validación de sesión al cargar la página
+useEffect(() => {
+  const session = sessionStorage.getItem("konyx_session"); // sesión temporal
+  if (!session) {
+    router.replace("/"); // si no hay sesión, redirige a login
+  }
+}, [router]);
+
+  // Menú activo
+  const [menu, setMenu] = useState<MenuKey>("formatoImport");
+
+  // Selecciones
+  const [formatoImport, setFormatoImport] =
+    useState<(typeof FORMATO_IMPORT_OPTS)[number] | null>(null);
+  const [formatoExport, setFormatoExport] =
+    useState<(typeof FORMATO_EXPORT_OPTS)[number] | null>(null);
+
+  const [empresa, setEmpresa] = useState<(typeof EMPRESAS)[number] | null>(null);
+  const [fechaFactura, setFechaFactura] = useState<string>("");
+  const [proyecto, setProyecto] =
+    useState<(typeof PROYECTOS)[number] | null>(null);
+
+  const [cuenta, setCuenta] = useState<(typeof CUENTAS)[number] | null>(null);
+  const [cuentaOtra, setCuentaOtra] = useState<string>("");
+
+  const [ficheroNombre, setFicheroNombre] = useState<string>("");
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const onPickFileClick = () => fileInputRef.current?.click();
+  const onPickFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    setFicheroNombre(f ? f.name : "");
+  };
+
+  // Configuración: Contraseña
+  const [passActual, setPassActual] = useState("");
+  const [passNueva, setPassNueva] = useState("");
+  const [passConfirma, setPassConfirma] = useState("");
+  const [passMsg, setPassMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+
+  // Configuración: APIs (vigente solo lectura, nuevo editable + “Cambio”)
+  const [apiKissoroVigente, setApiKissoroVigente] = useState("");
+  const [apiKissoroNuevo, setApiKissoroNuevo] = useState("");
+  const [apiKissoroMsg, setApiKissoroMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+
+  const [apiEnPluralVigente, setApiEnPluralVigente] = useState("");
+  const [apiEnPluralNuevo, setApiEnPluralNuevo] = useState("");
+  const [apiEnPluralMsg, setApiEnPluralMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+
+  // Cargar valores vigentes al entrar
+  useEffect(() => {
+    // contraseña (si no existe, se inicializa a "admin")
+    if (!localStorage.getItem(PASS_KEY)) {
+      setStoredPass("admin");
+    }
+    // APIs vigentes
+    setApiKissoroVigente(getStoredApi(API_KISSORO_KEY));
+    setApiEnPluralVigente(getStoredApi(API_ENPLURAL_KEY));
+  }, []);
+
+  // Habilitación de Exportar
   const exportReady = useMemo(() => {
     const cuentaOk =
       cuenta === "Otra (introducir)"
@@ -153,11 +209,11 @@ export default function DashboardPage() {
     setApiEnPluralMsg({ type: "ok", text: "API En Plural Psicologia actualizado." });
   }
 
-  // Cerrar sesión
-  function logout() {
-    sessionStorage.removeItem("token");
-    router.replace("/");
-  }
+// Cerrar sesión
+function logout() {
+  sessionStorage.removeItem("konyx_session"); // borrar sesión temporal
+  router.replace("/"); // redirige a login
+}
 
   // Formatea fecha DD-MM-YYYY para resumen
   function fmtFecha(fechaIso: string) {
