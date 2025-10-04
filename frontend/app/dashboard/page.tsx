@@ -60,9 +60,18 @@ export default function DashboardPage() {
   const router = useRouter();
 
   // Requiere login: si no hay token de esta sesión, redirige a /
+ import Cookies from "js-cookie";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+
+export default function DashboardPage() {
+  const router = useRouter();
+
   useEffect(() => {
-    const t = sessionStorage.getItem("token");
-    if (!t) router.replace("/");
+    const token = Cookies.get("konyx_token"); // lee el JWT
+    if (!token) {
+      router.replace("/"); // si no hay token, redirige a login
+    }
   }, [router]);
 
   // Menú activo
