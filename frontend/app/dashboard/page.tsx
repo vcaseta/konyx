@@ -1,9 +1,8 @@
 // app/dashboard/page.tsx
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import Cookies from "js-cookie";
 
 /* ------------------ Constantes ------------------ */
 type MenuKey =
@@ -32,59 +31,27 @@ const CUENTAS = [
   "Otra (introducir)",
 ] as const;
 
-/* ------------------ Helpers de storage (demo) ------------------ */
-const PASS_KEY = "konyx.pass";
-const API_KISSORO_KEY = "konyx.api.kissoro";
-const API_ENPLURAL_KEY = "konyx.api.enplural";
-
-function getStoredPass(): string {
-  if (typeof window === "undefined") return "admin";
-  const v = localStorage.getItem(PASS_KEY);
-  return v ?? "admin";
-}
-function setStoredPass(v: string) {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(PASS_KEY, v);
-}
-
-function getStoredApi(key: string): string {
-  if (typeof window === "undefined") return "";
-  return localStorage.getItem(key) ?? "";
-}
-function setStoredApi(key: string, v: string) {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(key, v);
-}
-
 /* ------------------ Página ------------------ */
 export default function DashboardPage() {
   const router = useRouter();
 
   // Validación de sesión al cargar la página
-useEffect(() => {
-  const session = sessionStorage.getItem("konyx_session"); // sesión temporal
-  if (!session) {
-    router.replace("/"); // si no hay sesión, redirige a login
-  }
-}, [router]);
+  useEffect(() => {
+    const token = sessionStorage.getItem("konyx_session");
+    if (!token) router.replace("/"); // si no hay sesión, redirige a login
+  }, [router]);
 
   // Menú activo
   const [menu, setMenu] = useState<MenuKey>("formatoImport");
 
   // Selecciones
-  const [formatoImport, setFormatoImport] =
-    useState<(typeof FORMATO_IMPORT_OPTS)[number] | null>(null);
-  const [formatoExport, setFormatoExport] =
-    useState<(typeof FORMATO_EXPORT_OPTS)[number] | null>(null);
-
+  const [formatoImport, setFormatoImport] = useState<(typeof FORMATO_IMPORT_OPTS)[number] | null>(null);
+  const [formatoExport, setFormatoExport] = useState<(typeof FORMATO_EXPORT_OPTS)[number] | null>(null);
   const [empresa, setEmpresa] = useState<(typeof EMPRESAS)[number] | null>(null);
   const [fechaFactura, setFechaFactura] = useState<string>("");
-  const [proyecto, setProyecto] =
-    useState<(typeof PROYECTOS)[number] | null>(null);
-
+  const [proyecto, setProyecto] = useState<(typeof PROYECTOS)[number] | null>(null);
   const [cuenta, setCuenta] = useState<(typeof CUENTAS)[number] | null>(null);
   const [cuentaOtra, setCuentaOtra] = useState<string>("");
-
   const [ficheroNombre, setFicheroNombre] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -100,7 +67,7 @@ useEffect(() => {
   const [passConfirma, setPassConfirma] = useState("");
   const [passMsg, setPassMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
-  // Configuración: APIs (vigente solo lectura, nuevo editable + “Cambio”)
+  // Configuración: APIs
   const [apiKissoroVigente, setApiKissoroVigente] = useState("");
   const [apiKissoroNuevo, setApiKissoroNuevo] = useState("");
   const [apiKissoroMsg, setApiKissoroMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
@@ -109,111 +76,103 @@ useEffect(() => {
   const [apiEnPluralNuevo, setApiEnPluralNuevo] = useState("");
   const [apiEnPluralMsg, setApiEnPluralMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
-  // Cargar valores vigentes al entrar
+  const token = sessionStorage.getItem("konyx_session");
+
+  // ------------------ Cargar APIs desde backend ------------------
   useEffect(() => {
-    // contraseña (si no existe, se inicializa a "admin")
-    if (!localStorage.getItem(PASS_KEY)) {
-      setStoredPass("admin");
+    if (!token) return;
+
+    async function fetchApis() {
+      try {
+        const res = await fetch("/auth/apis", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error("Error al cargar APIs");
+        const data = await res.json();
+        setApiKissoroVigente(data.kissoro);
+        setApiEnPluralVigente(data.enplural);
+      } catch (error) {
+        console.error(error);
+      }
     }
-    // APIs vigentes
-    setApiKissoroVigente(getStoredApi(API_KISSORO_KEY));
-    setApiEnPluralVigente(getStoredApi(API_ENPLURAL_KEY));
-  }, []);
 
-  // Habilitación de Exportar
-  const exportReady = useMemo(() => {
-    const cuentaOk =
-      cuenta === "Otra (introducir)"
-        ? cuentaOtra.trim().length > 0
-        : !!cuenta;
-    return (
-      !!formatoImport &&
-      !!formatoExport &&
-      !!empresa &&
-      !!fechaFactura &&
-      !!proyecto &&
-      cuentaOk &&
-      !!ficheroNombre
-    );
-  }, [
-    formatoImport,
-    formatoExport,
-    empresa,
-    fechaFactura,
-    proyecto,
-    cuenta,
-    cuentaOtra,
-    ficheroNombre,
-  ]);
+    fetchApis();
+  }, [token]);
 
-  // Exportar (solo esqueleto por ahora)
-  function onExportAsk() {
-    if (!exportReady) return;
-    setMenu("exportar");
-  }
-  function onConfirmExport(ok: boolean) {
-    if (!ok) {
-      setMenu("formatoImport");
-      return;
+  // ------------------ Guardar APIs en backend ------------------
+  async function onCambioApis() {
+    setApiKissoroMsg(null);
+    setApiEnPluralMsg(null);
+    if (!token) return;
+
+    try {
+      const res = await fetch("/auth/apis", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          kissoro: apiKissoroNuevo || apiKissoroVigente,
+          enplural: apiEnPluralNuevo || apiEnPluralVigente,
+        }),
+      });
+      if (!res.ok) throw new Error("Error al actualizar APIs");
+
+      setApiKissoroVigente(apiKissoroNuevo || apiKissoroVigente);
+      setApiEnPluralVigente(apiEnPluralNuevo || apiEnPluralVigente);
+      setApiKissoroNuevo("");
+      setApiEnPluralNuevo("");
+      setApiKissoroMsg({ type: "ok", text: "API Kissoro actualizado." });
+      setApiEnPluralMsg({ type: "ok", text: "API En Plural actualizado." });
+    } catch (error: any) {
+      setApiKissoroMsg({ type: "err", text: error.message });
+      setApiEnPluralMsg({ type: "err", text: error.message });
     }
-    alert("Exportación iniciada (conectaremos backend después).");
-    setMenu("formatoImport");
   }
 
-  // Cambio de contraseña (pulsador “Cambio”)
-  function onCambioPassword() {
+  // ------------------ Cambio de contraseña ------------------
+  async function onCambioPassword() {
     setPassMsg(null);
-    const vigente = getStoredPass();
-    if (passActual.trim() !== vigente) {
-      setPassMsg({ type: "err", text: "La contraseña actual no coincide." });
-      return;
-    }
-    if (!passNueva.trim() || !passConfirma.trim()) {
-      setPassMsg({ type: "err", text: "Rellena nueva contraseña y confirmación." });
+    if (!token) return;
+
+    if (!passActual || !passNueva || !passConfirma) {
+      setPassMsg({ type: "err", text: "Rellena todos los campos" });
       return;
     }
     if (passNueva !== passConfirma) {
       setPassMsg({ type: "err", text: "La nueva contraseña y su confirmación no coinciden." });
       return;
     }
-    setStoredPass(passNueva);
-    setPassMsg({ type: "ok", text: "Contraseña actualizada correctamente." });
-    setPassActual("");
-    setPassNueva("");
-    setPassConfirma("");
-  }
 
-  // Cambio de API Kissoro
-  function onCambioApiKissoro() {
-    setApiKissoroMsg(null);
-    if (!apiKissoroNuevo.trim()) {
-      setApiKissoroMsg({ type: "err", text: "Introduce el nuevo API." });
-      return;
+    try {
+      const res = await fetch("/auth/change-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          old_password: passActual,
+          new_password: passNueva,
+        }),
+      });
+      if (!res.ok) throw new Error("Error al cambiar contraseña");
+      setPassMsg({ type: "ok", text: "Contraseña actualizada correctamente" });
+      setPassActual("");
+      setPassNueva("");
+      setPassConfirma("");
+    } catch (error: any) {
+      setPassMsg({ type: "err", text: error.message });
     }
-    setStoredApi(API_KISSORO_KEY, apiKissoroNuevo.trim());
-    setApiKissoroVigente(apiKissoroNuevo.trim());
-    setApiKissoroNuevo("");
-    setApiKissoroMsg({ type: "ok", text: "API Kissoro actualizado." });
   }
 
-  // Cambio de API En Plural Psicologia
-  function onCambioApiEnPlural() {
-    setApiEnPluralMsg(null);
-    if (!apiEnPluralNuevo.trim()) {
-      setApiEnPluralMsg({ type: "err", text: "Introduce el nuevo API." });
-      return;
-    }
-    setStoredApi(API_ENPLURAL_KEY, apiEnPluralNuevo.trim());
-    setApiEnPluralVigente(apiEnPluralNuevo.trim());
-    setApiEnPluralNuevo("");
-    setApiEnPluralMsg({ type: "ok", text: "API En Plural Psicologia actualizado." });
+  // ------------------ Logout ------------------
+  function logout() {
+    sessionStorage.removeItem("konyx_session");
+    router.replace("/");
   }
 
-// Cerrar sesión
- function logout() {
-  sessionStorage.removeItem("konyx_session");
-  router.replace("/");
-}
 
   // Formatea fecha DD-MM-YYYY para resumen
   function fmtFecha(fechaIso: string) {
