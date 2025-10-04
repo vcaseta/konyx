@@ -1,30 +1,16 @@
 version: "3.9"
-
 services:
-  konyx-backend:
-    image: ghcr.io/vcaseta/konyx-backend:latest
+  backend:
+    build: ./backend
     container_name: konyx-backend
-    env_file: .env
-    networks:
-      lan-local:
-        ipv4_address: 192.168.1.51
-    restart: unless-stopped
-
-  konyx-frontend:
-    image: ghcr.io/vcaseta/konyx-frontend:latest
+    ports:
+      - "8000:8000"
+  frontend:
+    build: ./frontend
     container_name: konyx-frontend
-    env_file: .env
-    depends_on:
-      - konyx-backend
     ports:
       - "3000:3000"
-    networks:
-      lan-local:
-        ipv4_address: 192.168.1.50
     environment:
-      TZ: ${TZ}
-    restart: unless-stopped
-
-networks:
-  lan-local:
-    external: true
+      NEXT_PUBLIC_BACKEND_URL: "http://backend:8000"
+    depends_on:
+      - backend
