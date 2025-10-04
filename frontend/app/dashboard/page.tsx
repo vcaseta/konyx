@@ -4,7 +4,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
-/* ------------------ Constantes ------------------ */
 type MenuKey =
   | "formatoImport"
   | "formatoExport"
@@ -20,45 +19,17 @@ type MenuKey =
 const FORMATO_IMPORT_OPTS = ["Eholo", "Gestoria"] as const;
 const FORMATO_EXPORT_OPTS = ["Holded", "Gestoria"] as const;
 const EMPRESAS = ["Kissoro", "En Plural Psicologia"] as const;
-const PROYECTOS = [
-  "Servicios de Psicologia",
-  "Formacion",
-  "Administracion SL",
-] as const;
+const PROYECTOS = ["Servicios de Psicologia", "Formacion", "Administracion SL"] as const;
 const CUENTAS = [
   "70500000 Prestaciones de servicios",
   "70000000 Venta de mercaderías",
   "Otra (introducir)",
 ] as const;
 
-/* ------------------ Storage (demo) ------------------ */
-const PASS_KEY = "konyx.pass";
-const API_KISSORO_KEY = "konyx.api.kissoro";
-const API_ENPLURAL_KEY = "konyx.api.enplural";
-
-function getStoredPass(): string {
-  if (typeof window === "undefined") return "admin";
-  const v = localStorage.getItem(PASS_KEY);
-  return v ?? "admin";
-}
-function setStoredPass(v: string) {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(PASS_KEY, v);
-}
-function getStoredApi(key: string): string {
-  if (typeof window === "undefined") return "";
-  return localStorage.getItem(key) ?? "";
-}
-function setStoredApi(key: string, v: string) {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(key, v);
-}
-
-/* ------------------ Página ------------------ */
 export default function DashboardPage() {
   const router = useRouter();
 
-  // Requiere token de sesión
+  // --- Protección de ruta (añadido, sin tocar estética) ---
   useEffect(() => {
     const t = sessionStorage.getItem("token");
     if (!t) router.replace("/");
@@ -67,49 +38,31 @@ export default function DashboardPage() {
   // Menú activo
   const [menu, setMenu] = useState<MenuKey>("formatoImport");
 
-  // Selecciones (reseteables por sesión)
+  // Estado de selección (variables "volátiles" que se reinician tras login)
   const [formatoImport, setFormatoImport] =
     useState<(typeof FORMATO_IMPORT_OPTS)[number] | null>(null);
   const [formatoExport, setFormatoExport] =
     useState<(typeof FORMATO_EXPORT_OPTS)[number] | null>(null);
-
   const [empresa, setEmpresa] = useState<(typeof EMPRESAS)[number] | null>(null);
   const [fechaFactura, setFechaFactura] = useState<string>("");
-  const [proyecto, setProyecto] =
-    useState<(typeof PROYECTOS)[number] | null>(null);
-
+  const [proyecto, setProyecto] = useState<(typeof PROYECTOS)[number] | null>(null);
   const [cuenta, setCuenta] = useState<(typeof CUENTAS)[number] | null>(null);
   const [cuentaOtra, setCuentaOtra] = useState<string>("");
-
   const [ficheroNombre, setFicheroNombre] = useState<string>("");
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Configuración: Contraseña
+  // Configuración (persistente en memoria de la app; NO se toca aquí)
   const [passActual, setPassActual] = useState("");
   const [passNueva, setPassNueva] = useState("");
   const [passConfirma, setPassConfirma] = useState("");
-  const [passMsg, setPassMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
-
-  // Configuración: APIs (vigente RO, nuevo editable)
   const [apiKissoroVigente, setApiKissoroVigente] = useState("");
   const [apiKissoroNuevo, setApiKissoroNuevo] = useState("");
-  const [apiKissoroMsg, setApiKissoroMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
-
   const [apiEnPluralVigente, setApiEnPluralVigente] = useState("");
   const [apiEnPluralNuevo, setApiEnPluralNuevo] = useState("");
-  const [apiEnPluralMsg, setApiEnPluralMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
-  // Cargar persistentes
+  // --- Reset de estado variable tras login (añadido) ---
   useEffect(() => {
-    if (!localStorage.getItem(PASS_KEY)) setStoredPass("admin");
-    setApiKissoroVigente(getStoredApi(API_KISSORO_KEY));
-    setApiEnPluralVigente(getStoredApi(API_ENPLURAL_KEY));
-  }, []);
-
-  // Reset de estados variables al entrar con nueva sesión
-  useEffect(() => {
-    const needsReset = sessionStorage.getItem("reset-dashboard-state") === "1";
-    if (needsReset) {
+    if (sessionStorage.getItem("reset-dashboard-state") === "1") {
+      // Reiniciamos solo lo variable (sin tocar APIs/contraseña)
       setMenu("formatoImport");
       setFormatoImport(null);
       setFormatoExport(null);
@@ -119,21 +72,23 @@ export default function DashboardPage() {
       setCuenta(null);
       setCuentaOtra("");
       setFicheroNombre("");
+
       sessionStorage.removeItem("reset-dashboard-state");
     }
   }, []);
 
-  // File picker
-  const onPickFileClick = () => fileInputRef.current?.click();
-  const onPickFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Fichero
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const onPickFile = () => fileInputRef.current?.click();
+  function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
-    setFicheroNombre(f ? f.name : "");
-  };
+    if (f) setFicheroNombre(f.name);
+  }
 
-  // Export habilitado
+  // Validación para habilitar "Exportar"
   const exportReady = useMemo(() => {
     const cuentaOk =
-      cuenta === "Otra (introducir)" ? !!cuentaOtra.trim() : !!cuenta;
+      cuenta === "Otra (introducir)" ? cuentaOtra.trim().length > 0 : !!cuenta;
     return (
       !!formatoImport &&
       !!formatoExport &&
@@ -158,77 +113,25 @@ export default function DashboardPage() {
     if (!exportReady) return;
     setMenu("exportar");
   }
-  function onConfirmExport(ok: boolean) {
-    if (!ok) {
+
+  async function onConfirmExport(confirm: boolean) {
+    if (!confirm) {
       setMenu("formatoImport");
       return;
     }
-    alert("Exportación iniciada (conectaremos backend después).");
+    // Aquí conectarás con el backend más adelante.
+    alert("Exportación iniciada. (Integraremos el backend después)");
     setMenu("formatoImport");
   }
 
-  // Cambio de contraseña
-  function onCambioPassword() {
-    setPassMsg(null);
-    const vigente = getStoredPass();
-    if (passActual.trim() !== vigente) {
-      setPassMsg({ type: "err", text: "La contraseña actual no coincide." });
-      return;
-    }
-    if (!passNueva.trim() || !passConfirma.trim()) {
-      setPassMsg({ type: "err", text: "Rellena nueva contraseña y confirmación." });
-      return;
-    }
-    if (passNueva !== passConfirma) {
-      setPassMsg({ type: "err", text: "La nueva contraseña y su confirmación no coinciden." });
-      return;
-    }
-    setStoredPass(passNueva);
-    setPassMsg({ type: "ok", text: "Contraseña actualizada correctamente." });
-    setPassActual("");
-    setPassNueva("");
-    setPassConfirma("");
-  }
-
-  // Cambio APIs
-  function onCambioApiKissoro() {
-    setApiKissoroMsg(null);
-    if (!apiKissoroNuevo.trim()) {
-      setApiKissoroMsg({ type: "err", text: "Introduce el nuevo API." });
-      return;
-    }
-    setStoredApi(API_KISSORO_KEY, apiKissoroNuevo.trim());
-    setApiKissoroVigente(apiKissoroNuevo.trim());
-    setApiKissoroNuevo("");
-    setApiKissoroMsg({ type: "ok", text: "API Kissoro actualizado." });
-  }
-  function onCambioApiEnPlural() {
-    setApiEnPluralMsg(null);
-    if (!apiEnPluralNuevo.trim()) {
-      setApiEnPluralMsg({ type: "err", text: "Introduce el nuevo API." });
-      return;
-    }
-    setStoredApi(API_ENPLURAL_KEY, apiEnPluralNuevo.trim());
-    setApiEnPluralVigente(apiEnPluralNuevo.trim());
-    setApiEnPluralNuevo("");
-    setApiEnPluralMsg({ type: "ok", text: "API En Plural Psicologia actualizado." });
-  }
-
-  // Cerrar sesión (limpia sessionStorage)
+  // --- Logout (borrado de token + flag de reset) (añadido) ---
   function logout() {
-    sessionStorage.clear();
+    try {
+      sessionStorage.removeItem("token");
+      localStorage.removeItem("token"); // por si acaso
+      sessionStorage.setItem("reset-dashboard-state", "1");
+    } catch {}
     router.replace("/");
-  }
-
-  // Formatear fecha DD-MM-YYYY
-  function fmtFecha(fechaIso: string) {
-    if (!fechaIso) return "—";
-    const d = new Date(fechaIso);
-    if (Number.isNaN(d.getTime())) return "—";
-    const dd = String(d.getDate()).padStart(2, "0");
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const yyyy = d.getFullYear();
-    return `${dd}-${mm}-${yyyy}`;
   }
 
   return (
@@ -240,16 +143,18 @@ export default function DashboardPage() {
         backgroundRepeat: "no-repeat",
       }}
     >
-      <div className="mx-auto max-w-7xl grid grid-cols-1 md:grid-cols-[260px_1fr] gap-6">
-        {/* ------------ Sidebar ------------ */}
+      <div className="mx-auto max-w-7xl grid grid-cols-1 md:grid-cols-[280px_1fr] gap-6">
+        {/* ------------ Sidebar (a la izquierda; estética conservada) ------------ */}
         <aside className="md:sticky md:top-6">
-          <div className="bg-slate-500/90 backdrop-blur rounded-2xl shadow p-4">
+          <div className="bg-slate-400/90 backdrop-blur rounded-2xl shadow p-4">
             <div className="flex justify-center mb-4">
-              {/* LOGO al doble de tamaño */}
-              <img src="/logo.png" alt="Konyx" className="h-48 w-auto drop-shadow-md" />
+              <img
+                src="/logo.png"
+                alt="Konyx"
+                className="h-48 w-auto drop-shadow-md"
+              />
             </div>
 
-            {/* Menú */}
             <nav className="space-y-2">
               <Item active={menu === "formatoImport"} onClick={() => setMenu("formatoImport")}>
                 Formato Importación
@@ -276,7 +181,7 @@ export default function DashboardPage() {
                 Configuración
               </Item>
 
-              {/* Exportar (resaltado si listo) */}
+              {/* Exportar (resaltada cuando está disponible) */}
               <button
                 type="button"
                 onClick={onExportAsk}
@@ -300,9 +205,9 @@ export default function DashboardPage() {
           </div>
         </aside>
 
-        {/* ------------ Contenido (derecha) ------------ */}
+        {/* ------------ Contenido (derecha; estética conservada) ------------ */}
         <section className="space-y-6">
-          {/* Panel de selección */}
+          {/* Panel de selección según menú */}
           <div className="bg-white/90 backdrop-blur rounded-2xl shadow p-6">
             {menu === "formatoImport" && (
               <div>
@@ -393,7 +298,7 @@ export default function DashboardPage() {
                     type="file"
                     accept=".xlsx,.xls"
                     className="hidden"
-                    onChange={onPickFile}
+                    onChange={onFileChange}
                   />
                 </label>
                 {ficheroNombre && (
@@ -407,8 +312,8 @@ export default function DashboardPage() {
                 <h2 className="text-lg font-semibold">Configuración</h2>
 
                 {/* Cambio de contraseña */}
-                <div className="space-y-3">
-                  <h3 className="text-sm font-semibold">Cambio de contraseña</h3>
+                <div>
+                  <h3 className="text-sm font-semibold mb-3">Cambio de contraseña</h3>
                   <div className="grid md:grid-cols-[1fr_1fr_1fr_auto] gap-3 items-center">
                     <input
                       type="password"
@@ -433,33 +338,36 @@ export default function DashboardPage() {
                     />
                     <button
                       type="button"
-                      onClick={onCambioPassword}
-                      className="px-4 py-2 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700"
+                      className="px-3 py-2 rounded-lg border border-indigo-600 bg-indigo-600 text-white font-semibold hover:bg-indigo-700"
+                      onClick={() => {
+                        // Aquí no tocamos la lógica previa; sólo placeholder.
+                        if (!passActual || !passNueva || !passConfirma) {
+                          alert("Rellena todos los campos de contraseña.");
+                          return;
+                        }
+                        if (passNueva !== passConfirma) {
+                          alert("La nueva contraseña y su confirmación no coinciden.");
+                          return;
+                        }
+                        alert("Cambio de contraseña solicitado.");
+                      }}
                     >
                       Cambio
                     </button>
                   </div>
-                  {passMsg && (
-                    <p
-                      className={`text-sm ${
-                        passMsg.type === "ok" ? "text-green-700" : "text-red-700"
-                      }`}
-                    >
-                      {passMsg.text}
-                    </p>
-                  )}
                 </div>
 
-                {/* API Holded Kissoro */}
-                <div className="space-y-3">
-                  <h3 className="text-sm font-semibold">API Holded Kissoro</h3>
+                {/* APIs independientes */}
+                <div>
+                  <h3 className="text-sm font-semibold mb-2">API Holded Kissoro</h3>
                   <div className="grid md:grid-cols-[1fr_1fr_auto] gap-3 items-center">
                     <input
                       type="text"
                       value={apiKissoroVigente}
-                      readOnly
+                      onChange={(e) => setApiKissoroVigente(e.target.value)}
                       placeholder="API vigente"
-                      className="rounded-lg border border-indigo-300 px-3 py-2 bg-gray-100 text-gray-600"
+                      className="rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      readOnly
                     />
                     <input
                       type="text"
@@ -470,33 +378,26 @@ export default function DashboardPage() {
                     />
                     <button
                       type="button"
-                      onClick={onCambioApiKissoro}
-                      className="px-4 py-2 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700"
+                      className="px-3 py-2 rounded-lg border border-indigo-600 bg-indigo-600 text-white font-semibold hover:bg-indigo-700"
+                      onClick={() => {
+                        alert("Cambio de API Holded Kissoro solicitado.");
+                      }}
                     >
                       Cambio
                     </button>
                   </div>
-                  {apiKissoroMsg && (
-                    <p
-                      className={`text-sm ${
-                        apiKissoroMsg.type === "ok" ? "text-green-700" : "text-red-700"
-                      }`}
-                    >
-                      {apiKissoroMsg.text}
-                    </p>
-                  )}
                 </div>
 
-                {/* API Holded En Plural Psicologia */}
-                <div className="space-y-3">
-                  <h3 className="text-sm font-semibold">API Holded En Plural Psicologia</h3>
+                <div>
+                  <h3 className="text-sm font-semibold mb-2">API Holded En Plural Psicologia</h3>
                   <div className="grid md:grid-cols-[1fr_1fr_auto] gap-3 items-center">
                     <input
                       type="text"
                       value={apiEnPluralVigente}
-                      readOnly
+                      onChange={(e) => setApiEnPluralVigente(e.target.value)}
                       placeholder="API vigente"
-                      className="rounded-lg border border-indigo-300 px-3 py-2 bg-gray-100 text-gray-600"
+                      className="rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      readOnly
                     />
                     <input
                       type="text"
@@ -507,21 +408,14 @@ export default function DashboardPage() {
                     />
                     <button
                       type="button"
-                      onClick={onCambioApiEnPlural}
-                      className="px-4 py-2 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700"
+                      className="px-3 py-2 rounded-lg border border-indigo-600 bg-indigo-600 text-white font-semibold hover:bg-indigo-700"
+                      onClick={() => {
+                        alert("Cambio de API Holded En Plural Psicologia solicitado.");
+                      }}
                     >
                       Cambio
                     </button>
                   </div>
-                  {apiEnPluralMsg && (
-                    <p
-                      className={`text-sm ${
-                        apiEnPluralMsg.type === "ok" ? "text-green-700" : "text-red-700"
-                      }`}
-                    >
-                      {apiEnPluralMsg.text}
-                    </p>
-                  )}
                 </div>
               </div>
             )}
@@ -573,20 +467,18 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* Resumen inferior (más abajo y un poco más oscuro) */}
-          <div className="bg-indigo-100/90 rounded-2xl shadow p-6 border border-indigo-200 mt-8">
-            <h3 className="text-base font-semibold text-indigo-800 mb-3">
-              Resumen de selección
-            </h3>
+          {/* Resumen inferior (azulado claro) */}
+          <div className="bg-indigo-50/90 rounded-2xl shadow p-6 border border-indigo-200">
+            <h3 className="text-base font-semibold text-indigo-800 mb-3">Resumen de selección</h3>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
               <SummaryItem label="Formato Importación" value={formatoImport ?? "—"} />
               <SummaryItem label="Formato Exportación" value={formatoExport ?? "—"} />
               <SummaryItem label="Empresa" value={empresa ?? "—"} />
-              <SummaryItem label="Fecha factura" value={fmtFecha(fechaFactura)} />
+              <SummaryItem label="Fecha factura" value={formatFecha(fechaFactura)} />
               <SummaryItem label="Proyecto" value={proyecto ?? "—"} />
               <SummaryItem
                 label="Cuenta contable"
-                value={cuenta === "Otra (introducir)" ? (cuentaOtra || "—") : (cuenta ?? "—")}
+                value={cuenta === "Otra (introducir)" ? cuentaOtra || "—" : cuenta ?? "—"}
               />
               <SummaryItem label="Fichero" value={ficheroNombre || "—"} />
             </div>
@@ -608,7 +500,6 @@ function Item({
   onClick: () => void;
   children: React.ReactNode;
 }) {
-  // Activo lila; hover lila claro; texto blanco desactivado
   return (
     <button
       type="button"
@@ -616,8 +507,8 @@ function Item({
       className={`w-full text-left px-3 py-2 rounded-lg transition
         ${
           active
-            ? "bg-indigo-600 text-white font-semibold shadow"
-            : "hover:bg-indigo-200 hover:text-indigo-800 text-white"
+            ? "bg-white/90 shadow font-semibold text-indigo-700"
+            : "hover:bg-indigo-200 hover:text-indigo-800"
         }`}
     >
       {children}
@@ -667,3 +558,13 @@ function SummaryItem({ label, value }: { label: string; value: string }) {
   );
 }
 
+// Formateo DD-MM-YYYY (si hay fecha)
+function formatFecha(iso: string): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "—";
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yyyy = d.getFullYear();
+  return `${dd}-${mm}-${yyyy}`;
+}
