@@ -42,7 +42,7 @@ export default function Login({ onOk }: { onOk: (token: string) => void }) {
           onChange={(e) => setUser(e.target.value)}
           className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           placeholder="Nombre Usuario"
-          autoComplete="username"
+          autoComplete="off"
         />
       </div>
 
@@ -54,7 +54,7 @@ export default function Login({ onOk }: { onOk: (token: string) => void }) {
           onChange={(e) => setPass(e.target.value)}
           className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           placeholder="••••••"
-          autoComplete="current-password"
+          autoComplete="off"
         />
       </div>
 
