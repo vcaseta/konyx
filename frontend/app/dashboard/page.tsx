@@ -54,6 +54,16 @@ export default function DashboardPage() {
 
   if (!authChecked) return null;
 
+  useEffect(() => {
+  console.log("Sesion cargada", token);
+  if (!token) router.replace("/");
+  else {
+    setToken(t);
+    setAuthChecked(true);
+  }
+}, [router]);
+
+
   // -------------------- Estados del dashboard --------------------
   const [menu, setMenu] = useState<MenuKey>("formatoImport");
 
