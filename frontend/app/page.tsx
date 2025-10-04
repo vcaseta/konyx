@@ -2,23 +2,21 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
 import Login from "./components/Login";
+
+export const dynamic = "force-dynamic";
 
 export default function Page() {
   const router = useRouter();
-  const [err, setErr] = useState<string | null>(null);
 
   async function handleOk(token: string) {
+    // Guardar token sólo en la sesión actual
     try {
-      // Siempre obligamos sesión nueva: en sessionStorage, nunca en localStorage
       sessionStorage.setItem("token", token);
-      // Pediste resetear selecciones en cada inicio de sesión
+      // Pedimos al dashboard que reinicie su estado variable al cargar
       sessionStorage.setItem("reset-dashboard-state", "1");
-      router.push("/dashboard");
-    } catch (e: any) {
-      setErr(e?.message ?? "No se pudo iniciar sesión");
-    }
+    } catch {}
+    router.push("/dashboard");
   }
 
   return (
@@ -31,18 +29,17 @@ export default function Page() {
       }}
     >
       <div className="w-full max-w-sm">
+        {/* Logo grande encima del formulario (sin tocar estética previa) */}
         <div className="flex justify-center mb-6">
-          <img src="/logo.png" alt="Konyx" className="h-24 w-auto drop-shadow-md" />
+          <img
+            src="/logo.png"
+            alt="Konyx"
+            className="h-24 w-auto drop-shadow-md"
+          />
         </div>
 
-        {/* El componente Login debe llamar a onOk(token) al validar */}
+        {/* Formulario de acceso (componente existente) */}
         <Login onOk={handleOk} />
-
-        {err && (
-          <p className="mt-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">
-            {err}
-          </p>
-        )}
       </div>
     </main>
   );
