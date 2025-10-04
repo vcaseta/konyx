@@ -4,8 +4,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Cookies from "js-cookie";
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
 
 /* ------------------ Constantes ------------------ */
 type MenuKey =
@@ -62,11 +60,7 @@ function setStoredApi(key: string, v: string) {
 export default function DashboardPage() {
   const router = useRouter();
 
-  // Requiere login: si no hay token de esta sesión, redirige a /
-
-export default function DashboardPage() {
-  const router = useRouter();
-
+  // Validación de token JWT al cargar la página
   useEffect(() => {
     const token = Cookies.get("konyx_token"); // lee el JWT
     if (!token) {
