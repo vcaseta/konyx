@@ -49,7 +49,7 @@ export default function Login({ onOk }: { onOk: (token: string) => Promise<void>
         <img
           src="/logo.png"
           alt="Konyx"
-          className="h-24 w-auto drop-shadow-md"
+          className="h-96 w-auto drop-shadow-md"
         />
       </div>
 
