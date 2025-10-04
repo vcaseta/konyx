@@ -13,7 +13,7 @@ services:
   konyx-frontend:
     image: ghcr.io/vcaseta/konyx-frontend:latest
     container_name: konyx-frontend
-    env_file: .env
+    env_file: ./frontend/.env.production
     depends_on:
       - konyx-backend
     ports:
@@ -21,6 +21,8 @@ services:
     networks:
       lan-local:
         ipv4_address: 192.168.1.50
+    environment:
+      TZ: ${TZ}
     restart: unless-stopped
 
 networks:
