@@ -1,13 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
-  export default function Login({ onOk }: { onOk: (token: string) => Promise<void> }) {
-
+export default function Login({ onOk }: { onOk: (token: string) => Promise<void> }) {
   const [user, setUser] = useState("");
   const [pass, setPass] = useState("");
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+
+  // Inicializar usuario y contraseña desde .env si no existen
+  useEffect(() => {
+    if (!localStorage.getItem("konyx.user")) {
+      localStorage.setItem("konyx.user", process.env.NEXT_PUBLIC_DEFAULT_USER ?? "admin");
+    }
+    if (!localStorage.getItem("konyx.pass")) {
+      localStorage.setItem("konyx.pass", process.env.NEXT_PUBLIC_DEFAULT_PASS ?? "konyx123");
+    }
+  }, []);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -15,10 +24,13 @@ import { useState } from "react";
     setLoading(true);
 
     try {
-      // Usuario y contraseña fijos
-      if (user === "admin" && pass === "konyx123") {
+      // Leer usuario y contraseña vigente de localStorage
+      const storedUser = localStorage.getItem("konyx.user")!;
+      const storedPass = localStorage.getItem("konyx.pass")!;
+
+      if (user === storedUser && pass === storedPass) {
         sessionStorage.setItem("konyx_session", "1"); // sesión temporal
-        onOk("dummy-token"); // redirige al dashboard
+        await onOk("dummy-token"); // redirige al dashboard
       } else {
         setErr("Usuario o contraseña incorrecta");
       }
@@ -37,7 +49,7 @@ import { useState } from "react";
         <img
           src="/logo.png"
           alt="Konyx"
-          className="h-96 w-auto drop-shadow-md"
+          className="h-24 w-auto drop-shadow-md"
         />
       </div>
 
