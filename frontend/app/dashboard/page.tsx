@@ -28,10 +28,38 @@ const CUENTAS = [
 export default function DashboardPage() {
   const router = useRouter();
 
-  useEffect(() => {
-    const t = sessionStorage.getItem("token");
-    if (!t) router.replace("/");
-  }, [router]);
+ import Cookies from "js-cookie";
+
+useEffect(() => {
+  const token = Cookies.get("konyx_token");
+  if (!token) {
+    router.replace("/");
+    return;
+  }
+
+  // Validar token con backend
+  fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/me`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`
+    },
+    cache: "no-store"
+  })
+    .then(async res => {
+      if (!res.ok) throw new Error("Token inválido");
+      return res.json();
+    })
+    .then(data => {
+      // Opcional: puedes guardar info del usuario si quieres
+      console.log("Usuario autenticado:", data.user);
+    })
+    .catch(() => {
+      // Token inválido o caducado
+      Cookies.remove("konyx_token");
+      router.replace("/");
+    });
+}, [router]);
+
 
   const [menu, setMenu] = useState<MenuKey>("formatoImport");
 
