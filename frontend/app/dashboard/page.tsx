@@ -26,7 +26,7 @@ const CUENTAS = ["70500000 Prestaciones de servicios", "70000000 Venta de mercad
 export default function DashboardPage() {
   const router = useRouter();
 
-  /* ------------------ Hooks declarados primero ------------------ */
+  /* ------------------ Hooks ------------------ */
   const [authChecked, setAuthChecked] = useState(false);
   const [token, setToken] = useState<string | null>(null);
 
@@ -127,7 +127,8 @@ export default function DashboardPage() {
   return (
     <main className="min-h-screen bg-no-repeat bg-center bg-cover p-4" style={{backgroundImage:"url(/fondo.png)", backgroundSize:"100% 100%", backgroundRepeat:"no-repeat"}}>
       <div className="mx-auto max-w-7xl grid grid-cols-1 md:grid-cols-[260px_1fr] gap-6">
-        {/* ------------------ Sidebar ------------------ */}
+
+        {/* Sidebar */}
         <aside className="md:sticky md:top-6">
           <div className="bg-slate-500/90 backdrop-blur rounded-2xl shadow p-4">
             <div className="flex justify-center mb-4">
@@ -150,7 +151,7 @@ export default function DashboardPage() {
           </div>
         </aside>
 
-        {/* ------------------ Contenido principal ------------------ */}
+        {/* Contenido principal */}
         <section className="space-y-6">
           {menu==="formatoImport" && <PanelOption title="Formato Importación" options={FORMATO_IMPORT_OPTS} value={formatoImport} onChange={setFormatoImport} />}
           {menu==="formatoExport" && <PanelOption title="Formato Exportación" options={FORMATO_EXPORT_OPTS} value={formatoExport} onChange={setFormatoExport} />}
@@ -169,113 +170,113 @@ export default function DashboardPage() {
             <h2 className="text-lg font-semibold mb-4">Fichero de datos</h2>
             <label className="inline-flex items-center gap-3 px-4 py-2 rounded-lg border border-indigo-300 hover:bg-indigo-50 cursor-pointer">
               <span className="text-indigo-700 font-medium">Seleccionar Excel</span>
-              <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={onPickFile} />
+              <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={onPickFile}/>
             </label>
             {ficheroNombre && <p className="mt-2 text-sm text-indigo-700 font-semibold">{ficheroNombre}</p>}
           </div>}
-          {menu==="config" && <PanelConfig />}
-          {menu==="exportar" && <PanelExport />}
-          {menu==="cerrar" && <PanelCerrar />}
-          
-          {/* ------------------ Resumen inferior ------------------ */}
-          <div className="bg-indigo-100/90 rounded-2xl shadow p-6 border border-indigo-200 mt-8">
-            <h3 className="text-base font-semibold text-indigo-800 mb-3">Resumen de selección</h3>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
-              <SummaryItem label="Formato Importación" value={formatoImport ?? "—"} />
-              <SummaryItem label="Formato Exportación" value={formatoExport ?? "—"} />
-              <SummaryItem label="Empresa" value={empresa ?? "—"} />
-              <SummaryItem label="Fecha factura" value={fmtFecha(fechaFactura)} />
-              <SummaryItem label="Proyecto" value={proyecto ?? "—"} />
-              <SummaryItem label="Cuenta contable" value={cuenta==="Otra (introducir)"?(cuentaOtra||"—"):(cuenta??"—")} />
-              <SummaryItem label="Fichero" value={ficheroNombre||"—"} />
-            </div>
-          </div>
+          {menu==="config" && <PanelConfig
+            apiKissoroVigente={apiKissoroVigente} apiKissoroNuevo={apiKissoroNuevo} setApiKissoroNuevo={setApiKissoroNuevo} apiKissoroMsg={apiKissoroMsg}
+            apiEnPluralVigente={apiEnPluralVigente} apiEnPluralNuevo={apiEnPluralNuevo} setApiEnPluralNuevo={setApiEnPluralNuevo} apiEnPluralMsg={apiEnPluralMsg}
+            passActual={passActual} setPassActual={setPassActual} passNueva={passNueva} setPassNueva={setPassNueva} passConfirma={passConfirma} setPassConfirma={setPassConfirma} passMsg={passMsg}
+            onCambioApis={onCambioApis} onCambioPassword={onCambioPassword}
+          />}
+          {menu==="exportar" && <PanelExport onConfirm={onConfirmExport} />}
+          {menu==="cerrar" && <PanelCerrar onConfirm={logout} onCancel={()=>setMenu("formatoImport")} />}
         </section>
+
+        {/* Resumen inferior */}
+        <div className="bg-indigo-100/90 rounded-2xl shadow p-6 border border-indigo-200 mt-8">
+          <h3 className="text-base font-semibold text-indigo-800 mb-3">Resumen de selección</h3>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
+            <SummaryItem label="Formato Importación" value={formatoImport??"—"} />
+            <SummaryItem label="Formato Exportación" value={formatoExport??"—"} />
+            <SummaryItem label="Empresa" value={empresa??"—"} />
+            <SummaryItem label="Fecha factura" value={fmtFecha(fechaFactura)} />
+            <SummaryItem label="Proyecto" value={proyecto??"—"} />
+            <SummaryItem label="Cuenta contable" value={cuenta==="Otra (introducir)"?(cuentaOtra||"—"):(cuenta??"—")} />
+            <SummaryItem label="Fichero" value={ficheroNombre||"—"} />
+          </div>
+        </div>
       </div>
     </main>
   );
-
-  /* ------------------ Subcomponentes de paneles ------------------ */
-  function PanelOption<T extends string>({title,options,value,onChange}:{title:string;options:readonly T[];value:T|null;onChange:(v:T)=>void}) {
-    return <div className="bg-white/90 backdrop-blur rounded-2xl shadow p-6">
-      <h2 className="text-lg font-semibold mb-4">{title}</h2>
-      <OptionGrid options={options} value={value} onChange={onChange} />
-    </div>;
-  }
-
-  function PanelConfig() {
-    return <div className="bg-white/90 backdrop-blur rounded-2xl shadow p-6 space-y-8">
-      <h2 className="text-lg font-semibold">Configuración</h2>
-      
-      {/* Cambio contraseña */}
-      <div className="space-y-3">
-        <h3 className="text-sm font-semibold">Cambio de contraseña</h3>
-        <div className="grid md:grid-cols-[1fr_1fr_1fr_auto] gap-3 items-center">
-          <input type="password" value={passActual} onChange={e=>setPassActual(e.target.value)} placeholder="Contraseña actual" className="rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-          <input type="password" value={passNueva} onChange={e=>setPassNueva(e.target.value)} placeholder="Nueva contraseña" className="rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-          <input type="password" value={passConfirma} onChange={e=>setPassConfirma(e.target.value)} placeholder="Confirmar nueva contraseña" className="rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-          <button type="button" onClick={onCambioPassword} className="px-4 py-2 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700">Cambio</button>
-        </div>
-        {passMsg && <p className={`text-sm ${passMsg.type==="ok"?"text-green-700":"text-red-700"}`}>{passMsg.text}</p>}
-      </div>
-
-      {/* APIs */}
-      <div className="space-y-3">
-        <h3 className="text-sm font-semibold">API Holded Kissoro</h3>
-        <div className="grid md:grid-cols-[1fr_1fr_auto] gap-3 items-center">
-          <input type="text" value={apiKissoroVigente} readOnly className="rounded-lg border border-indigo-300 px-3 py-2 bg-gray-100 text-gray-600" />
-          <input type="text" value={apiKissoroNuevo} onChange={e=>setApiKissoroNuevo(e.target.value)} placeholder="Nuevo API" className="rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-          <button type="button" onClick={onCambioApis} className="px-4 py-2 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700">Cambio</button>
-        </div>
-        {apiKissoroMsg && <p className={`text-sm ${apiKissoroMsg.type==="ok"?"text-green-700":"text-red-700"}`}>{apiKissoroMsg.text}</p>}
-      </div>
-
-      <div className="space-y-3">
-        <h3 className="text-sm font-semibold">API Holded En Plural Psicologia</h3>
-        <div className="grid md:grid-cols-[1fr_1fr_auto] gap-3 items-center">
-          <input type="text" value={apiEnPluralVigente} readOnly className="rounded-lg border border-indigo-300 px-3 py-2 bg-gray-100 text-gray-600" />
-          <input type="text" value={apiEnPluralNuevo} onChange={e=>setApiEnPluralNuevo(e.target.value)} placeholder="Nuevo API" className="rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-          <button type="button" onClick={onCambioApis} className="px-4 py-2 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700">Cambio</button>
-        </div>
-        {apiEnPluralMsg && <p className={`text-sm ${apiEnPluralMsg.type==="ok"?"text-green-700":"text-red-700"}`}>{apiEnPluralMsg.text}</p>}
-      </div>
-    </div>;
-  }
-
-  function PanelExport() { return <div className="bg-white/90 backdrop-blur rounded-2xl shadow p-6">
-    <h2 className="text-lg font-semibold mb-4">Exportar</h2>
-    <p className="text-sm text-gray-700 mb-4">¿Deseas exportar los datos con la configuración seleccionada?</p>
-    <div className="flex gap-3">
-      <button onClick={()=>onConfirmExport(true)} className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700">Sí, exportar</button>
-      <button onClick={()=>onConfirmExport(false)} className="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50">No, cancelar</button>
-    </div>
-  </div>; }
-
-  function PanelCerrar() { return <div className="bg-white/90 backdrop-blur rounded-2xl shadow p-6">
-    <h2 className="text-lg font-semibold mb-4">Cerrar Sesión</h2>
-    <p className="text-sm text-gray-700 mb-4">¿Seguro que quieres cerrar sesión?</p>
-    <div className="flex gap-3">
-      <button onClick={logout} className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700">Sí</button>
-      <button onClick={()=>setMenu("formatoImport")} className="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50">No</button>
-    </div>
-  </div>; }
 }
 
-/* ------------------ Componentes auxiliares ------------------ */
+/* ------------------ Subcomponentes ------------------ */
 function Item({ active, onClick, children }: { active?: boolean; onClick: ()=>void; children: React.ReactNode }) {
   return <button type="button" onClick={onClick} className={`w-full text-left px-3 py-2 rounded-lg transition ${active?"bg-indigo-600 text-white font-semibold shadow":"hover:bg-indigo-200 hover:text-indigo-800 text-white"}`}>{children}</button>;
 }
 
 function OptionGrid<T extends string>({ options, value, onChange }: { options: readonly T[]; value: T | null; onChange: (v:T)=>void }) {
-  return <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-    {options.map(opt => <button key={opt} type="button" onClick={()=>onChange(opt)} className={`px-3 py-2 rounded-lg border transition text-sm ${value===opt?"bg-indigo-600 border-indigo-700 text-white font-semibold ring-2 ring-indigo-300":"border-indigo-300 text-indigo-800 hover:bg-indigo-100"}`}>{opt}</button>)}
-  </div>;
+  return <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">{options.map(opt=><button key={opt} type="button" onClick={()=>onChange(opt)} className={`px-3 py-2 rounded-lg border transition text-sm ${value===opt?"bg-indigo-600 border-indigo-700 text-white font-semibold ring-2 ring-indigo-300":"border-indigo-300 text-indigo-800 hover:bg-indigo-100"}`}>{opt}</button>)}</div>;
 }
 
 function SummaryItem({ label, value }: { label:string; value:string }) {
-  return <div className="rounded-lg bg-white/70 border border-indigo-100 px-3 py-2">
-    <div className="text-xs text-indigo-700">{label}</div>
-    <div className="font-medium text-gray-900 break-words">{value}</div>
+  return <div className="rounded-lg bg-white/70 border border-indigo-100 px-3 py-2"><div className="text-xs text-indigo-700">{label}</div><div className="font-medium text-gray-900 break-words">{value}</div></div>;
+}
+
+function PanelOption<T extends string>({ title, options, value, onChange }: { title:string; options: readonly T[]; value:T|null; onChange:(v:T)=>void }) {
+  return <div className="bg-white/90 backdrop-blur rounded-2xl shadow p-6"><h2 className="text-lg font-semibold mb-4">{title}</h2><OptionGrid options={options} value={value} onChange={onChange}/></div>;
+}
+
+function PanelConfig({ apiKissoroVigente, apiKissoroNuevo, setApiKissoroNuevo, apiKissoroMsg, apiEnPluralVigente, apiEnPluralNuevo, setApiEnPluralNuevo, apiEnPluralMsg, passActual, setPassActual, passNueva, setPassNueva, passConfirma, setPassConfirma, passMsg, onCambioApis, onCambioPassword }: any) {
+  return <div className="space-y-8">
+    <h2 className="text-lg font-semibold">Configuración</h2>
+
+    {/* Cambio contraseña */}
+    <div className="space-y-3">
+      <h3 className="text-sm font-semibold">Cambio de contraseña</h3>
+      <div className="grid md:grid-cols-[1fr_1fr_1fr_auto] gap-3 items-center">
+        <input type="password" value={passActual} onChange={e=>setPassActual(e.target.value)} placeholder="Contraseña actual" className="rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
+        <input type="password" value={passNueva} onChange={e=>setPassNueva(e.target.value)} placeholder="Nueva contraseña" className="rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
+        <input type="password" value={passConfirma} onChange={e=>setPassConfirma(e.target.value)} placeholder="Confirmar nueva contraseña" className="rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
+        <button type="button" onClick={onCambioPassword} className="px-4 py-2 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700">Cambio</button>
+      </div>
+      {passMsg && <p className={`text-sm ${passMsg.type==="ok"?"text-green-700":"text-red-700"}`}>{passMsg.text}</p>}
+    </div>
+
+    {/* APIs */}
+    <div className="space-y-3">
+      <h3 className="text-sm font-semibold">API Holded Kissoro</h3>
+      <div className="grid md:grid-cols-[1fr_1fr_auto] gap-3 items-center">
+        <input type="text" value={apiKissoroVigente} readOnly className="rounded-lg border border-indigo-300 px-3 py-2 bg-gray-100 text-gray-600"/>
+        <input type="text" value={apiKissoroNuevo} onChange={e=>setApiKissoroNuevo(e.target.value)} placeholder="Nuevo API" className="rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
+        <button type="button" onClick={onCambioApis} className="px-4 py-2 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700">Cambio</button>
+      </div>
+      {apiKissoroMsg && <p className={`text-sm ${apiKissoroMsg.type==="ok"?"text-green-700":"text-red-700"}`}>{apiKissoroMsg.text}</p>}
+    </div>
+
+    <div className="space-y-3">
+      <h3 className="text-sm font-semibold">API Holded En Plural Psicologia</h3>
+      <div className="grid md:grid-cols-[1fr_1fr_auto] gap-3 items-center">
+        <input type="text" value={apiEnPluralVigente} readOnly className="rounded-lg border border-indigo-300 px-3 py-2 bg-gray-100 text-gray-600"/>
+        <input type="text" value={apiEnPluralNuevo} onChange={e=>setApiEnPluralNuevo(e.target.value)} placeholder="Nuevo API" className="rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
+        <button type="button" onClick={onCambioApis} className="px-4 py-2 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700">Cambio</button>
+      </div>
+      {apiEnPluralMsg && <p className={`text-sm ${apiEnPluralMsg.type==="ok"?"text-green-700":"text-red-700"}`}>{apiEnPluralMsg.text}</p>}
+    </div>
+  </div>;
+}
+
+function PanelExport({ onConfirm }: { onConfirm: (ok:boolean)=>void }) {
+  return <div className="bg-white/90 backdrop-blur rounded-2xl shadow p-6">
+    <h2 className="text-lg font-semibold mb-4">Exportar</h2>
+    <p className="text-sm text-gray-700 mb-4">¿Deseas exportar los datos con la configuración seleccionada?</p>
+    <div className="flex gap-3">
+      <button onClick={()=>onConfirm(true)} className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700">Sí, exportar</button>
+      <button onClick={()=>onConfirm(false)} className="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50">No, cancelar</button>
+    </div>
+  </div>;
+}
+
+function PanelCerrar({ onConfirm, onCancel }: { onConfirm: ()=>void; onCancel: ()=>void }) {
+  return <div className="bg-white/90 backdrop-blur rounded-2xl shadow p-6">
+    <h2 className="text-lg font-semibold mb-4">Cerrar Sesión</h2>
+    <p className="text-sm text-gray-700 mb-4">¿Seguro que quieres cerrar sesión?</p>
+    <div className="flex gap-3">
+      <button onClick={onConfirm} className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700">Sí</button>
+      <button onClick={onCancel} className="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50">No</button>
+    </div>
   </div>;
 }
 
