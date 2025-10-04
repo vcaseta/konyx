@@ -9,7 +9,11 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v2  # Clonar el repositorio
+
+      # Cambiar el directorio a la subcarpeta frontend
+      - name: Change directory to frontend
+        run: cd frontend
 
       # Set up Node.js
       - name: Set up Node.js
@@ -24,9 +28,3 @@ jobs:
       # Run build
       - name: Build project
         run: npm run build
-
-      # Deploy if needed
-      - name: Deploy to server
-        run: |
-          docker build -t my-app .
-          docker run -d -p 3000:3000 my-app
