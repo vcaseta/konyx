@@ -3,7 +3,7 @@ import React from "react";
 
 /* ------------------ Componentes auxiliares ------------------ */
 
-export function Item({ active, onClick, children }: { active: boolean; onClick: ()=>void; children: React.ReactNode }) {
+export function Item({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button
       type="button"
@@ -144,34 +144,10 @@ export function PanelConfig({
       <div className="space-y-3">
         <h3 className="text-sm font-semibold">Cambio de contraseña</h3>
         <div className="grid md:grid-cols-[1fr_1fr_1fr_auto] gap-3 items-center">
-          <input
-            type="password"
-            value={passActual}
-            onChange={e => setPassActual(e.target.value)}
-            placeholder="Contraseña actual"
-            className="rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
-          <input
-            type="password"
-            value={passNueva}
-            onChange={e => setPassNueva(e.target.value)}
-            placeholder="Nueva contraseña"
-            className="rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
-          <input
-            type="password"
-            value={passConfirma}
-            onChange={e => setPassConfirma(e.target.value)}
-            placeholder="Confirmar nueva contraseña"
-            className="rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
-          <button
-            type="button"
-            onClick={onCambioPassword}
-            className="px-4 py-2 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700"
-          >
-            Cambio
-          </button>
+          <input type="password" value={passActual} onChange={e => setPassActual(e.target.value)} placeholder="Contraseña actual" className="rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          <input type="password" value={passNueva} onChange={e => setPassNueva(e.target.value)} placeholder="Nueva contraseña" className="rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          <input type="password" value={passConfirma} onChange={e => setPassConfirma(e.target.value)} placeholder="Confirmar nueva contraseña" className="rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          <button type="button" onClick={onCambioPassword} className="px-4 py-2 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700">Cambio</button>
         </div>
         {passMsg && <p className={`text-sm ${passMsg.type === "ok" ? "text-green-700" : "text-red-700"}`}>{passMsg.text}</p>}
       </div>
