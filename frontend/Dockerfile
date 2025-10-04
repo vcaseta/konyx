@@ -22,7 +22,8 @@ COPY . .
 ARG NEXT_PUBLIC_BACKEND_URL
 ARG NEXT_PUBLIC_APP_NAME
 ARG NEXT_PUBLIC_COMPANIES
-ENV NODE_ENV=development  # Hacemos que el entorno sea de desarrollo
+# Hacemos que el entorno sea de desarrollo
+ENV NODE_ENV=development
 ENV NEXT_TELEMETRY_DISABLED=1
 
 # Construcción de Next.js en modo standalone
@@ -44,4 +45,5 @@ COPY --from=builder /app/public ./public
 EXPOSE 3000
 
 # Ejecutamos Next.js en modo de desarrollo
-CMD ["npm", "run", "dev"]  # Asegúrate de ejecutar el servidor en desarrollo
+CMD ["npm", "run", "dev"]
+
