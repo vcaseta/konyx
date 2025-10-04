@@ -1,4 +1,4 @@
-# Stage 1: Dependencias
+# ---------- Stage 1: Dependencias ----------
 FROM node:20-alpine AS deps
 WORKDIR /app
 
@@ -8,7 +8,7 @@ COPY package.json package-lock.json* ./
 # Instalamos las dependencias (sin requerir package-lock.json)
 RUN npm install --legacy-peer-deps
 
-# Stage 2: Build
+# ---------- Stage 2: Build ----------
 FROM node:20-alpine AS builder
 WORKDIR /app
 
@@ -30,11 +30,12 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # Construcción de Next.js en modo standalone
 RUN npm run build
 
-# Stage 3: Runtime
+# ---------- Stage 3: Runtime ----------
 FROM node:20-alpine AS runner
 WORKDIR /app
 
-ENV NODE_ENV=development  # Hacemos que el entorno sea de desarrollo
+# Hacemos que el entorno sea de desarrollo
+ENV NODE_ENV=development
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
