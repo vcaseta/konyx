@@ -31,7 +31,7 @@ const CUENTAS = [
   "Otra (introducir)",
 ] as const;
 
-/* ------------------ Helpers de storage (demo) ------------------ */
+/* ------------------ Storage (demo) ------------------ */
 const PASS_KEY = "konyx.pass";
 const API_KISSORO_KEY = "konyx.api.kissoro";
 const API_ENPLURAL_KEY = "konyx.api.enplural";
@@ -45,7 +45,6 @@ function setStoredPass(v: string) {
   if (typeof window === "undefined") return;
   localStorage.setItem(PASS_KEY, v);
 }
-
 function getStoredApi(key: string): string {
   if (typeof window === "undefined") return "";
   return localStorage.getItem(key) ?? "";
@@ -59,7 +58,7 @@ function setStoredApi(key: string, v: string) {
 export default function DashboardPage() {
   const router = useRouter();
 
-  // Protección: exige token de sesión
+  // Requiere token de sesión
   useEffect(() => {
     const t = sessionStorage.getItem("token");
     if (!t) router.replace("/");
@@ -68,7 +67,7 @@ export default function DashboardPage() {
   // Menú activo
   const [menu, setMenu] = useState<MenuKey>("formatoImport");
 
-  // Selecciones (variables de la sesión)
+  // Selecciones (reseteables por sesión)
   const [formatoImport, setFormatoImport] =
     useState<(typeof FORMATO_IMPORT_OPTS)[number] | null>(null);
   const [formatoExport, setFormatoExport] =
@@ -85,19 +84,13 @@ export default function DashboardPage() {
   const [ficheroNombre, setFicheroNombre] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const onPickFileClick = () => fileInputRef.current?.click();
-  const onPickFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    setFicheroNombre(f ? f.name : "");
-  };
-
   // Configuración: Contraseña
   const [passActual, setPassActual] = useState("");
   const [passNueva, setPassNueva] = useState("");
   const [passConfirma, setPassConfirma] = useState("");
   const [passMsg, setPassMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
-  // Configuración: APIs (vigente solo lectura, nuevo editable + “Cambio”)
+  // Configuración: APIs (vigente RO, nuevo editable)
   const [apiKissoroVigente, setApiKissoroVigente] = useState("");
   const [apiKissoroNuevo, setApiKissoroNuevo] = useState("");
   const [apiKissoroMsg, setApiKissoroMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
@@ -106,14 +99,14 @@ export default function DashboardPage() {
   const [apiEnPluralNuevo, setApiEnPluralNuevo] = useState("");
   const [apiEnPluralMsg, setApiEnPluralMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
-  // Cargar valores persistentes (no se reinician entre sesiones)
+  // Cargar persistentes
   useEffect(() => {
     if (!localStorage.getItem(PASS_KEY)) setStoredPass("admin");
     setApiKissoroVigente(getStoredApi(API_KISSORO_KEY));
     setApiEnPluralVigente(getStoredApi(API_ENPLURAL_KEY));
   }, []);
 
-  // Al entrar con nueva sesión, resetear las partes variables (NO APIs/contraseña)
+  // Reset de estados variables al entrar con nueva sesión
   useEffect(() => {
     const needsReset = sessionStorage.getItem("reset-dashboard-state") === "1";
     if (needsReset) {
@@ -126,12 +119,18 @@ export default function DashboardPage() {
       setCuenta(null);
       setCuentaOtra("");
       setFicheroNombre("");
-      // limpiamos el flag de reseteo para no repetirlo
       sessionStorage.removeItem("reset-dashboard-state");
     }
   }, []);
 
-  // Habilitación de Exportar
+  // File picker
+  const onPickFileClick = () => fileInputRef.current?.click();
+  const onPickFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    setFicheroNombre(f ? f.name : "");
+  };
+
+  // Export habilitado
   const exportReady = useMemo(() => {
     const cuentaOk =
       cuenta === "Otra (introducir)" ? !!cuentaOtra.trim() : !!cuenta;
@@ -155,7 +154,6 @@ export default function DashboardPage() {
     ficheroNombre,
   ]);
 
-  // Exportar (solo esqueleto por ahora)
   function onExportAsk() {
     if (!exportReady) return;
     setMenu("exportar");
@@ -169,7 +167,7 @@ export default function DashboardPage() {
     setMenu("formatoImport");
   }
 
-  // Cambio de contraseña (pulsador “Cambio”)
+  // Cambio de contraseña
   function onCambioPassword() {
     setPassMsg(null);
     const vigente = getStoredPass();
@@ -192,7 +190,7 @@ export default function DashboardPage() {
     setPassConfirma("");
   }
 
-  // Cambio de API Kissoro
+  // Cambio APIs
   function onCambioApiKissoro() {
     setApiKissoroMsg(null);
     if (!apiKissoroNuevo.trim()) {
@@ -204,8 +202,6 @@ export default function DashboardPage() {
     setApiKissoroNuevo("");
     setApiKissoroMsg({ type: "ok", text: "API Kissoro actualizado." });
   }
-
-  // Cambio de API En Plural Psicologia
   function onCambioApiEnPlural() {
     setApiEnPluralMsg(null);
     if (!apiEnPluralNuevo.trim()) {
@@ -218,15 +214,13 @@ export default function DashboardPage() {
     setApiEnPluralMsg({ type: "ok", text: "API En Plural Psicologia actualizado." });
   }
 
-  // Cerrar sesión: limpiar token y todo el estado de la sesión
+  // Cerrar sesión (limpia sessionStorage)
   function logout() {
-    // Borra TODO lo de sessionStorage (token + flags de sesión)
     sessionStorage.clear();
-    // Navegación limpia al login
     router.replace("/");
   }
 
-  // Formatea fecha DD-MM-YYYY para resumen
+  // Formatear fecha DD-MM-YYYY
   function fmtFecha(fechaIso: string) {
     if (!fechaIso) return "—";
     const d = new Date(fechaIso);
@@ -251,7 +245,7 @@ export default function DashboardPage() {
         <aside className="md:sticky md:top-6">
           <div className="bg-slate-500/90 backdrop-blur rounded-2xl shadow p-4">
             <div className="flex justify-center mb-4">
-              {/* LOGO al doble de tamaño: h-48 */}
+              {/* LOGO al doble de tamaño */}
               <img src="/logo.png" alt="Konyx" className="h-48 w-auto drop-shadow-md" />
             </div>
 
@@ -277,12 +271,12 @@ export default function DashboardPage() {
               </Item>
               <Item active={menu === "fichero"} onClick={() => setMenu("fichero")}>
                 Fichero de datos
-              </Item }
+              </Item>
               <Item active={menu === "config"} onClick={() => setMenu("config")}>
                 Configuración
               </Item>
 
-              {/* Exportar resaltado cuando está disponible */}
+              {/* Exportar (resaltado si listo) */}
               <button
                 type="button"
                 onClick={onExportAsk}
@@ -308,7 +302,7 @@ export default function DashboardPage() {
 
         {/* ------------ Contenido (derecha) ------------ */}
         <section className="space-y-6">
-          {/* Panel de selección (carta blanca) */}
+          {/* Panel de selección */}
           <div className="bg-white/90 backdrop-blur rounded-2xl shadow p-6">
             {menu === "formatoImport" && (
               <div>
@@ -579,7 +573,7 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* Resumen inferior */}
+          {/* Resumen inferior (más abajo y un poco más oscuro) */}
           <div className="bg-indigo-100/90 rounded-2xl shadow p-6 border border-indigo-200 mt-8">
             <h3 className="text-base font-semibold text-indigo-800 mb-3">
               Resumen de selección
@@ -614,7 +608,7 @@ function Item({
   onClick: () => void;
   children: React.ReactNode;
 }) {
-  // Activo en lila; hover en lila claro
+  // Activo lila; hover lila claro; texto blanco desactivado
   return (
     <button
       type="button"
