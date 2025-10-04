@@ -2,10 +2,10 @@
 FROM node:20-alpine AS deps
 WORKDIR /app
 
-# Copia package.json y package-lock.json
+# Copia package.json y package-lock.json si existe
 COPY package.json package-lock.json* ./
 
-# Instalamos las dependencias
+# Instalamos todas las dependencias (sin requerir package-lock.json)
 RUN npm install --legacy-peer-deps
 
 # ---------- Stage 2: Build ----------
@@ -18,34 +18,30 @@ COPY --from=deps /app/node_modules ./node_modules
 # Copiamos todo el código
 COPY . .
 
-# Variables de entorno opcionales durante el build
+# Variables de entorno opcionales durante build
 ARG NEXT_PUBLIC_BACKEND_URL
 ARG NEXT_PUBLIC_APP_NAME
 ARG NEXT_PUBLIC_COMPANIES
-
-# Hacemos que el entorno sea de desarrollo
 ENV NODE_ENV=development
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Construcción de Next.js
-RUN npm run build
+# Construcción de Next.js en modo de desarrollo
+RUN npm run dev
 
 # ---------- Stage 3: Runtime ----------
 FROM node:20-alpine AS runner
 WORKDIR /app
 
-# Hacemos que el entorno sea de desarrollo
 ENV NODE_ENV=development
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
-# Copiamos la build standalone y archivos públicos
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
+# Copiamos la build y archivos públicos
+COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 
 EXPOSE 3000
 
-# Solo una instrucción CMD, ya que solo se ejecuta la última.
+# Ejecuta Next.js en modo de desarrollo
 CMD ["npm", "run", "dev"]
 
