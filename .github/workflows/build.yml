@@ -1,4 +1,4 @@
-name: Build and Deploy
+name: Build & Publish Docker images
 
 on:
   push:
@@ -8,23 +8,41 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+
     steps:
-      - uses: actions/checkout@v2  # Clonar el repositorio
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-      # Cambiar el directorio a la subcarpeta frontend
-      - name: Change directory to frontend
-        run: cd frontend
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
 
-      # Set up Node.js
-      - name: Set up Node.js
-        uses: actions/setup-node@v2
+      - name: Log in to GitHub Container Registry (GHCR)
+        uses: docker/login-action@v2
         with:
-          node-version: '16'
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Install dependencies
-      - name: Install dependencies
-        run: npm install
+      - name: Build & Push backend
+        uses: docker/build-push-action@v4
+        with:
+          context: ./backend
+          push: true
+          tags: ghcr.io/vcaseta/konyx-backend:latest
 
-      # Run build
-      - name: Build project
-        run: npm run build
+      - name: Build & Push frontend
+        uses: docker/build-push-action@v4
+        with:
+          context: ./frontend
+          push: true
+          tags: ghcr.io/vcaseta/konyx-frontend:latest
+          build-args: |
+            NEXT_PUBLIC_BACKEND_URL=http://192.168.1.51:8000
+            NEXT_PUBLIC_APP_NAME=Konyx
+            NEXT_PUBLIC_COMPANIES=[{"id":"001","name":"Kissoro"},{"id":"002","name":"En Plural Psicologia"}]
+
+      - name: Clean up Docker Buildx
+        run: docker buildx prune --all --force
