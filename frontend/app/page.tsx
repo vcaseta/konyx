@@ -28,11 +28,6 @@ export default function Page() {
       }}
     >
       <div className="w-full max-w-sm">
-        {/* Logo dentro del cuadro de login */}
-        <div className="flex justify-center mb-6">
-          <img src="/logo.png" alt="Konyx" className="h-24 w-auto drop-shadow-md" />
-        </div>
-
         {/* Formulario de login */}
         <Login onOk={handleOk} />
       </div>
