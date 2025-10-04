@@ -1,7 +1,7 @@
-// app/page.tsx
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import Login from "./components/Login";
 
 export const dynamic = "force-dynamic";
@@ -9,11 +9,17 @@ export const dynamic = "force-dynamic";
 export default function Page() {
   const router = useRouter();
 
+  // Si ya hay token, redirigir automáticamente al dashboard
+  useEffect(() => {
+    const token = sessionStorage.getItem("token");
+    if (token) {
+      router.push("/dashboard");
+    }
+  }, []);
+
   async function handleOk(token: string) {
-    // Guardar token sólo en la sesión actual
     try {
       sessionStorage.setItem("token", token);
-      // Pedimos al dashboard que reinicie su estado variable al cargar
       sessionStorage.setItem("reset-dashboard-state", "1");
     } catch {}
     router.push("/dashboard");
@@ -28,17 +34,17 @@ export default function Page() {
         backgroundRepeat: "no-repeat",
       }}
     >
-      <div className="w-full max-w-sm">
-        {/* Logo grande encima del formulario (sin tocar estética previa) */}
+      <div className="w-full max-w-sm bg-white bg-opacity-80 rounded-xl shadow-md p-6 backdrop-blur">
+        {/* Logo dentro del cuadro */}
         <div className="flex justify-center mb-6">
           <img
             src="/logo.png"
             alt="Konyx"
-            className="h-24 w-auto drop-shadow-md"
+            className="h-20 w-auto drop-shadow-md"
           />
         </div>
 
-        {/* Formulario de acceso (componente existente) */}
+        {/* Formulario de acceso */}
         <Login onOk={handleOk} />
       </div>
     </main>
