@@ -31,25 +31,23 @@ const CUENTAS = [
   "Otra (introducir)",
 ] as const;
 
-/* ------------------ Página ------------------ */
+/* ------------------ Dashboard ------------------ */
 export default function DashboardPage() {
   const router = useRouter();
 
-  // ⚡ Estado para bloquear render hasta validar sesión
+  // Bloquea render hasta validar sesión
   const [authChecked, setAuthChecked] = useState(false);
 
-  // Validación de sesión al cargar la página
   useEffect(() => {
     if (typeof window === "undefined") return;
     const token = sessionStorage.getItem("konyx_session");
     if (!token) {
-      router.replace("/"); // si no hay sesión, redirige a login
+      router.replace("/"); // sin sesión, redirige a login
     } else {
-      setAuthChecked(true); // sesión válida
+      setAuthChecked(true);
     }
   }, [router]);
 
-  // ⚠ Bloqueo render hasta validar sesión
   if (!authChecked) return null;
 
   // Menú activo
@@ -72,7 +70,7 @@ export default function DashboardPage() {
     setFicheroNombre(f ? f.name : "");
   };
 
-  // Configuración: Contraseña
+  // Configuración: contraseña
   const [passActual, setPassActual] = useState("");
   const [passNueva, setPassNueva] = useState("");
   const [passConfirma, setPassConfirma] = useState("");
@@ -87,13 +85,11 @@ export default function DashboardPage() {
   const [apiEnPluralNuevo, setApiEnPluralNuevo] = useState("");
   const [apiEnPluralMsg, setApiEnPluralMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
-  // Token de sesión (solo en cliente)
   const token = sessionStorage.getItem("konyx_session");
 
-  // Cargar APIs desde backend solo una vez
+  // Cargar APIs una sola vez
   useEffect(() => {
     if (!token) return;
-
     async function fetchApis() {
       try {
         const res = await fetch("/auth/apis", {
@@ -107,37 +103,15 @@ export default function DashboardPage() {
         console.error(error);
       }
     }
-
     fetchApis();
   }, [token]);
 
   // Habilitación de Exportar
   const exportReady = useMemo(() => {
-    const cuentaOk =
-      cuenta === "Otra (introducir)"
-        ? cuentaOtra.trim().length > 0
-        : !!cuenta;
-    return (
-      !!formatoImport &&
-      !!formatoExport &&
-      !!empresa &&
-      !!fechaFactura &&
-      !!proyecto &&
-      cuentaOk &&
-      !!ficheroNombre
-    );
-  }, [
-    formatoImport,
-    formatoExport,
-    empresa,
-    fechaFactura,
-    proyecto,
-    cuenta,
-    cuentaOtra,
-    ficheroNombre,
-  ]);
+    const cuentaOk = cuenta === "Otra (introducir)" ? cuentaOtra.trim().length > 0 : !!cuenta;
+    return !!formatoImport && !!formatoExport && !!empresa && !!fechaFactura && !!proyecto && cuentaOk && !!ficheroNombre;
+  }, [formatoImport, formatoExport, empresa, fechaFactura, proyecto, cuenta, cuentaOtra, ficheroNombre]);
 
-  // Función para mostrar panel de exportación
   function onExportAsk() {
     if (!exportReady) return;
     setMenu("exportar");
@@ -152,7 +126,6 @@ export default function DashboardPage() {
     setMenu("formatoImport");
   }
 
-  // Guardar APIs en backend
   async function onCambioApis() {
     setApiKissoroMsg(null);
     setApiEnPluralMsg(null);
@@ -171,7 +144,6 @@ export default function DashboardPage() {
         }),
       });
       if (!res.ok) throw new Error("Error al actualizar APIs");
-
       setApiKissoroVigente(apiKissoroNuevo || apiKissoroVigente);
       setApiEnPluralVigente(apiEnPluralNuevo || apiEnPluralVigente);
       setApiKissoroNuevo("");
@@ -184,7 +156,6 @@ export default function DashboardPage() {
     }
   }
 
-  // Cambio de contraseña
   async function onCambioPassword() {
     setPassMsg(null);
     if (!token) return;
@@ -205,10 +176,7 @@ export default function DashboardPage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          old_password: passActual,
-          new_password: passNueva,
-        }),
+        body: JSON.stringify({ old_password: passActual, new_password: passNueva }),
       });
       if (!res.ok) throw new Error("Error al cambiar contraseña");
       setPassMsg({ type: "ok", text: "Contraseña actualizada correctamente" });
@@ -220,16 +188,14 @@ export default function DashboardPage() {
     }
   }
 
-  // Logout
   function logout() {
     sessionStorage.removeItem("konyx_session");
     router.replace("/");
   }
 
-  // Formatea fecha DD-MM-YYYY
   function fmtFecha(fechaIso: string) {
     if (!fechaIso) return "—";
-    const d = new Date(fechaIso + "T00:00"); // evita problema de zona horaria
+    const d = new Date(fechaIso + "T00:00");
     if (Number.isNaN(d.getTime())) return "—";
     const dd = String(d.getDate()).padStart(2, "0");
     const mm = String(d.getMonth() + 1).padStart(2, "0");
@@ -237,26 +203,7 @@ export default function DashboardPage() {
     return `${dd}-${mm}-${yyyy}`;
   }
 
-  return (
-    <main
-      className="min-h-screen bg-no-repeat bg-center bg-cover p-4"
-      style={{
-        backgroundImage: "url(/fondo.png)",
-        backgroundSize: "100% 100%",
-        backgroundRepeat: "no-repeat",
-      }}
-    >
-      {/* === resto de tu dashboard igual === */}
-      <div className="mx-auto max-w-7xl grid grid-cols-1 md:grid-cols-[260px_1fr] gap-6">
-        {/* Sidebar */}
-        {/* ... mantiene toda tu estructura original */}
-      </div>
-    </main>
-  );
-}
-
-/* ------------------ Componentes auxiliares ------------------ */
-// Mantén Item, OptionGrid, SummaryItem igual que tu código original
+  /* ------------------ JSX principal ------------------ */
 
   return (
     <main
@@ -603,60 +550,22 @@ export default function DashboardPage() {
 }
 /* ------------------ Componentes auxiliares ------------------ */
 
-function Item({
-  active,
-  onClick,
-  children,
-}: {
-  active?: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
+function Item({ active, onClick, children }: { active?: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`w-full text-left px-3 py-2 rounded-lg transition
-        ${
-          active
-            ? "bg-indigo-600 text-white font-semibold shadow"
-            : "hover:bg-indigo-200 hover:text-indigo-800 text-white"
-        }`}
-    >
+    <button type="button" onClick={onClick} className={`w-full text-left px-3 py-2 rounded-lg transition ${active ? "bg-indigo-600 text-white font-semibold shadow" : "hover:bg-indigo-200 hover:text-indigo-800 text-white"}`}>
       {children}
     </button>
   );
 }
 
-function OptionGrid<T extends string>({
-  options,
-  value,
-  onChange,
-}: {
-  options: readonly T[];
-  value: T | null;
-  onChange: (v: T) => void;
-}) {
+function OptionGrid<T extends string>({ options, value, onChange }: { options: readonly T[]; value: T | null; onChange: (v: T) => void }) {
   return (
     <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-      {options.map((opt) => {
-        const selected = value === opt;
-        return (
-          <button
-            key={opt}
-            type="button"
-            onClick={() => onChange(opt)}
-            className={`px-3 py-2 rounded-lg border transition text-sm
-              ${
-                selected
-                  ? "bg-indigo-600 border-indigo-700 text-white font-semibold ring-2 ring-indigo-300"
-                  : "border-indigo-300 text-indigo-800 hover:bg-indigo-100"
-              }`}
-          >
-            {opt}
-          </button>
-        );
-      })}
+      {options.map((opt) => (
+        <button key={opt} type="button" onClick={() => onChange(opt)} className={`px-3 py-2 rounded-lg border transition text-sm ${value === opt ? "bg-indigo-600 border-indigo-700 text-white font-semibold ring-2 ring-indigo-300" : "border-indigo-300 text-indigo-800 hover:bg-indigo-100"}`}>
+          {opt}
+        </button>
+      ))}
     </div>
   );
 }
@@ -668,4 +577,3 @@ function SummaryItem({ label, value }: { label: string; value: string }) {
       <div className="font-medium text-gray-900 break-words">{value}</div>
     </div>
   );
-}
