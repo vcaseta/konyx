@@ -13,7 +13,7 @@ services:
   konyx-frontend:
     image: ghcr.io/vcaseta/konyx-frontend:latest
     container_name: konyx-frontend
-    env_file: ./frontend/.env.production
+    env_file: .env
     depends_on:
       - konyx-backend
     ports:
