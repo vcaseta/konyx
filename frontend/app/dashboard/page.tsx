@@ -1,3 +1,4 @@
+// app/dashboard/page.tsx
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -34,8 +35,16 @@ const CUENTAS = [
 export default function DashboardPage() {
   const router = useRouter();
 
-  // Estado del menú y selecciones
+  // Validación de sesión al cargar la página
+  useEffect(() => {
+    const token = sessionStorage.getItem("konyx_session");
+    if (!token) router.replace("/"); // si no hay sesión, redirige a login
+  }, [router]);
+
+  // Menú activo
   const [menu, setMenu] = useState<MenuKey>("formatoImport");
+
+  // Selecciones
   const [formatoImport, setFormatoImport] = useState<(typeof FORMATO_IMPORT_OPTS)[number] | null>(null);
   const [formatoExport, setFormatoExport] = useState<(typeof FORMATO_EXPORT_OPTS)[number] | null>(null);
   const [empresa, setEmpresa] = useState<(typeof EMPRESAS)[number] | null>(null);
@@ -67,36 +76,29 @@ export default function DashboardPage() {
   const [apiEnPluralNuevo, setApiEnPluralNuevo] = useState("");
   const [apiEnPluralMsg, setApiEnPluralMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
-  // Token de sesión
-  const [token, setToken] = useState<string | null>(null);
+  const token = sessionStorage.getItem("konyx_session");
 
-  // ------------------ Validación de sesión y carga de APIs ------------------
+  // ------------------ Cargar APIs desde backend ------------------
   useEffect(() => {
-    if (typeof window === "undefined") return; // evita SSR
-    const sessionToken = sessionStorage.getItem("konyx_session");
-    if (!sessionToken) {
-      router.replace("/"); // no hay sesión → login
-      return;
-    }
-    setToken(sessionToken);
+    if (!token) return;
 
-    // Cargar APIs desde backend
     async function fetchApis() {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/apis`, {
-          headers: { Authorization: `Bearer ${sessionToken}` },
+        const res = await fetch("/auth/apis", {
+          headers: { Authorization: `Bearer ${token}` },
         });
         if (!res.ok) throw new Error("Error al cargar APIs");
         const data = await res.json();
-        setApiKissoroVigente(data.kissoro || "");
-        setApiEnPluralVigente(data.enplural || "");
+        setApiKissoroVigente(data.kissoro);
+        setApiEnPluralVigente(data.enplural);
       } catch (error) {
         console.error(error);
       }
     }
 
     fetchApis();
-  }, [router]);
+  }, [token]);
+
   // ------------------ Habilitación de Exportar ------------------
   const exportReady = useMemo(() => {
     const cuentaOk =
@@ -145,7 +147,7 @@ export default function DashboardPage() {
     if (!token) return;
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/apis`, {
+      const res = await fetch("/auth/apis", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -169,7 +171,6 @@ export default function DashboardPage() {
       setApiEnPluralMsg({ type: "err", text: error.message });
     }
   }
-
   // ------------------ Cambio de contraseña ------------------
   async function onCambioPassword() {
     setPassMsg(null);
@@ -185,7 +186,7 @@ export default function DashboardPage() {
     }
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/change-password`, {
+      const res = await fetch("/auth/change-password", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -208,7 +209,7 @@ export default function DashboardPage() {
 
   // ------------------ Logout ------------------
   function logout() {
-    if (typeof window !== "undefined") sessionStorage.removeItem("konyx_session");
+    sessionStorage.removeItem("konyx_session");
     router.replace("/");
   }
 
@@ -222,6 +223,7 @@ export default function DashboardPage() {
     const yyyy = d.getFullYear();
     return `${dd}-${mm}-${yyyy}`;
   }
+
   return (
     <main
       className="min-h-screen bg-no-repeat bg-center bg-cover p-4"
@@ -238,42 +240,23 @@ export default function DashboardPage() {
             <div className="flex justify-center mb-4">
               <img src="/logo.png" alt="Konyx" className="h-48 w-auto drop-shadow-md" />
             </div>
-
-            {/* Menú */}
             <nav className="space-y-2">
-              <Item active={menu === "formatoImport"} onClick={() => setMenu("formatoImport")}>
-                Formato Importación
-              </Item>
-              <Item active={menu === "formatoExport"} onClick={() => setMenu("formatoExport")}>
-                Formato Exportación
-              </Item>
-              <Item active={menu === "empresa"} onClick={() => setMenu("empresa")}>
-                Empresa
-              </Item>
-              <Item active={menu === "fecha"} onClick={() => setMenu("fecha")}>
-                Fecha factura
-              </Item>
-              <Item active={menu === "proyecto"} onClick={() => setMenu("proyecto")}>
-                Proyecto
-              </Item>
-              <Item active={menu === "cuenta"} onClick={() => setMenu("cuenta")}>
-                Cuenta contable
-              </Item>
-              <Item active={menu === "fichero"} onClick={() => setMenu("fichero")}>
-                Fichero de datos
-              </Item>
-              <Item active={menu === "config"} onClick={() => setMenu("config")}>
-                Configuración
-              </Item>
+              <Item active={menu === "formatoImport"} onClick={() => setMenu("formatoImport")}>Formato Importación</Item>
+              <Item active={menu === "formatoExport"} onClick={() => setMenu("formatoExport")}>Formato Exportación</Item>
+              <Item active={menu === "empresa"} onClick={() => setMenu("empresa")}>Empresa</Item>
+              <Item active={menu === "fecha"} onClick={() => setMenu("fecha")}>Fecha factura</Item>
+              <Item active={menu === "proyecto"} onClick={() => setMenu("proyecto")}>Proyecto</Item>
+              <Item active={menu === "cuenta"} onClick={() => setMenu("cuenta")}>Cuenta contable</Item>
+              <Item active={menu === "fichero"} onClick={() => setMenu("fichero")}>Fichero de datos</Item>
+              <Item active={menu === "config"} onClick={() => setMenu("config")}>Configuración</Item>
 
               <button
                 type="button"
                 onClick={onExportAsk}
                 className={`w-full text-left px-3 py-2 rounded-lg transition font-semibold border
-                  ${
-                    exportReady
-                      ? "border-indigo-600 text-indigo-700 bg-white/90 shadow hover:bg-indigo-200 hover:text-indigo-800"
-                      : "border-gray-300 text-gray-200 cursor-not-allowed"
+                  ${exportReady
+                    ? "border-indigo-600 text-indigo-700 bg-white/90 shadow hover:bg-indigo-200 hover:text-indigo-800"
+                    : "border-gray-300 text-gray-200 cursor-not-allowed"
                   }`}
                 title={exportReady ? "Listo para exportar" : "Completa todos los campos para exportar"}
               >
@@ -281,9 +264,7 @@ export default function DashboardPage() {
               </button>
 
               <div className="pt-2">
-                <Item active={menu === "cerrar"} onClick={() => setMenu("cerrar")}>
-                  Cerrar Sesión
-                </Item>
+                <Item active={menu === "cerrar"} onClick={() => setMenu("cerrar")}>Cerrar Sesión</Item>
               </div>
             </nav>
           </div>
@@ -291,15 +272,15 @@ export default function DashboardPage() {
 
         {/* ------------ Contenido (derecha) ------------ */}
         <section className="space-y-6">
-          {/* Paneles de selección */}
           <div className="bg-white/90 backdrop-blur rounded-2xl shadow p-6">
+
             {menu === "formatoImport" && (
               <div>
                 <h2 className="text-lg font-semibold mb-4">Formato Importación</h2>
                 <OptionGrid
                   options={FORMATO_IMPORT_OPTS}
                   value={formatoImport}
-                  onChange={setFormatoImport}
+                  onChange={(v) => setFormatoImport(v)}
                 />
               </div>
             )}
@@ -310,7 +291,7 @@ export default function DashboardPage() {
                 <OptionGrid
                   options={FORMATO_EXPORT_OPTS}
                   value={formatoExport}
-                  onChange={setFormatoExport}
+                  onChange={(v) => setFormatoExport(v)}
                 />
               </div>
             )}
@@ -321,7 +302,7 @@ export default function DashboardPage() {
                 <OptionGrid
                   options={EMPRESAS}
                   value={empresa}
-                  onChange={setEmpresa}
+                  onChange={(v) => setEmpresa(v)}
                 />
               </div>
             )}
@@ -344,18 +325,17 @@ export default function DashboardPage() {
                 <OptionGrid
                   options={PROYECTOS}
                   value={proyecto}
-                  onChange={setProyecto}
+                  onChange={(v) => setProyecto(v)}
                 />
               </div>
             )}
-
             {menu === "cuenta" && (
               <div>
                 <h2 className="text-lg font-semibold mb-4">Cuenta contable</h2>
                 <OptionGrid
                   options={CUENTAS}
                   value={cuenta}
-                  onChange={setCuenta}
+                  onChange={(v) => setCuenta(v)}
                 />
                 {cuenta === "Otra (introducir)" && (
                   <div className="mt-4">
@@ -435,7 +415,7 @@ export default function DashboardPage() {
                   )}
                 </div>
 
-                {/* APIs */}
+                {/* API Holded Kissoro */}
                 <div className="space-y-3">
                   <h3 className="text-sm font-semibold">API Holded Kissoro</h3>
                   <div className="grid md:grid-cols-[1fr_1fr_auto] gap-3 items-center">
@@ -464,6 +444,39 @@ export default function DashboardPage() {
                   {apiKissoroMsg && (
                     <p className={`text-sm ${apiKissoroMsg.type === "ok" ? "text-green-700" : "text-red-700"}`}>
                       {apiKissoroMsg.text}
+                    </p>
+                  )}
+                </div>
+
+                {/* API Holded En Plural Psicologia */}
+                <div className="space-y-3">
+                  <h3 className="text-sm font-semibold">API Holded En Plural Psicologia</h3>
+                  <div className="grid md:grid-cols-[1fr_1fr_auto] gap-3 items-center">
+                    <input
+                      type="text"
+                      value={apiEnPluralVigente}
+                      readOnly
+                      placeholder="API vigente"
+                      className="rounded-lg border border-indigo-300 px-3 py-2 bg-gray-100 text-gray-600"
+                    />
+                    <input
+                      type="text"
+                      value={apiEnPluralNuevo}
+                      onChange={(e) => setApiEnPluralNuevo(e.target.value)}
+                      placeholder="Nuevo API"
+                      className="rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={onCambioApis}
+                      className="px-4 py-2 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700"
+                    >
+                      Cambio
+                    </button>
+                  </div>
+                  {apiEnPluralMsg && (
+                    <p className={`text-sm ${apiEnPluralMsg.type === "ok" ? "text-green-700" : "text-red-700"}`}>
+                      {apiEnPluralMsg.text}
                     </p>
                   )}
                 </div>
@@ -517,7 +530,7 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* Resumen inferior */}
+          {/* Resumen inferior (azulado algo más oscuro) */}
           <div className="bg-indigo-100/90 rounded-2xl shadow p-6 border border-indigo-200 mt-8">
             <h3 className="text-base font-semibold text-indigo-800 mb-3">
               Resumen de selección
@@ -540,6 +553,7 @@ export default function DashboardPage() {
     </main>
   );
 }
+
 /* ------------------ Componentes auxiliares ------------------ */
 
 function Item({
