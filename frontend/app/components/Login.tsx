@@ -1,9 +1,7 @@
-// app/components/Login.tsx
 "use client";
 
 import { useState } from "react";
 import { apiLogin } from "../lib/api";
-import Cookies from "js-cookie";
 
 export default function Login({ onOk }: { onOk: (token: string) => void }) {
   const [user, setUser] = useState("");
@@ -17,8 +15,6 @@ export default function Login({ onOk }: { onOk: (token: string) => void }) {
     setLoading(true);
     try {
       const token = await apiLogin(user, pass);
-      if (!token) throw new Error("Token inválido");
-      Cookies.set("konyx_token", token); // <- Asegura que el middleware lo ve
       onOk(token);
     } catch (error: any) {
       setErr(error?.message || "No se pudo iniciar sesión");
@@ -32,11 +28,6 @@ export default function Login({ onOk }: { onOk: (token: string) => void }) {
       onSubmit={onSubmit}
       className="bg-white/90 backdrop-blur rounded-2xl shadow-lg p-6 space-y-4"
     >
-      {/* Logo dentro del cuadro */}
-      <div className="flex justify-center">
-        <img src="/logo.png" alt="Konyx" className="h-20 w-auto drop-shadow" />
-      </div>
-
       {err && (
         <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">
           {err}
@@ -76,5 +67,4 @@ export default function Login({ onOk }: { onOk: (token: string) => void }) {
       </button>
     </form>
   );
-}
 }
