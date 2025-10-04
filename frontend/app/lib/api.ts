@@ -2,12 +2,11 @@
 export const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "";
 
 export async function apiLogin(username: string, password: string): Promise<string> {
-  // Tu backend espera { user, password } (lo comprobaste con PowerShell)
   const res = await fetch(`${API_BASE}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     cache: "no-store",
-    body: JSON.stringify({ user: username, password }),
+    body: JSON.stringify({ username, password }), // <- CAMBIO CLAVE AQUÍ
   });
 
   if (!res.ok) {
