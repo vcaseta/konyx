@@ -75,16 +75,7 @@ export default function DashboardPage() {
   // ...Resto del dashboard: Sidebar, Contenido, Configuración, Exportación, Resumen
   // Mantener todos los componentes existentes, solo se actualizó la protección de ruta y logout
 
-  return (
-    <main className="min-h-screen bg-no-repeat bg-center bg-cover p-4"
-      style={{ backgroundImage: "url(/fondo.png)", backgroundSize: "100% 100%", backgroundRepeat: "no-repeat" }}>
-      {/* Copiar aquí todo el JSX existente del dashboard (sidebar, paneles, resumen) */}
-    </main>
-  );
-}
 
-
-  // ------------------ JSX completo ------------------
   return (
     <main
       className="min-h-screen bg-no-repeat bg-center bg-cover p-4"
