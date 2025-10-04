@@ -61,14 +61,15 @@ export default function DashboardPage() {
   const router = useRouter();
 
   // Validación de token JWT al cargar la página
+  
   useEffect(() => {
-    const token = Cookies.get("konyx_token"); // lee el JWT
-    if (!token) {
-      router.replace("/"); // si no hay token, redirige a login
-    }
-  }, [router]);
+  const session = sessionStorage.getItem("konyx_session"); // sesión temporal
+  if (!session) {
+    router.replace("/"); // si no hay sesión, redirige a login
+  }
+}, [router])
 
-  // Menú activo
+    // Menú activo
   const [menu, setMenu] = useState<MenuKey>("formatoImport");
 
   // Selecciones
