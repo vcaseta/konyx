@@ -1,59 +1,64 @@
-// app/dashboard/page.tsx
-"use client";
+// ------------------ Estados principales ------------------
+const [menu, setMenu] = useState<MenuKey>("formatoImport");
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+// Selecciones
+const [formatoImport, setFormatoImport] =
+  useState<(typeof FORMATO_IMPORT_OPTS)[number] | null>(null);
+const [formatoExport, setFormatoExport] =
+  useState<(typeof FORMATO_EXPORT_OPTS)[number] | null>(null);
 
-/* ------------------ Constantes ------------------ */
-type MenuKey =
-  | "formatoImport"
-  | "formatoExport"
-  | "empresa"
-  | "fecha"
-  | "proyecto"
-  | "cuenta"
-  | "fichero"
-  | "config"
-  | "exportar"
-  | "cerrar";
+const [empresa, setEmpresa] = useState<(typeof EMPRESAS)[number] | null>(null);
+const [fechaFactura, setFechaFactura] = useState<string>("");
+const [proyecto, setProyecto] =
+  useState<(typeof PROYECTOS)[number] | null>(null);
 
-const FORMATO_IMPORT_OPTS = ["Eholo", "Gestoria"] as const;
-const FORMATO_EXPORT_OPTS = ["Holded", "Gestoria"] as const;
-const EMPRESAS = ["Kissoro", "En Plural Psicologia"] as const;
-const PROYECTOS = [
-  "Servicios de Psicologia",
-  "Formacion",
-  "Administracion SL",
-] as const;
-const CUENTAS = [
-  "70500000 Prestaciones de servicios",
-  "70000000 Venta de mercaderías",
-  "Otra (introducir)",
-] as const;
+const [cuenta, setCuenta] = useState<(typeof CUENTAS)[number] | null>(null);
+const [cuentaOtra, setCuentaOtra] = useState<string>("");
 
-/* ------------------ Helpers de storage (demo) ------------------ */
-const PASS_KEY = "konyx.pass";
-const API_KISSORO_KEY = "konyx.api.kissoro";
-const API_ENPLURAL_KEY = "konyx.api.enplural";
+const [ficheroNombre, setFicheroNombre] = useState<string>("");
+const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-function getStoredPass(): string {
-  if (typeof window === "undefined") return "admin";
-  const v = localStorage.getItem(PASS_KEY);
-  return v ?? "admin";
-}
-function setStoredPass(v: string) {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(PASS_KEY, v);
-}
+// Configuración: Contraseña
+const [passActual, setPassActual] = useState("");
+const [passNueva, setPassNueva] = useState("");
+const [passConfirma, setPassConfirma] = useState("");
+const [passMsg, setPassMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
-function getStoredApi(key: string): string {
-  if (typeof window === "undefined") return "";
-  return localStorage.getItem(key) ?? "";
-}
-function setStoredApi(key: string, v: string) {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(key, v);
-}
+// Configuración: APIs
+const [apiKissoroVigente, setApiKissoroVigente] = useState("");
+const [apiKissoroNuevo, setApiKissoroNuevo] = useState("");
+const [apiKissoroMsg, setApiKissoroMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+
+const [apiEnPluralVigente, setApiEnPluralVigente] = useState("");
+const [apiEnPluralNuevo, setApiEnPluralNuevo] = useState("");
+const [apiEnPluralMsg, setApiEnPluralMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+
+// ------------------ Habilitación de exportar ------------------
+const exportReady = useMemo(() => {
+  const cuentaOk =
+    cuenta === "Otra (introducir)"
+      ? cuentaOtra.trim().length > 0
+      : !!cuenta;
+  return (
+    !!formatoImport &&
+    !!formatoExport &&
+    !!empresa &&
+    !!fechaFactura &&
+    !!proyecto &&
+    cuentaOk &&
+    !!ficheroNombre
+  );
+}, [
+  formatoImport,
+  formatoExport,
+  empresa,
+  fechaFactura,
+  proyecto,
+  cuenta,
+  cuentaOtra,
+  ficheroNombre,
+]);
+
 
 /* ------------------ Página ------------------ */
 export default function DashboardPage() {
