@@ -22,8 +22,8 @@ COPY . .
 ARG NEXT_PUBLIC_BACKEND_URL
 ARG NEXT_PUBLIC_APP_NAME
 ARG NEXT_PUBLIC_COMPANIES
-ENV NODE_ENV=development  # Configuramos el entorno de desarrollo
-ENV NEXT_TELEMETRY_DISABLED=1  # Deshabilitamos la telemetría de Next.js
+ENV NODE_ENV=development  
+ENV NEXT_TELEMETRY_DISABLED=1 
 
 # Construcción de Next.js
 RUN npm run build
