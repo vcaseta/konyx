@@ -18,7 +18,7 @@ import { useState } from "react";
       // Usuario y contraseña fijos
       if (user === "admin" && pass === "konyx123") {
         sessionStorage.setItem("konyx_session", "1"); // sesión temporal
-        onOk(); // redirige al dashboard
+        onOk("dummy-token"); // redirige al dashboard
       } else {
         setErr("Usuario o contraseña incorrecta");
       }
