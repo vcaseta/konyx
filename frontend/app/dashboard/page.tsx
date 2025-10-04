@@ -99,6 +99,49 @@ export default function DashboardPage() {
     fetchApis();
   }, [token]);
 
+
+  // Habilitación de Exportar
+const exportReady = useMemo(() => {
+  const cuentaOk =
+    cuenta === "Otra (introducir)"
+      ? cuentaOtra.trim().length > 0
+      : !!cuenta;
+  return (
+    !!formatoImport &&
+    !!formatoExport &&
+    !!empresa &&
+    !!fechaFactura &&
+    !!proyecto &&
+    cuentaOk &&
+    !!ficheroNombre
+  );
+}, [
+  formatoImport,
+  formatoExport,
+  empresa,
+  fechaFactura,
+  proyecto,
+  cuenta,
+  cuentaOtra,
+  ficheroNombre,
+]);
+
+// Función para mostrar panel de exportación
+function onExportAsk() {
+  if (!exportReady) return;
+  setMenu("exportar");
+}
+
+function onConfirmExport(ok: boolean) {
+  if (!ok) {
+    setMenu("formatoImport");
+    return;
+  }
+  alert("Exportación iniciada (conectaremos backend después).");
+  setMenu("formatoImport");
+}
+
+
   // ------------------ Guardar APIs en backend ------------------
   async function onCambioApis() {
     setApiKissoroMsg(null);
