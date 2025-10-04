@@ -1,3 +1,4 @@
+// app/components/Login.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -8,16 +9,19 @@ export default function Login({ onOk }: { onOk: (token: string) => Promise<void>
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  // Inicializar usuario y contraseña desde .env solo si no existen en localStorage
+  // Inicializar usuario y contraseña desde .env si no existen
   useEffect(() => {
-    const defaultUser = process.env.NEXT_PUBLIC_DEFAULT_USER ?? "admin";
-    const defaultPass = process.env.NEXT_PUBLIC_DEFAULT_PASS ?? "konyx123";
-
     if (!localStorage.getItem("konyx.user")) {
-      localStorage.setItem("konyx.user", defaultUser);
+      localStorage.setItem(
+        "konyx.user",
+        process.env.NEXT_PUBLIC_DEFAULT_USER ?? "admin"
+      );
     }
     if (!localStorage.getItem("konyx.pass")) {
-      localStorage.setItem("konyx.pass", defaultPass);
+      localStorage.setItem(
+        "konyx.pass",
+        process.env.NEXT_PUBLIC_DEFAULT_PASS ?? "admin"
+      );
     }
   }, []);
 
@@ -27,14 +31,13 @@ export default function Login({ onOk }: { onOk: (token: string) => Promise<void>
     setLoading(true);
 
     try {
-      // Tomar siempre el valor vigente desde localStorage
+      // Leer usuario y contraseña vigente de localStorage
       const storedUser = localStorage.getItem("konyx.user")!;
       const storedPass = localStorage.getItem("konyx.pass")!;
 
       if (user === storedUser && pass === storedPass) {
-        // Guardamos sesión temporal
-        sessionStorage.setItem("konyx_session", "1");
-        await onOk("dummy-token");
+        sessionStorage.setItem("konyx_session", "1"); // sesión temporal
+        await onOk("dummy-token"); // redirige al dashboard
       } else {
         setErr("Usuario o contraseña incorrecta");
       }
@@ -49,7 +52,11 @@ export default function Login({ onOk }: { onOk: (token: string) => Promise<void>
       className="bg-white/90 backdrop-blur rounded-2xl shadow-lg p-6 space-y-6 flex flex-col items-center"
     >
       <div className="mb-4">
-        <img src="/logo.png" alt="Konyx" className="h-24 w-auto drop-shadow-md" />
+        <img
+          src="/logo.png"
+          alt="Konyx"
+          className="h-24 w-auto drop-shadow-md"
+        />
       </div>
 
       {err && (
