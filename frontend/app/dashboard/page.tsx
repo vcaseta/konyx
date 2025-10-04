@@ -35,12 +35,6 @@ const CUENTAS = [
 export default function DashboardPage() {
   const router = useRouter();
 
-  // Validación de sesión al cargar la página
-  useEffect(() => {
-    const token = sessionStorage.getItem("konyx_session");
-    if (!token) router.replace("/"); // si no hay sesión, redirige a login
-  }, [router]);
-
   // Menú activo
   const [menu, setMenu] = useState<MenuKey>("formatoImport");
 
@@ -76,7 +70,19 @@ export default function DashboardPage() {
   const [apiEnPluralNuevo, setApiEnPluralNuevo] = useState("");
   const [apiEnPluralMsg, setApiEnPluralMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
-  const token = sessionStorage.getItem("konyx_session");
+  // ------------------ Token de sesión (solo cliente) ------------------
+  const [token, setToken] = useState<string | null>(null);
+  // ------------------ Validación de sesión y token ------------------
+  useEffect(() => {
+    // Solo se ejecuta en cliente
+    if (typeof window === "undefined") return;
+    const storedToken = sessionStorage.getItem("konyx_session");
+    if (!storedToken) {
+      router.replace("/"); // redirige a login si no hay token
+      return;
+    }
+    setToken(storedToken);
+  }, [router]);
 
   // ------------------ Cargar APIs desde backend ------------------
   useEffect(() => {
@@ -125,7 +131,7 @@ export default function DashboardPage() {
     ficheroNombre,
   ]);
 
-  // Función para mostrar panel de exportación
+  // ------------------ Funciones de exportación ------------------
   function onExportAsk() {
     if (!exportReady) return;
     setMenu("exportar");
@@ -139,8 +145,7 @@ export default function DashboardPage() {
     alert("Exportación iniciada (conectaremos backend después).");
     setMenu("formatoImport");
   }
-
-  // ------------------ Guardar APIs en backend ------------------
+  /* ------------------ Guardar APIs en backend ------------------ */
   async function onCambioApis() {
     setApiKissoroMsg(null);
     setApiEnPluralMsg(null);
@@ -171,7 +176,8 @@ export default function DashboardPage() {
       setApiEnPluralMsg({ type: "err", text: error.message });
     }
   }
-  // ------------------ Cambio de contraseña ------------------
+
+  /* ------------------ Cambio de contraseña ------------------ */
   async function onCambioPassword() {
     setPassMsg(null);
     if (!token) return;
@@ -207,13 +213,15 @@ export default function DashboardPage() {
     }
   }
 
-  // ------------------ Logout ------------------
+  /* ------------------ Logout ------------------ */
   function logout() {
-    sessionStorage.removeItem("konyx_session");
-    router.replace("/");
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem("konyx_session");
+      router.replace("/");
+    }
   }
 
-  // Formatea fecha DD-MM-YYYY para resumen
+  /* ------------------ Formatea fecha DD-MM-YYYY ------------------ */
   function fmtFecha(fechaIso: string) {
     if (!fechaIso) return "—";
     const d = new Date(fechaIso);
@@ -223,7 +231,6 @@ export default function DashboardPage() {
     const yyyy = d.getFullYear();
     return `${dd}-${mm}-${yyyy}`;
   }
-
   return (
     <main
       className="min-h-screen bg-no-repeat bg-center bg-cover p-4"
@@ -240,23 +247,43 @@ export default function DashboardPage() {
             <div className="flex justify-center mb-4">
               <img src="/logo.png" alt="Konyx" className="h-48 w-auto drop-shadow-md" />
             </div>
-            <nav className="space-y-2">
-              <Item active={menu === "formatoImport"} onClick={() => setMenu("formatoImport")}>Formato Importación</Item>
-              <Item active={menu === "formatoExport"} onClick={() => setMenu("formatoExport")}>Formato Exportación</Item>
-              <Item active={menu === "empresa"} onClick={() => setMenu("empresa")}>Empresa</Item>
-              <Item active={menu === "fecha"} onClick={() => setMenu("fecha")}>Fecha factura</Item>
-              <Item active={menu === "proyecto"} onClick={() => setMenu("proyecto")}>Proyecto</Item>
-              <Item active={menu === "cuenta"} onClick={() => setMenu("cuenta")}>Cuenta contable</Item>
-              <Item active={menu === "fichero"} onClick={() => setMenu("fichero")}>Fichero de datos</Item>
-              <Item active={menu === "config"} onClick={() => setMenu("config")}>Configuración</Item>
 
+            {/* Menú */}
+            <nav className="space-y-2">
+              <Item active={menu === "formatoImport"} onClick={() => setMenu("formatoImport")}>
+                Formato Importación
+              </Item>
+              <Item active={menu === "formatoExport"} onClick={() => setMenu("formatoExport")}>
+                Formato Exportación
+              </Item>
+              <Item active={menu === "empresa"} onClick={() => setMenu("empresa")}>
+                Empresa
+              </Item>
+              <Item active={menu === "fecha"} onClick={() => setMenu("fecha")}>
+                Fecha factura
+              </Item>
+              <Item active={menu === "proyecto"} onClick={() => setMenu("proyecto")}>
+                Proyecto
+              </Item>
+              <Item active={menu === "cuenta"} onClick={() => setMenu("cuenta")}>
+                Cuenta contable
+              </Item>
+              <Item active={menu === "fichero"} onClick={() => setMenu("fichero")}>
+                Fichero de datos
+              </Item>
+              <Item active={menu === "config"} onClick={() => setMenu("config")}>
+                Configuración
+              </Item>
+
+              {/* Botón Exportar */}
               <button
                 type="button"
                 onClick={onExportAsk}
                 className={`w-full text-left px-3 py-2 rounded-lg transition font-semibold border
-                  ${exportReady
-                    ? "border-indigo-600 text-indigo-700 bg-white/90 shadow hover:bg-indigo-200 hover:text-indigo-800"
-                    : "border-gray-300 text-gray-200 cursor-not-allowed"
+                  ${
+                    exportReady
+                      ? "border-indigo-600 text-indigo-700 bg-white/90 shadow hover:bg-indigo-200 hover:text-indigo-800"
+                      : "border-gray-300 text-gray-200 cursor-not-allowed"
                   }`}
                 title={exportReady ? "Listo para exportar" : "Completa todos los campos para exportar"}
               >
@@ -264,7 +291,9 @@ export default function DashboardPage() {
               </button>
 
               <div className="pt-2">
-                <Item active={menu === "cerrar"} onClick={() => setMenu("cerrar")}>Cerrar Sesión</Item>
+                <Item active={menu === "cerrar"} onClick={() => setMenu("cerrar")}>
+                  Cerrar Sesión
+                </Item>
               </div>
             </nav>
           </div>
@@ -272,8 +301,8 @@ export default function DashboardPage() {
 
         {/* ------------ Contenido (derecha) ------------ */}
         <section className="space-y-6">
+          {/* Panel de selección */}
           <div className="bg-white/90 backdrop-blur rounded-2xl shadow p-6">
-
             {menu === "formatoImport" && (
               <div>
                 <h2 className="text-lg font-semibold mb-4">Formato Importación</h2>
@@ -329,6 +358,7 @@ export default function DashboardPage() {
                 />
               </div>
             )}
+
             {menu === "cuenta" && (
               <div>
                 <h2 className="text-lg font-semibold mb-4">Cuenta contable</h2>
@@ -371,7 +401,7 @@ export default function DashboardPage() {
               </div>
             )}
 
-            {menu === "config" && (
+                {menu === "config" && (
               <div className="space-y-8">
                 <h2 className="text-lg font-semibold">Configuración</h2>
 
@@ -409,7 +439,9 @@ export default function DashboardPage() {
                     </button>
                   </div>
                   {passMsg && (
-                    <p className={`text-sm ${passMsg.type === "ok" ? "text-green-700" : "text-red-700"}`}>
+                    <p
+                      className={`text-sm ${passMsg.type === "ok" ? "text-green-700" : "text-red-700"}`}
+                    >
                       {passMsg.text}
                     </p>
                   )}
@@ -483,6 +515,187 @@ export default function DashboardPage() {
               </div>
             )}
 
+            {/* Panel Exportar */}
+            {menu === "exportar" && (
+              <div>
+                <h2 className="text-lg font-semibold mb-4">Exportar</h2>
+                <p className="text-sm text-gray-700 mb-4">
+                  ¿Deseas exportar los datos con la configuración seleccionada?
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => onConfirmExport(true)}
+                    className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700"
+                  >
+                    Sí, exportar
+                  </button>
+                  <button
+                    onClick={() => onConfirmExport(false)}
+                    className="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50"
+                  >
+                    No, cancelar
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Panel Cerrar Sesión */}
+            {menu === "cerrar" && (
+              <div>
+                <h2 className="text-lg font-semibold mb-4">Cerrar Sesión</h2>
+                <p className="text-sm text-gray-700 mb-4">
+                  ¿Seguro que quieres cerrar sesión?
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={logout}
+                    className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700"
+                  >
+                    Sí
+                  </button>
+                  <button
+                    onClick={() => setMenu("formatoImport")}
+                    className="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50"
+                  >
+                    No
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Resumen inferior */}
+          <div className="bg-indigo-100/90 rounded-2xl shadow p-6 border border-indigo-200 mt-8">
+            <h3 className="text-base font-semibold text-indigo-800 mb-3">
+              Resumen de selección
+            </h3>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
+              <SummaryItem label="Formato Importación" value={formatoImport ?? "—"} />
+
+            {menu === "config" && (
+              <div className="space-y-8">
+                <h2 className="text-lg font-semibold">Configuración</h2>
+
+                {/* Cambio de contraseña */}
+                <div className="space-y-3">
+                  <h3 className="text-sm font-semibold">Cambio de contraseña</h3>
+                  <div className="grid md:grid-cols-[1fr_1fr_1fr_auto] gap-3 items-center">
+                    <input
+                      type="password"
+                      value={passActual}
+                      onChange={(e) => setPassActual(e.target.value)}
+                      placeholder="Contraseña actual"
+                      className="rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                    <input
+                      type="password"
+                      value={passNueva}
+                      onChange={(e) => setPassNueva(e.target.value)}
+                      placeholder="Nueva contraseña"
+                      className="rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                    <input
+                      type="password"
+                      value={passConfirma}
+                      onChange={(e) => setPassConfirma(e.target.value)}
+                      placeholder="Confirmar nueva contraseña"
+                      className="rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={onCambioPassword}
+                      className="px-4 py-2 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700"
+                    >
+                      Cambio
+                    </button>
+                  </div>
+                  {passMsg && (
+                    <p
+                      className={`text-sm ${
+                        passMsg.type === "ok" ? "text-green-700" : "text-red-700"
+                      }`}
+                    >
+                      {passMsg.text}
+                    </p>
+                  )}
+                </div>
+
+                {/* API Holded Kissoro */}
+                <div className="space-y-3">
+                  <h3 className="text-sm font-semibold">API Holded Kissoro</h3>
+                  <div className="grid md:grid-cols-[1fr_1fr_auto] gap-3 items-center">
+                    <input
+                      type="text"
+                      value={apiKissoroVigente}
+                      readOnly
+                      placeholder="API vigente"
+                      className="rounded-lg border border-indigo-300 px-3 py-2 bg-gray-100 text-gray-600"
+                    />
+                    <input
+                      type="text"
+                      value={apiKissoroNuevo}
+                      onChange={(e) => setApiKissoroNuevo(e.target.value)}
+                      placeholder="Nuevo API"
+                      className="rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={onCambioApis}
+                      className="px-4 py-2 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700"
+                    >
+                      Cambio
+                    </button>
+                  </div>
+                  {apiKissoroMsg && (
+                    <p
+                      className={`text-sm ${
+                        apiKissoroMsg.type === "ok" ? "text-green-700" : "text-red-700"
+                      }`}
+                    >
+                      {apiKissoroMsg.text}
+                    </p>
+                  )}
+                </div>
+
+                {/* API Holded En Plural Psicologia */}
+                <div className="space-y-3">
+                  <h3 className="text-sm font-semibold">API Holded En Plural Psicologia</h3>
+                  <div className="grid md:grid-cols-[1fr_1fr_auto] gap-3 items-center">
+                    <input
+                      type="text"
+                      value={apiEnPluralVigente}
+                      readOnly
+                      placeholder="API vigente"
+                      className="rounded-lg border border-indigo-300 px-3 py-2 bg-gray-100 text-gray-600"
+                    />
+                    <input
+                      type="text"
+                      value={apiEnPluralNuevo}
+                      onChange={(e) => setApiEnPluralNuevo(e.target.value)}
+                      placeholder="Nuevo API"
+                      className="rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={onCambioApis}
+                      className="px-4 py-2 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700"
+                    >
+                      Cambio
+                    </button>
+                  </div>
+                  {apiEnPluralMsg && (
+                    <p
+                      className={`text-sm ${
+                        apiEnPluralMsg.type === "ok" ? "text-green-700" : "text-red-700"
+                      }`}
+                    >
+                      {apiEnPluralMsg.text}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
             {menu === "exportar" && (
               <div>
                 <h2 className="text-lg font-semibold mb-4">Exportar</h2>
@@ -530,7 +743,7 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* Resumen inferior (azulado algo más oscuro) */}
+          {/* Resumen inferior */}
           <div className="bg-indigo-100/90 rounded-2xl shadow p-6 border border-indigo-200 mt-8">
             <h3 className="text-base font-semibold text-indigo-800 mb-3">
               Resumen de selección
@@ -554,71 +767,4 @@ export default function DashboardPage() {
   );
 }
 
-/* ------------------ Componentes auxiliares ------------------ */
-
-function Item({
-  active,
-  onClick,
-  children,
-}: {
-  active?: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`w-full text-left px-3 py-2 rounded-lg transition
-        ${
-          active
-            ? "bg-indigo-600 text-white font-semibold shadow"
-            : "hover:bg-indigo-200 hover:text-indigo-800 text-white"
-        }`}
-    >
-      {children}
-    </button>
-  );
-}
-
-function OptionGrid<T extends string>({
-  options,
-  value,
-  onChange,
-}: {
-  options: readonly T[];
-  value: T | null;
-  onChange: (v: T) => void;
-}) {
-  return (
-    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-      {options.map((opt) => {
-        const selected = value === opt;
-        return (
-          <button
-            key={opt}
-            type="button"
-            onClick={() => onChange(opt)}
-            className={`px-3 py-2 rounded-lg border transition text-sm
-              ${
-                selected
-                  ? "bg-indigo-600 border-indigo-700 text-white font-semibold ring-2 ring-indigo-300"
-                  : "border-indigo-300 text-indigo-800 hover:bg-indigo-100"
-              }`}
-          >
-            {opt}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-function SummaryItem({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg bg-white/70 border border-indigo-100 px-3 py-2">
-      <div className="text-xs text-indigo-700">{label}</div>
-      <div className="font-medium text-gray-900 break-words">{value}</div>
-    </div>
-  );
-}
+              
