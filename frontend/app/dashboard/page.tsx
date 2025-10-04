@@ -72,6 +72,31 @@ export default function DashboardPage() {
     router.replace("/");
   }
 
+export default function DashboardPage() {
+  const router = useRouter();
+
+  // Estados y hooks
+  const [menu, setMenu] = useState<MenuKey>("formatoImport");
+  const [formatoImport, setFormatoImport] = useState<...>(null);
+  // ...otros estados
+
+  // Función para pasar al panel de exportación
+  const onExportAsk = () => {
+    if (!exportReady) return;
+    setMenu("exportar");
+  };
+
+  // JSX
+  return (
+    <main>
+      {/* ...Sidebar */}
+      <button onClick={onExportAsk}>Exportar</button>
+      {/* ...Contenido */}
+    </main>
+  );
+}
+
+  
   // ...Resto del dashboard: Sidebar, Contenido, Configuración, Exportación, Resumen
   // Mantener todos los componentes existentes, solo se actualizó la protección de ruta y logout
 
