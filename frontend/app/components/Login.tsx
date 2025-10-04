@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 
-export default function Login({ onOk }: { onOk: () => void }) {
+  export default function Login({ onOk }: { onOk: (token: string) => Promise<void> }) {
+
   const [user, setUser] = useState("");
   const [pass, setPass] = useState("");
   const [loading, setLoading] = useState(false);
