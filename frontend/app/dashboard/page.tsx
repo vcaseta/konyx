@@ -50,7 +50,7 @@ export default function DashboardPage() {
     }
   }, [router]);
 
-  if (!authChecked) return null;
+  if (!authChecked) return null; // bloquea render hasta validar token
 
   // Menú activo
   const [menu, setMenu] = useState<MenuKey>("formatoImport");
@@ -189,7 +189,7 @@ export default function DashboardPage() {
   }
 
   function logout() {
-    sessionStorage.removeItem("konyx_session");
+    sessionStorage.removeItem("konyx_session"); // token se elimina, sesión se cierra al cerrar pestaña
     router.replace("/");
   }
 
@@ -202,7 +202,7 @@ export default function DashboardPage() {
     const yyyy = d.getFullYear();
     return `${dd}-${mm}-${yyyy}`;
   }
-
+  
   /* ------------------ JSX principal ------------------ */
   return (
     <main className="min-h-screen bg-no-repeat bg-center bg-cover p-4" style={{ backgroundImage: "url(/fondo.png)", backgroundSize: "100% 100%", backgroundRepeat: "no-repeat" }}>
