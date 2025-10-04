@@ -11,6 +11,7 @@ jobs:
     permissions:
       packages: write
       contents: read
+
     steps:
       - uses: actions/checkout@v3
 
@@ -34,3 +35,7 @@ jobs:
           context: ./frontend
           push: true
           tags: ghcr.io/vcaseta/konyx-frontend:latest
+          build-args: |
+            NEXT_PUBLIC_BACKEND_URL=http://192.168.1.51:8000
+            NEXT_PUBLIC_APP_NAME=Konyx
+            NEXT_PUBLIC_COMPANIES=[{"id":"001","name":"Kissoro"},{"id":"002","name":"En Plural Psicologia"}]
