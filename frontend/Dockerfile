@@ -22,6 +22,7 @@ COPY . .
 ARG NEXT_PUBLIC_BACKEND_URL
 ARG NEXT_PUBLIC_APP_NAME
 ARG NEXT_PUBLIC_COMPANIES
+
 # Hacemos que el entorno sea de desarrollo
 ENV NODE_ENV=development
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -43,6 +44,10 @@ COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
 
 EXPOSE 3000
+
+# Ejecutamos Next.js en modo de desarrollo
+CMD ["npm", "run", "dev"]
+
 
 # Ejecutamos Next.js en modo de desarrollo
 CMD ["npm", "run", "dev"]
