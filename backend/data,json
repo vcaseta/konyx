@@ -1,6 +1,5 @@
 {
-  "user": "admin",
-  "pass": "admin",
+  "password": "admin",
   "apis": {
     "kissoro": "",
     "enplural": ""
