@@ -37,13 +37,15 @@ export default function DashboardPage() {
 
   // Bloqueo render hasta validar sesión
   const [authChecked, setAuthChecked] = useState(false);
+  const [token, setToken] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const token = sessionStorage.getItem("konyx_session");
-    if (!token) {
+    const t = sessionStorage.getItem("konyx_session");
+    if (!t) {
       router.replace("/"); // sin sesión, redirige a login
     } else {
+      setToken(t);
       setAuthChecked(true);
     }
   }, [router]);
@@ -84,8 +86,6 @@ export default function DashboardPage() {
   const [apiEnPluralVigente, setApiEnPluralVigente] = useState("");
   const [apiEnPluralNuevo, setApiEnPluralNuevo] = useState("");
   const [apiEnPluralMsg, setApiEnPluralMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
-
-  const token = sessionStorage.getItem("konyx_session");
 
   // Cargar APIs
   useEffect(() => {
