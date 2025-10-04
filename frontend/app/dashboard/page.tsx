@@ -35,26 +35,23 @@ const CUENTAS = [
 export default function DashboardPage() {
   const router = useRouter();
 
-  // Solo usar sessionStorage en cliente
-  const [token, setToken] = useState<string | null>(null);
+  // Validación de sesión al cargar la página
   useEffect(() => {
-    const t = sessionStorage.getItem("konyx_session");
-    if (!t) {
-      router.replace("/");
-    } else {
-      setToken(t);
-    }
+    if (typeof window === "undefined") return; // Evitar error SSR
+    const token = sessionStorage.getItem("konyx_session");
+    if (!token) router.replace("/"); // si no hay sesión, redirige a login
   }, [router]);
 
+  // Menú activo
   const [menu, setMenu] = useState<MenuKey>("formatoImport");
 
   // Selecciones
-  const [formatoImport, setFormatoImport] = useState<typeof FORMATO_IMPORT_OPTS[number] | null>(null);
-  const [formatoExport, setFormatoExport] = useState<typeof FORMATO_EXPORT_OPTS[number] | null>(null);
-  const [empresa, setEmpresa] = useState<typeof EMPRESAS[number] | null>(null);
+  const [formatoImport, setFormatoImport] = useState<(typeof FORMATO_IMPORT_OPTS)[number] | null>(null);
+  const [formatoExport, setFormatoExport] = useState<(typeof FORMATO_EXPORT_OPTS)[number] | null>(null);
+  const [empresa, setEmpresa] = useState<(typeof EMPRESAS)[number] | null>(null);
   const [fechaFactura, setFechaFactura] = useState<string>("");
-  const [proyecto, setProyecto] = useState<typeof PROYECTOS[number] | null>(null);
-  const [cuenta, setCuenta] = useState<typeof CUENTAS[number] | null>(null);
+  const [proyecto, setProyecto] = useState<(typeof PROYECTOS)[number] | null>(null);
+  const [cuenta, setCuenta] = useState<(typeof CUENTAS)[number] | null>(null);
   const [cuentaOtra, setCuentaOtra] = useState<string>("");
   const [ficheroNombre, setFicheroNombre] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -65,13 +62,13 @@ export default function DashboardPage() {
     setFicheroNombre(f ? f.name : "");
   };
 
-  // Contraseña
+  // Configuración: Contraseña
   const [passActual, setPassActual] = useState("");
   const [passNueva, setPassNueva] = useState("");
   const [passConfirma, setPassConfirma] = useState("");
   const [passMsg, setPassMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
-  // APIs
+  // Configuración: APIs
   const [apiKissoroVigente, setApiKissoroVigente] = useState("");
   const [apiKissoroNuevo, setApiKissoroNuevo] = useState("");
   const [apiKissoroMsg, setApiKissoroMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
@@ -80,13 +77,18 @@ export default function DashboardPage() {
   const [apiEnPluralNuevo, setApiEnPluralNuevo] = useState("");
   const [apiEnPluralMsg, setApiEnPluralMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
+  // Token de sesión (solo en cliente)
+  const token = typeof window !== "undefined" ? sessionStorage.getItem("konyx_session") : null;
+
   // Cargar APIs desde backend
   useEffect(() => {
     if (!token) return;
 
     async function fetchApis() {
       try {
-        const res = await fetch("/auth/apis", { headers: { Authorization: `Bearer ${token}` } });
+        const res = await fetch("/auth/apis", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         if (!res.ok) throw new Error("Error al cargar APIs");
         const data = await res.json();
         setApiKissoroVigente(data.kissoro);
@@ -99,12 +101,33 @@ export default function DashboardPage() {
     fetchApis();
   }, [token]);
 
-  // Habilitación de exportar
+  // Habilitación de Exportar
   const exportReady = useMemo(() => {
-    const cuentaOk = cuenta === "Otra (introducir)" ? cuentaOtra.trim().length > 0 : !!cuenta;
-    return !!formatoImport && !!formatoExport && !!empresa && !!fechaFactura && !!proyecto && cuentaOk && !!ficheroNombre;
-  }, [formatoImport, formatoExport, empresa, fechaFactura, proyecto, cuenta, cuentaOtra, ficheroNombre]);
+    const cuentaOk =
+      cuenta === "Otra (introducir)"
+        ? cuentaOtra.trim().length > 0
+        : !!cuenta;
+    return (
+      !!formatoImport &&
+      !!formatoExport &&
+      !!empresa &&
+      !!fechaFactura &&
+      !!proyecto &&
+      cuentaOk &&
+      !!ficheroNombre
+    );
+  }, [
+    formatoImport,
+    formatoExport,
+    empresa,
+    fechaFactura,
+    proyecto,
+    cuenta,
+    cuentaOtra,
+    ficheroNombre,
+  ]);
 
+  // Función para mostrar panel de exportación
   function onExportAsk() {
     if (!exportReady) return;
     setMenu("exportar");
@@ -115,11 +138,11 @@ export default function DashboardPage() {
       setMenu("formatoImport");
       return;
     }
-    alert("Exportación iniciada (backend conectado)");
+    alert("Exportación iniciada (conectaremos backend después).");
     setMenu("formatoImport");
   }
 
-  // Guardar APIs
+  // Guardar APIs en backend
   async function onCambioApis() {
     setApiKissoroMsg(null);
     setApiEnPluralMsg(null);
@@ -128,7 +151,10 @@ export default function DashboardPage() {
     try {
       const res = await fetch("/auth/apis", {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({
           kissoro: apiKissoroNuevo || apiKissoroVigente,
           enplural: apiEnPluralNuevo || apiEnPluralVigente,
@@ -152,6 +178,7 @@ export default function DashboardPage() {
   async function onCambioPassword() {
     setPassMsg(null);
     if (!token) return;
+
     if (!passActual || !passNueva || !passConfirma) {
       setPassMsg({ type: "err", text: "Rellena todos los campos" });
       return;
@@ -164,31 +191,51 @@ export default function DashboardPage() {
     try {
       const res = await fetch("/auth/change-password", {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ old_password: passActual, new_password: passNueva }),
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          old_password: passActual,
+          new_password: passNueva,
+        }),
       });
       if (!res.ok) throw new Error("Error al cambiar contraseña");
       setPassMsg({ type: "ok", text: "Contraseña actualizada correctamente" });
-      setPassActual(""); setPassNueva(""); setPassConfirma("");
+      setPassActual("");
+      setPassNueva("");
+      setPassConfirma("");
     } catch (error: any) {
       setPassMsg({ type: "err", text: error.message });
     }
   }
 
+  // Logout
   function logout() {
-    sessionStorage.removeItem("konyx_session");
+    if (typeof window !== "undefined") sessionStorage.removeItem("konyx_session");
     router.replace("/");
   }
 
+  // Formatea fecha DD-MM-YYYY
   function fmtFecha(fechaIso: string) {
     if (!fechaIso) return "—";
     const d = new Date(fechaIso);
     if (Number.isNaN(d.getTime())) return "—";
-    return `${String(d.getDate()).padStart(2,"0")}-${String(d.getMonth()+1).padStart(2,"0")}-${d.getFullYear()}`;
+    const dd = String(d.getDate()).padStart(2, "0");
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const yyyy = d.getFullYear();
+    return `${dd}-${mm}-${yyyy}`;
   }
 
   return (
-    <main className="min-h-screen bg-no-repeat bg-center bg-cover p-4" style={{ backgroundImage: "url(/fondo.png)", backgroundSize: "100% 100%" }}>
+    <main
+      className="min-h-screen bg-no-repeat bg-center bg-cover p-4"
+      style={{
+        backgroundImage: "url(/fondo.png)",
+        backgroundSize: "100% 100%",
+        backgroundRepeat: "no-repeat",
+      }}
+    >
       <div className="mx-auto max-w-7xl grid grid-cols-1 md:grid-cols-[260px_1fr] gap-6">
         {/* Sidebar */}
         <aside className="md:sticky md:top-6">
@@ -196,73 +243,394 @@ export default function DashboardPage() {
             <div className="flex justify-center mb-4">
               <img src="/logo.png" alt="Konyx" className="h-48 w-auto drop-shadow-md" />
             </div>
+
+            {/* Menú */}
             <nav className="space-y-2">
-              <Item active={menu==="formatoImport"} onClick={()=>setMenu("formatoImport")}>Formato Importación</Item>
-              <Item active={menu==="formatoExport"} onClick={()=>setMenu("formatoExport")}>Formato Exportación</Item>
-              <Item active={menu==="empresa"} onClick={()=>setMenu("empresa")}>Empresa</Item>
-              <Item active={menu==="fecha"} onClick={()=>setMenu("fecha")}>Fecha factura</Item>
-              <Item active={menu==="proyecto"} onClick={()=>setMenu("proyecto")}>Proyecto</Item>
-              <Item active={menu==="cuenta"} onClick={()=>setMenu("cuenta")}>Cuenta contable</Item>
-              <Item active={menu==="fichero"} onClick={()=>setMenu("fichero")}>Fichero de datos</Item>
-              <Item active={menu==="config"} onClick={()=>setMenu("config")}>Configuración</Item>
-              <button type="button" onClick={onExportAsk} className={`w-full text-left px-3 py-2 rounded-lg transition font-semibold border ${exportReady ? "border-indigo-600 text-indigo-700 bg-white/90 shadow hover:bg-indigo-200 hover:text-indigo-800" : "border-gray-300 text-gray-200 cursor-not-allowed"}`} title={exportReady ? "Listo para exportar":"Completa todos los campos para exportar"}>Exportar</button>
+              <Item active={menu === "formatoImport"} onClick={() => setMenu("formatoImport")}>
+                Formato Importación
+              </Item>
+              <Item active={menu === "formatoExport"} onClick={() => setMenu("formatoExport")}>
+                Formato Exportación
+              </Item>
+              <Item active={menu === "empresa"} onClick={() => setMenu("empresa")}>
+                Empresa
+              </Item>
+              <Item active={menu === "fecha"} onClick={() => setMenu("fecha")}>
+                Fecha factura
+              </Item>
+              <Item active={menu === "proyecto"} onClick={() => setMenu("proyecto")}>
+                Proyecto
+              </Item>
+              <Item active={menu === "cuenta"} onClick={() => setMenu("cuenta")}>
+                Cuenta contable
+              </Item>
+              <Item active={menu === "fichero"} onClick={() => setMenu("fichero")}>
+                Fichero de datos
+              </Item>
+              <Item active={menu === "config"} onClick={() => setMenu("config")}>
+                Configuración
+              </Item>
+
+              {/* Exportar */}
+              <button
+                type="button"
+                onClick={onExportAsk}
+                className={`w-full text-left px-3 py-2 rounded-lg transition font-semibold border
+                  ${
+                    exportReady
+                      ? "border-indigo-600 text-indigo-700 bg-white/90 shadow hover:bg-indigo-200 hover:text-indigo-800"
+                      : "border-gray-300 text-gray-200 cursor-not-allowed"
+                  }`}
+                title={exportReady ? "Listo para exportar" : "Completa todos los campos para exportar"}
+              >
+                Exportar
+              </button>
+
               <div className="pt-2">
-                <Item active={menu==="cerrar"} onClick={()=>setMenu("cerrar")}>Cerrar Sesión</Item>
+                <Item active={menu === "cerrar"} onClick={() => setMenu("cerrar")}>
+                  Cerrar Sesión
+                </Item>
               </div>
             </nav>
           </div>
         </aside>
-
-        {/* Contenido */}
+        {/* Contenido principal (derecha) */}
         <section className="space-y-6">
-          {/* Los paneles de selección según menu */}
-          {menu==="formatoImport" && <PanelOpciones title="Formato Importación" options={FORMATO_IMPORT_OPTS} value={formatoImport} onChange={setFormatoImport} />}
-          {menu==="formatoExport" && <PanelOpciones title="Formato Exportación" options={FORMATO_EXPORT_OPTS} value={formatoExport} onChange={setFormatoExport} />}
-          {menu==="empresa" && <PanelOpciones title="Empresa" options={EMPRESAS} value={empresa} onChange={setEmpresa} />}
-          {menu==="proyecto" && <PanelOpciones title="Proyecto" options={PROYECTOS} value={proyecto} onChange={setProyecto} />}
-          {menu==="cuenta" && <PanelCuenta cuenta={cuenta} setCuenta={setCuenta} cuentaOtra={cuentaOtra} setCuentaOtra={setCuentaOtra} />}
-          {menu==="fecha" && <PanelFecha fecha={fechaFactura} setFecha={setFechaFactura} />}
-          {menu==="fichero" && <PanelFichero ficheroNombre={ficheroNombre} fileInputRef={fileInputRef} onPickFile={onPickFile} />}
+          {/* Panel de selección */}
+          <div className="bg-white/90 backdrop-blur rounded-2xl shadow p-6">
+            {menu === "formatoImport" && (
+              <div>
+                <h2 className="text-lg font-semibold mb-4">Formato Importación</h2>
+                <OptionGrid
+                  options={FORMATO_IMPORT_OPTS}
+                  value={formatoImport}
+                  onChange={(v) => setFormatoImport(v)}
+                />
+              </div>
+            )}
 
-          {menu==="config" && <PanelConfig passActual={passActual} passNueva={passNueva} passConfirma={passConfirma} setPassActual={setPassActual} setPassNueva={setPassNueva} setPassConfirma={setPassConfirma} passMsg={passMsg} onCambioPassword={onCambioPassword} apiKissoroVigente={apiKissoroVigente} apiKissoroNuevo={apiKissoroNuevo} setApiKissoroNuevo={setApiKissoroNuevo} apiKissoroMsg={apiKissoroMsg} apiEnPluralVigente={apiEnPluralVigente} apiEnPluralNuevo={apiEnPluralNuevo} setApiEnPluralNuevo={setApiEnPluralNuevo} apiEnPluralMsg={apiEnPluralMsg} onCambioApis={onCambioApis} />}
+            {menu === "formatoExport" && (
+              <div>
+                <h2 className="text-lg font-semibold mb-4">Formato Exportación</h2>
+                <OptionGrid
+                  options={FORMATO_EXPORT_OPTS}
+                  value={formatoExport}
+                  onChange={(v) => setFormatoExport(v)}
+                />
+              </div>
+            )}
 
-          {menu==="exportar" && (
-            <PanelExport onConfirmExport={onConfirmExport} />
-          )}
+            {menu === "empresa" && (
+              <div>
+                <h2 className="text-lg font-semibold mb-4">Empresa</h2>
+                <OptionGrid
+                  options={EMPRESAS}
+                  value={empresa}
+                  onChange={(v) => setEmpresa(v)}
+                />
+              </div>
+            )}
 
-          {menu==="cerrar" && (
-            <PanelCerrar logout={logout} setMenu={setMenu} />
-          )}
+            {menu === "fecha" && (
+              <div>
+                <h2 className="text-lg font-semibold mb-4">Fecha factura</h2>
+                <input
+                  type="date"
+                  value={fechaFactura}
+                  onChange={(e) => setFechaFactura(e.target.value)}
+                  className="rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+            )}
+
+            {menu === "proyecto" && (
+              <div>
+                <h2 className="text-lg font-semibold mb-4">Proyecto</h2>
+                <OptionGrid
+                  options={PROYECTOS}
+                  value={proyecto}
+                  onChange={(v) => setProyecto(v)}
+                />
+              </div>
+            )}
+
+            {menu === "cuenta" && (
+              <div>
+                <h2 className="text-lg font-semibold mb-4">Cuenta contable</h2>
+                <OptionGrid
+                  options={CUENTAS}
+                  value={cuenta}
+                  onChange={(v) => setCuenta(v)}
+                />
+                {cuenta === "Otra (introducir)" && (
+                  <div className="mt-4">
+                    <label className="block text-sm font-medium mb-1">Otra cuenta</label>
+                    <input
+                      type="text"
+                      value={cuentaOtra}
+                      onChange={(e) => setCuentaOtra(e.target.value)}
+                      placeholder="Introduce tu cuenta"
+                      className="w-full rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {menu === "fichero" && (
+              <div>
+                <h2 className="text-lg font-semibold mb-4">Fichero de datos</h2>
+                <label className="inline-flex items-center gap-3 px-4 py-2 rounded-lg border border-indigo-300 hover:bg-indigo-50 cursor-pointer">
+                  <span className="text-indigo-700 font-medium">Seleccionar Excel</span>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".xlsx,.xls"
+                    className="hidden"
+                    onChange={(e) => setFicheroNombre(e.target.files?.[0]?.name || "")}
+                  />
+                </label>
+                {ficheroNombre && (
+                  <p className="mt-2 text-sm text-indigo-700 font-semibold">{ficheroNombre}</p>
+                )}
+              </div>
+            )}
+
+            {menu === "config" && (
+              <div className="space-y-8">
+                <h2 className="text-lg font-semibold">Configuración</h2>
+
+                {/* Cambio de contraseña */}
+                <div className="space-y-3">
+                  <h3 className="text-sm font-semibold">Cambio de contraseña</h3>
+                  <div className="grid md:grid-cols-[1fr_1fr_1fr_auto] gap-3 items-center">
+                    <input
+                      type="password"
+                      value={passActual}
+                      onChange={(e) => setPassActual(e.target.value)}
+                      placeholder="Contraseña actual"
+                      className="rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                    <input
+                      type="password"
+                      value={passNueva}
+                      onChange={(e) => setPassNueva(e.target.value)}
+                      placeholder="Nueva contraseña"
+                      className="rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                    <input
+                      type="password"
+                      value={passConfirma}
+                      onChange={(e) => setPassConfirma(e.target.value)}
+                      placeholder="Confirmar nueva contraseña"
+                      className="rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={onCambioPassword}
+                      className="px-4 py-2 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700"
+                    >
+                      Cambio
+                    </button>
+                  </div>
+                  {passMsg && (
+                    <p className={`text-sm ${passMsg.type === "ok" ? "text-green-700" : "text-red-700"}`}>
+                      {passMsg.text}
+                    </p>
+                  )}
+                </div>
+
+                {/* APIs */}
+                <div className="space-y-3">
+                  <h3 className="text-sm font-semibold">API Holded Kissoro</h3>
+                  <div className="grid md:grid-cols-[1fr_1fr_auto] gap-3 items-center">
+                    <input
+                      type="text"
+                      value={apiKissoroVigente}
+                      readOnly
+                      placeholder="API vigente"
+                      className="rounded-lg border border-indigo-300 px-3 py-2 bg-gray-100 text-gray-600"
+                    />
+                    <input
+                      type="text"
+                      value={apiKissoroNuevo}
+                      onChange={(e) => setApiKissoroNuevo(e.target.value)}
+                      placeholder="Nuevo API"
+                      className="rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={onCambioApis}
+                      className="px-4 py-2 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700"
+                    >
+                      Cambio
+                    </button>
+                  </div>
+                  {apiKissoroMsg && (
+                    <p className={`text-sm ${apiKissoroMsg.type === "ok" ? "text-green-700" : "text-red-700"}`}>
+                      {apiKissoroMsg.text}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-3">
+                  <h3 className="text-sm font-semibold">API Holded En Plural Psicologia</h3>
+                  <div className="grid md:grid-cols-[1fr_1fr_auto] gap-3 items-center">
+                    <input
+                      type="text"
+                      value={apiEnPluralVigente}
+                      readOnly
+                      placeholder="API vigente"
+                      className="rounded-lg border border-indigo-300 px-3 py-2 bg-gray-100 text-gray-600"
+                    />
+                    <input
+                      type="text"
+                      value={apiEnPluralNuevo}
+                      onChange={(e) => setApiEnPluralNuevo(e.target.value)}
+                      placeholder="Nuevo API"
+                      className="rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                  {apiEnPluralMsg && (
+                    <p className={`text-sm ${apiEnPluralMsg.type === "ok" ? "text-green-700" : "text-red-700"}`}>
+                      {apiEnPluralMsg.text}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {menu === "exportar" && (
+              <div>
+                <h2 className="text-lg font-semibold mb-4">Exportar</h2>
+                <p className="text-sm text-gray-700 mb-4">
+                  ¿Deseas exportar los datos con la configuración seleccionada?
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => onConfirmExport(true)}
+                    className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700"
+                  >
+                    Sí, exportar
+                  </button>
+                  <button
+                    onClick={() => onConfirmExport(false)}
+                    className="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50"
+                  >
+                    No, cancelar
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {menu === "cerrar" && (
+              <div>
+                <h2 className="text-lg font-semibold mb-4">Cerrar Sesión</h2>
+                <p className="text-sm text-gray-700 mb-4">
+                  ¿Seguro que quieres cerrar sesión?
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={logout}
+                    className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700"
+                  >
+                    Sí
+                  </button>
+                  <button
+                    onClick={() => setMenu("formatoImport")}
+                    className="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50"
+                  >
+                    No
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Resumen inferior */}
-          <Resumen formatImport={formatoImport} formatExport={formatoExport} empresa={empresa} fecha={fechaFactura} proyecto={proyecto} cuenta={cuenta} cuentaOtra={cuentaOtra} fichero={ficheroNombre} />
+          <div className="bg-indigo-100/90 rounded-2xl shadow p-6 border border-indigo-200 mt-8">
+            <h3 className="text-base font-semibold text-indigo-800 mb-3">
+              Resumen de selección
+            </h3>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
+              <SummaryItem label="Formato Importación" value={formatoImport ?? "—"} />
+              <SummaryItem label="Formato Exportación" value={formatoExport ?? "—"} />
+              <SummaryItem label="Empresa" value={empresa ?? "—"} />
+              <SummaryItem label="Fecha factura" value={fmtFecha(fechaFactura)} />
+              <SummaryItem label="Proyecto" value={proyecto ?? "—"} />
+              <SummaryItem
+                label="Cuenta contable"
+                value={cuenta === "Otra (introducir)" ? (cuentaOtra || "—") : (cuenta ?? "—")}
+              />
+              <SummaryItem label="Fichero" value={ficheroNombre || "—"} />
+            </div>
+          </div>
         </section>
       </div>
     </main>
   );
 }
-
 /* ------------------ Componentes auxiliares ------------------ */
 
-function Item({active,onClick,children}:{active?:boolean; onClick:()=>void; children:React.ReactNode}) {
+function Item({
+  active,
+  onClick,
+  children,
+}: {
+  active?: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
   return (
-    <button type="button" onClick={onClick} className={`w-full text-left px-3 py-2 rounded-lg transition ${active?"bg-indigo-600 text-white font-semibold shadow":"hover:bg-indigo-200 hover:text-indigo-800 text-white"}`}>{children}</button>
+    <button
+      type="button"
+      onClick={onClick}
+      className={`w-full text-left px-3 py-2 rounded-lg transition
+        ${
+          active
+            ? "bg-indigo-600 text-white font-semibold shadow"
+            : "hover:bg-indigo-200 hover:text-indigo-800 text-white"
+        }`}
+    >
+      {children}
+    </button>
   );
 }
 
-function OptionGrid<T extends string>({options,value,onChange}:{options:readonly T[], value:T|null, onChange:(v:T)=>void}) {
+function OptionGrid<T extends string>({
+  options,
+  value,
+  onChange,
+}: {
+  options: readonly T[];
+  value: T | null;
+  onChange: (v: T) => void;
+}) {
   return (
     <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-      {options.map((opt)=>(
-        <button key={opt} type="button" onClick={()=>onChange(opt)} className={`px-3 py-2 rounded-lg border transition text-sm ${value===opt?"bg-indigo-600 border-indigo-700 text-white font-semibold ring-2 ring-indigo-300":"border-indigo-300 text-indigo-800 hover:bg-indigo-100"}`}>
-          {opt}
-        </button>
-      ))}
+      {options.map((opt) => {
+        const selected = value === opt;
+        return (
+          <button
+            key={opt}
+            type="button"
+            onClick={() => onChange(opt)}
+            className={`px-3 py-2 rounded-lg border transition text-sm
+              ${
+                selected
+                  ? "bg-indigo-600 border-indigo-700 text-white font-semibold ring-2 ring-indigo-300"
+                  : "border-indigo-300 text-indigo-800 hover:bg-indigo-100"
+              }`}
+          >
+            {opt}
+          </button>
+        );
+      })}
     </div>
   );
 }
 
-function SummaryItem({label,value}:{label:string,value:string}) {
+function SummaryItem({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-lg bg-white/70 border border-indigo-100 px-3 py-2">
       <div className="text-xs text-indigo-700">{label}</div>
@@ -270,135 +638,3 @@ function SummaryItem({label,value}:{label:string,value:string}) {
     </div>
   );
 }
-
-/* ------------------ Paneles ------------------ */
-
-function PanelOpciones<T extends string>({title,options,value,onChange}:{title:string,options:readonly T[], value:T|null, onChange:(v:T)=>void}) {
-  return (
-    <div className="bg-white/90 backdrop-blur rounded-2xl shadow p-6">
-      <h2 className="text-lg font-semibold mb-4">{title}</h2>
-      <OptionGrid options={options} value={value} onChange={onChange} />
-    </div>
-  );
-}
-
-function PanelCuenta({cuenta,setCuenta,cuentaOtra,setCuentaOtra}:{cuenta:string|null,setCuenta:(c:string|null)=>void,cuentaOtra:string,setCuentaOtra:(v:string)=>void}) {
-  return (
-    <div className="bg-white/90 backdrop-blur rounded-2xl shadow p-6">
-      <h2 className="text-lg font-semibold mb-4">Cuenta contable</h2>
-      <OptionGrid options={CUENTAS} value={cuenta} onChange={(v)=>setCuenta(v)} />
-      {cuenta==="Otra (introducir)" && (
-        <div className="mt-4">
-          <label className="block text-sm font-medium mb-1">Otra cuenta</label>
-          <input type="text" value={cuentaOtra} onChange={(e)=>setCuentaOtra(e.target.value)} placeholder="Introduce tu cuenta" className="w-full rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function PanelFecha({fecha,setFecha}:{fecha:string,setFecha:(v:string)=>void}) {
-  return (
-    <div className="bg-white/90 backdrop-blur rounded-2xl shadow p-6">
-      <h2 className="text-lg font-semibold mb-4">Fecha factura</h2>
-      <input type="date" value={fecha} onChange={(e)=>setFecha(e.target.value)} className="rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
-    </div>
-  );
-}
-
-function PanelFichero({ficheroNombre,fileInputRef,onPickFile}:{ficheroNombre:string,fileInputRef:React.RefObject<HTMLInputElement>,onPickFile:(e:React.ChangeEvent<HTMLInputElement>)=>void}) {
-  return (
-    <div className="bg-white/90 backdrop-blur rounded-2xl shadow p-6">
-      <h2 className="text-lg font-semibold mb-4">Fichero de datos</h2>
-      <label className="inline-flex items-center gap-3 px-4 py-2 rounded-lg border border-indigo-300 hover:bg-indigo-50 cursor-pointer">
-        <span className="text-indigo-700 font-medium">Seleccionar Excel</span>
-        <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={onPickFile}/>
-      </label>
-      {ficheroNombre && <p className="mt-2 text-sm text-indigo-700 font-semibold">{ficheroNombre}</p>}
-    </div>
-  );
-}
-
-function PanelConfig({passActual,passNueva,passConfirma,setPassActual,setPassNueva,setPassConfirma,passMsg,onCambioPassword,apiKissoroVigente,apiKissoroNuevo,setApiKissoroNuevo,apiKissoroMsg,apiEnPluralVigente,apiEnPluralNuevo,setApiEnPluralNuevo,apiEnPluralMsg,onCambioApis}:{passActual:string,passNueva:string,passConfirma:string,setPassActual:(v:string)=>void,setPassNueva:(v:string)=>void,setPassConfirma:(v:string)=>void,passMsg:{type:"ok"|"err",text:string}|null,onCambioPassword:()=>void,apiKissoroVigente:string,apiKissoroNuevo:string,setApiKissoroNuevo:(v:string)=>void,apiKissoroMsg:{type:"ok"|"err",text:string}|null,apiEnPluralVigente:string,apiEnPluralNuevo:string,setApiEnPluralNuevo:(v:string)=>void,apiEnPluralMsg:{type:"ok"|"err",text:string}|null,onCambioApis:()=>void}) {
-  return (
-    <div className="bg-white/90 backdrop-blur rounded-2xl shadow p-6 space-y-8">
-      <h2 className="text-lg font-semibold">Configuración</h2>
-      <div className="space-y-3">
-        <h3 className="text-sm font-semibold">Cambio de contraseña</h3>
-        <div className="grid md:grid-cols-[1fr_1fr_1fr_auto] gap-3 items-center">
-          <input type="password" value={passActual} onChange={e=>setPassActual(e.target.value)} placeholder="Contraseña actual" className="rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
-          <input type="password" value={passNueva} onChange={e=>setPassNueva(e.target.value)} placeholder="Nueva contraseña" className="rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
-          <input type="password" value={passConfirma} onChange={e=>setPassConfirma(e.target.value)} placeholder="Confirmar nueva contraseña" className="rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
-          <button type="button" onClick={onCambioPassword} className="px-4 py-2 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700">Cambio</button>
-        </div>
-        {passMsg && <p className={`text-sm ${passMsg.type==="ok"?"text-green-700":"text-red-700"}`}>{passMsg.text}</p>}
-      </div>
-
-      <div className="space-y-3">
-        <h3 className="text-sm font-semibold">API Holded Kissoro</h3>
-        <div className="grid md:grid-cols-[1fr_1fr_auto] gap-3 items-center">
-          <input type="text" value={apiKissoroVigente} readOnly placeholder="API vigente" className="rounded-lg border border-indigo-300 px-3 py-2 bg-gray-100 text-gray-600"/>
-          <input type="text" value={apiKissoroNuevo} onChange={e=>setApiKissoroNuevo(e.target.value)} placeholder="Nuevo API" className="rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
-          <button type="button" onClick={onCambioApis} className="px-4 py-2 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700">Cambio</button>
-        </div>
-        {apiKissoroMsg && <p className={`text-sm ${apiKissoroMsg.type==="ok"?"text-green-700":"text-red-700"}`}>{apiKissoroMsg.text}</p>}
-      </div>
-
-      <div className="space-y-3">
-        <h3 className="text-sm font-semibold">API Holded En Plural Psicologia</h3>
-        <div className="grid md:grid-cols-[1fr_1fr_auto] gap-3 items-center">
-          <input type="text" value={apiEnPluralVigente} readOnly placeholder="API vigente" className="rounded-lg border border-indigo-300 px-3 py-2 bg-gray-100 text-gray-600"/>
-          <input type="text" value={apiEnPluralNuevo} onChange={e=>setApiEnPluralNuevo(e.target.value)} placeholder="Nuevo API" className="rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
-          <button type="button" onClick={onCambioApis} className="px-4 py-2 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700">Cambio</button>
-        </div>
-        {apiEnPluralMsg && <p className={`text-sm ${apiEnPluralMsg.type==="ok"?"text-green-700":"text-red-700"}`}>{apiEnPluralMsg.text}</p>}
-      </div>
-    </div>
-  );
-}
-
-function PanelExport({onConfirmExport}:{onConfirmExport:(ok:boolean)=>void}) {
-  return (
-    <div className="bg-white/90 backdrop-blur rounded-2xl shadow p-6">
-      <h2 className="text-lg font-semibold mb-4">Exportar</h2>
-      <p className="text-sm text-gray-700 mb-4">¿Deseas exportar los datos con la configuración seleccionada?</p>
-      <div className="flex gap-3">
-        <button onClick={()=>onConfirmExport(true)} className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700">Sí, exportar</button>
-        <button onClick={()=>onConfirmExport(false)} className="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50">No, cancelar</button>
-      </div>
-    </div>
-  );
-}
-
-function PanelCerrar({logout,setMenu}:{logout:()=>void,setMenu:(m:MenuKey)=>void}) {
-  return (
-    <div className="bg-white/90 backdrop-blur rounded-2xl shadow p-6">
-      <h2 className="text-lg font-semibold mb-4">Cerrar Sesión</h2>
-      <p className="text-sm text-gray-700 mb-4">¿Seguro que quieres cerrar sesión?</p>
-      <div className="flex gap-3">
-        <button onClick={logout} className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700">Sí</button>
-        <button onClick={()=>setMenu("formatoImport")} className="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50">No</button>
-      </div>
-    </div>
-  );
-}
-
-function Resumen({formatImport,formatExport,empresa,fecha,proyecto,cuenta,cuentaOtra,fichero}:{formatImport:string|null,formatExport:string|null,empresa:string|null,fecha:string,proyecto:string|null,cuenta:string|null,cuentaOtra:string,fichero:string}) {
-  function fmt(fechaIso:string) { if(!fechaIso) return "—"; const d=new Date(fechaIso); return Number.isNaN(d.getTime())?"—":`${String(d.getDate()).padStart(2,"0")}-${String(d.getMonth()+1).padStart(2,"0")}-${d.getFullYear()}`; }
-  return (
-    <div className="bg-indigo-100/90 rounded-2xl shadow p-6 border border-indigo-200 mt-8">
-      <h3 className="text-base font-semibold text-indigo-800 mb-3">Resumen de selección</h3>
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
-        <SummaryItem label="Formato Importación" value={formatImport??"—"} />
-        <SummaryItem label="Formato Exportación" value={formatExport??"—"} />
-        <SummaryItem label="Empresa" value={empresa??"—"} />
-        <SummaryItem label="Fecha factura" value={fmt(fecha)} />
-        <SummaryItem label="Proyecto" value={proyecto??"—"} />
-        <SummaryItem label="Cuenta contable" value={cuenta==="Otra (introducir)"?(cuentaOtra||"—"):(cuenta??"—")} />
-        <SummaryItem label="Fichero" value={fichero||"—"} />
-      </div>
-    </div>
-  );
-}
-
-
