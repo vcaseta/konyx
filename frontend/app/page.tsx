@@ -1,21 +1,24 @@
 // app/page.tsx
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import Login from "./components/Login";
 
 export default function Page() {
   const router = useRouter();
-  const [token, setToken] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
 
-  async function handleOk(t: string) {
-    // Guardamos token SOLO en sessionStorage (no persiste entre pestañas/cierres)
-    sessionStorage.setItem("token", t);
-    // Marcamos que esta sesión debe arrancar con estados limpios en el dashboard
-    sessionStorage.setItem("reset-dashboard-state", "1");
-    setToken(t);
-    router.push("/dashboard");
+  async function handleOk(token: string) {
+    try {
+      // Siempre obligamos sesión nueva: en sessionStorage, nunca en localStorage
+      sessionStorage.setItem("token", token);
+      // Pediste resetear selecciones en cada inicio de sesión
+      sessionStorage.setItem("reset-dashboard-state", "1");
+      router.push("/dashboard");
+    } catch (e: any) {
+      setErr(e?.message ?? "No se pudo iniciar sesión");
+    }
   }
 
   return (
@@ -28,17 +31,18 @@ export default function Page() {
       }}
     >
       <div className="w-full max-w-sm">
-        {/* Logo arriba, grande */}
         <div className="flex justify-center mb-6">
-          <img
-            src="/logo.png"
-            alt="Konyx"
-            className="h-24 w-auto drop-shadow-md"
-          />
+          <img src="/logo.png" alt="Konyx" className="h-24 w-auto drop-shadow-md" />
         </div>
 
-        {/* Login */}
+        {/* El componente Login debe llamar a onOk(token) al validar */}
         <Login onOk={handleOk} />
+
+        {err && (
+          <p className="mt-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">
+            {err}
+          </p>
+        )}
       </div>
     </main>
   );
