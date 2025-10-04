@@ -44,5 +44,5 @@ COPY --from=builder /app/public ./public
 
 EXPOSE 3000
 
-# Ejecuta Next.js en modo standalone
-CMD ["node", "server.js"]  # Si tienes un archivo server.js. Si no, usa `next start` en su lugar.
+CMD ["npm", "run", "start"]
+
