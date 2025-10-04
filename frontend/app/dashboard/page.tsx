@@ -210,10 +210,10 @@ useEffect(() => {
   }
 
 // Cerrar sesión
-function logout() {
-  sessionStorage.removeItem("konyx_session"); // borrar sesión temporal
-  router.replace("/"); // redirige a login
-}
+  const logout = useCallback(() => {
+  sessionStorage.removeItem("konyx_session");
+  router.replace("/");
+}, [router]);
 
   // Formatea fecha DD-MM-YYYY para resumen
   function fmtFecha(fechaIso: string) {
