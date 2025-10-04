@@ -35,12 +35,16 @@ const CUENTAS = [
 export default function DashboardPage() {
   const router = useRouter();
 
-  // Validación de sesión al cargar la página
+  // Mounted para evitar render en SSR
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  // Validación de sesión al cargar la página (solo en cliente)
   useEffect(() => {
-    if (typeof window === "undefined") return; // Evitar error SSR
+    if (!mounted) return;
     const token = sessionStorage.getItem("konyx_session");
     if (!token) router.replace("/"); // si no hay sesión, redirige a login
-  }, [router]);
+  }, [router, mounted]);
 
   // Menú activo
   const [menu, setMenu] = useState<MenuKey>("formatoImport");
@@ -77,8 +81,8 @@ export default function DashboardPage() {
   const [apiEnPluralNuevo, setApiEnPluralNuevo] = useState("");
   const [apiEnPluralMsg, setApiEnPluralMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
-  // Token de sesión (solo en cliente)
-  const token = typeof window !== "undefined" ? sessionStorage.getItem("konyx_session") : null;
+  const token = mounted ? sessionStorage.getItem("konyx_session") : null;
+
 
   // Cargar APIs desde backend
   useEffect(() => {
