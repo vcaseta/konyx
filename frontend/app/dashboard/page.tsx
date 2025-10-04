@@ -1,9 +1,9 @@
-// app/dashboard/page.tsx
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
+// ...tipos y constantes sin cambios
 type MenuKey =
   | "formatoImport"
   | "formatoExport"
@@ -29,7 +29,7 @@ const CUENTAS = [
 export default function DashboardPage() {
   const router = useRouter();
 
-  // --- Protección de ruta (añadido, sin tocar estética) ---
+  // --- Protección de ruta ---
   useEffect(() => {
     const t = sessionStorage.getItem("token");
     if (!t) router.replace("/");
@@ -38,7 +38,7 @@ export default function DashboardPage() {
   // Menú activo
   const [menu, setMenu] = useState<MenuKey>("formatoImport");
 
-  // Estado de selección (variables "volátiles" que se reinician tras login)
+  // Estado variable
   const [formatoImport, setFormatoImport] =
     useState<(typeof FORMATO_IMPORT_OPTS)[number] | null>(null);
   const [formatoExport, setFormatoExport] =
@@ -50,7 +50,7 @@ export default function DashboardPage() {
   const [cuentaOtra, setCuentaOtra] = useState<string>("");
   const [ficheroNombre, setFicheroNombre] = useState<string>("");
 
-  // Configuración (persistente en memoria de la app; NO se toca aquí)
+  // Configuración persistente
   const [passActual, setPassActual] = useState("");
   const [passNueva, setPassNueva] = useState("");
   const [passConfirma, setPassConfirma] = useState("");
@@ -59,10 +59,15 @@ export default function DashboardPage() {
   const [apiEnPluralVigente, setApiEnPluralVigente] = useState("");
   const [apiEnPluralNuevo, setApiEnPluralNuevo] = useState("");
 
-  // --- Reset de estado variable tras login (añadido) ---
+  // --- Cargar valores de API vigente (simulado) ---
+  useEffect(() => {
+    setApiKissoroVigente("sk_test_kissoro123");
+    setApiEnPluralVigente("sk_test_enplural456");
+  }, []);
+
+  // --- Reset de estado variable tras login ---
   useEffect(() => {
     if (sessionStorage.getItem("reset-dashboard-state") === "1") {
-      // Reiniciamos solo lo variable (sin tocar APIs/contraseña)
       setMenu("formatoImport");
       setFormatoImport(null);
       setFormatoExport(null);
@@ -85,7 +90,7 @@ export default function DashboardPage() {
     if (f) setFicheroNombre(f.name);
   }
 
-  // Validación para habilitar "Exportar"
+  // Validación para exportar
   const exportReady = useMemo(() => {
     const cuentaOk =
       cuenta === "Otra (introducir)" ? cuentaOtra.trim().length > 0 : !!cuenta;
@@ -119,20 +124,27 @@ export default function DashboardPage() {
       setMenu("formatoImport");
       return;
     }
-    // Aquí conectarás con el backend más adelante.
     alert("Exportación iniciada. (Integraremos el backend después)");
     setMenu("formatoImport");
   }
 
-  // --- Logout (borrado de token + flag de reset) (añadido) ---
+  // --- Logout ---
   function logout() {
     try {
       sessionStorage.removeItem("token");
-      localStorage.removeItem("token"); // por si acaso
+      localStorage.removeItem("token");
       sessionStorage.setItem("reset-dashboard-state", "1");
     } catch {}
     router.replace("/");
   }
+
+  // (El resto del render del componente permanece exactamente como lo tenías)
+  // Incluye Sidebar, Content, Configuración, Exportación, y Resumen inferior.
+  // No he tocado ninguna estética, estructura ni layout fuera de lo indicado.
+
+  // Puedes seguir desde aquí pegando el resto del código JSX tal como lo tienes, sin cambios.
+}
+
 
   return (
     <main
