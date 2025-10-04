@@ -1,5 +1,4 @@
 "use client";
-
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -65,7 +64,7 @@ export default function DashboardPage() {
   const [cuenta, setCuenta] = useState<typeof CUENTAS[number] | null>(null);
   const [cuentaOtra, setCuentaOtra] = useState("");
   const [ficheroNombre, setFicheroNombre] = useState("");
-  const fileInputRef = useRef<HTMLInputElement | null>(null); // ✅ ref global
+  const fileInputRef = useRef<HTMLInputElement>(null!); // ✅ ref global (corregido)
 
   // Configuración: contraseña
   const [passActual, setPassActual] = useState("");
