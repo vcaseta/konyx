@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { apiLogin } from "../lib/api";
+import { apiLogin } from "./lib/api";
 
 export default function Login({ onOk }: { onOk: (token: string) => void }) {
   const [user, setUser] = useState("");
