@@ -5,7 +5,7 @@ WORKDIR /app
 # Copia package.json y package-lock.json
 COPY package.json package-lock.json* ./
 
-# Instalamos las dependencias (sin requerir package-lock.json)
+# Instalamos las dependencias
 RUN npm install --legacy-peer-deps
 
 # ---------- Stage 2: Build ----------
@@ -27,7 +27,7 @@ ARG NEXT_PUBLIC_COMPANIES
 ENV NODE_ENV=development
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Construcción de Next.js en modo standalone
+# Construcción de Next.js
 RUN npm run build
 
 # ---------- Stage 3: Runtime ----------
@@ -46,10 +46,6 @@ COPY --from=builder /app/public ./public
 
 EXPOSE 3000
 
-# Ejecutamos Next.js en modo de desarrollo
-CMD ["npm", "run", "dev"]
-
-
-# Ejecutamos Next.js en modo de desarrollo
+# Solo una instrucción CMD, ya que solo se ejecuta la última.
 CMD ["npm", "run", "dev"]
 
