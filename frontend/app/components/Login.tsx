@@ -17,7 +17,8 @@ export default function Login({ onOk }: { onOk: (token: string) => void }) {
     setLoading(true);
     try {
       const token = await apiLogin(user, pass);
-      Cookies.set("konyx_token", token, { sameSite: "strict" }); // Importante para middleware
+      if (!token) throw new Error("Token inválido");
+      Cookies.set("konyx_token", token); // <- Asegura que el middleware lo ve
       onOk(token);
     } catch (error: any) {
       setErr(error?.message || "No se pudo iniciar sesión");
@@ -27,14 +28,13 @@ export default function Login({ onOk }: { onOk: (token: string) => void }) {
   }
 
   return (
-    <form onSubmit={onSubmit} className="bg-white/90 backdrop-blur rounded-2xl shadow-lg p-6 space-y-4">
-      {/* Logo dentro del cuadro de login */}
-      <div className="flex justify-center mb-4">
-        <img
-          src="/logo.png"
-          alt="Konyx"
-          className="h-20 w-auto drop-shadow-md"
-        />
+    <form
+      onSubmit={onSubmit}
+      className="bg-white/90 backdrop-blur rounded-2xl shadow-lg p-6 space-y-4"
+    >
+      {/* Logo dentro del cuadro */}
+      <div className="flex justify-center">
+        <img src="/logo.png" alt="Konyx" className="h-20 w-auto drop-shadow" />
       </div>
 
       {err && (
@@ -77,4 +77,4 @@ export default function Login({ onOk }: { onOk: (token: string) => void }) {
     </form>
   );
 }
-
+}
