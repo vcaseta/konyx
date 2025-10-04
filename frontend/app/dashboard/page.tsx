@@ -36,12 +36,9 @@ export default function DashboardPage() {
   const router = useRouter();
 
   // Validación de sesión al cargar la página
-  const [token, setToken] = useState<string | null>(null);
-
   useEffect(() => {
-    const t = sessionStorage.getItem("konyx_session");
-    if (!t) router.replace("/"); // si no hay sesión, redirige a login
-    else setToken(t);
+    const token = sessionStorage.getItem("konyx_session");
+    if (!token) router.replace("/"); // si no hay sesión, redirige a login
   }, [router]);
 
   // Menú activo
@@ -79,13 +76,15 @@ export default function DashboardPage() {
   const [apiEnPluralNuevo, setApiEnPluralNuevo] = useState("");
   const [apiEnPluralMsg, setApiEnPluralMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
+  const token = sessionStorage.getItem("konyx_session");
+
   // ------------------ Cargar APIs desde backend ------------------
   useEffect(() => {
     if (!token) return;
 
     async function fetchApis() {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/apis`, {
+        const res = await fetch("/auth/apis", {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!res.ok) throw new Error("Error al cargar APIs");
@@ -100,7 +99,7 @@ export default function DashboardPage() {
     fetchApis();
   }, [token]);
 
-  // ------------------ Habilitación Exportar ------------------
+  // Habilitación de Exportar
   const exportReady = useMemo(() => {
     const cuentaOk =
       cuenta === "Otra (introducir)"
@@ -117,13 +116,17 @@ export default function DashboardPage() {
     );
   }, [formatoImport, formatoExport, empresa, fechaFactura, proyecto, cuenta, cuentaOtra, ficheroNombre]);
 
+  // Función para mostrar panel de exportación
   function onExportAsk() {
     if (!exportReady) return;
     setMenu("exportar");
   }
 
   function onConfirmExport(ok: boolean) {
-    if (!ok) { setMenu("formatoImport"); return; }
+    if (!ok) {
+      setMenu("formatoImport");
+      return;
+    }
     alert("Exportación iniciada (conectaremos backend después).");
     setMenu("formatoImport");
   }
@@ -135,7 +138,7 @@ export default function DashboardPage() {
     if (!token) return;
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/apis`, {
+      const res = await fetch("/auth/apis", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -175,17 +178,22 @@ export default function DashboardPage() {
     }
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/change-password`, {
+      const res = await fetch("/auth/change-password", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ old_password: passActual, new_password: passNueva }),
+        body: JSON.stringify({
+          old_password: passActual,
+          new_password: passNueva,
+        }),
       });
       if (!res.ok) throw new Error("Error al cambiar contraseña");
       setPassMsg({ type: "ok", text: "Contraseña actualizada correctamente" });
-      setPassActual(""); setPassNueva(""); setPassConfirma("");
+      setPassActual("");
+      setPassNueva("");
+      setPassConfirma("");
     } catch (error: any) {
       setPassMsg({ type: "err", text: error.message });
     }
@@ -197,7 +205,7 @@ export default function DashboardPage() {
     router.replace("/");
   }
 
-  // ------------------ Formatear fecha ------------------
+  // Formatea fecha DD-MM-YYYY para resumen
   function fmtFecha(fechaIso: string) {
     if (!fechaIso) return "—";
     const d = new Date(fechaIso);
@@ -208,9 +216,9 @@ export default function DashboardPage() {
     return `${dd}-${mm}-${yyyy}`;
   }
 
-  /* ------------------ Render ------------------ */
   return (
-    <main className="min-h-screen bg-no-repeat bg-center bg-cover p-4" style={{ backgroundImage: "url(/fondo.png)", backgroundSize: "100% 100%", backgroundRepeat: "no-repeat" }}>
+    <main className="min-h-screen bg-no-repeat bg-center bg-cover p-4"
+      style={{ backgroundImage: "url(/fondo.png)", backgroundSize: "100% 100%", backgroundRepeat: "no-repeat" }}>
       <div className="mx-auto max-w-7xl grid grid-cols-1 md:grid-cols-[260px_1fr] gap-6">
         {/* Sidebar */}
         <aside className="md:sticky md:top-6">
@@ -228,23 +236,34 @@ export default function DashboardPage() {
               <Item active={menu==="fichero"} onClick={()=>setMenu("fichero")}>Fichero de datos</Item>
               <Item active={menu==="config"} onClick={()=>setMenu("config")}>Configuración</Item>
 
-              <button type="button" onClick={onExportAsk} className={`w-full text-left px-3 py-2 rounded-lg transition font-semibold border ${exportReady ? "border-indigo-600 text-indigo-700 bg-white/90 shadow hover:bg-indigo-200 hover:text-indigo-800" : "border-gray-300 text-gray-200 cursor-not-allowed"}`} title={exportReady ? "Listo para exportar" : "Completa todos los campos para exportar"}>
-                Exportar
-              </button>
+              <button type="button" onClick={onExportAsk} className={`w-full text-left px-3 py-2 rounded-lg transition font-semibold border ${exportReady?"border-indigo-600 text-indigo-700 bg-white/90 shadow hover:bg-indigo-200 hover:text-indigo-800":"border-gray-300 text-gray-200 cursor-not-allowed"}`} title={exportReady?"Listo para exportar":"Completa todos los campos para exportar"}>Exportar</button>
 
-              <div className="pt-2">
-                <Item active={menu==="cerrar"} onClick={()=>setMenu("cerrar")}>Cerrar Sesión</Item>
-              </div>
+              <div className="pt-2"><Item active={menu==="cerrar"} onClick={()=>setMenu("cerrar")}>Cerrar Sesión</Item></div>
             </nav>
           </div>
         </aside>
 
         {/* Contenido */}
         <section className="space-y-6">
-          {/* Contenido dinámico */}
+          {/* Panel de selección y configuración */}
           <div className="bg-white/90 backdrop-blur rounded-2xl shadow p-6">
-            {/* Aquí va todo el contenido de los paneles igual que antes */}
-            {/* Puedes copiar tus paneles de Configuración, Exportar y Resumen exactamente como antes */}
+            {/* Contenido dinámico según menú */}
+            {/* ... Aquí van todos los paneles de menú (formatoImport, formatoExport, empresa, fecha, proyecto, cuenta, fichero, config, exportar, cerrar) */}
+            {/* Manteniendo exactamente los inputs, botones, mensajes y estilos que tenías */}
+          </div>
+
+          {/* Resumen inferior */}
+          <div className="bg-indigo-100/90 rounded-2xl shadow p-6 border border-indigo-200 mt-8">
+            <h3 className="text-base font-semibold text-indigo-800 mb-3">Resumen de selección</h3>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
+              <SummaryItem label="Formato Importación" value={formatoImport ?? "—"} />
+              <SummaryItem label="Formato Exportación" value={formatoExport ?? "—"} />
+              <SummaryItem label="Empresa" value={empresa ?? "—"} />
+              <SummaryItem label="Fecha factura" value={fmtFecha(fechaFactura)} />
+              <SummaryItem label="Proyecto" value={proyecto ?? "—"} />
+              <SummaryItem label="Cuenta contable" value={cuenta==="Otra (introducir)"?(cuentaOtra||"—"):(cuenta??"—")} />
+              <SummaryItem label="Fichero" value={ficheroNombre||"—"} />
+            </div>
           </div>
         </section>
       </div>
@@ -253,14 +272,18 @@ export default function DashboardPage() {
 }
 
 /* ------------------ Componentes auxiliares ------------------ */
-function Item({ active, onClick, children }: { active?: boolean, onClick: ()=>void, children: React.ReactNode }) {
-  return <button type="button" onClick={onClick} className={`w-full text-left px-3 py-2 rounded-lg transition ${active ? "bg-indigo-600 text-white font-semibold shadow" : "hover:bg-indigo-200 hover:text-indigo-800 text-white"}`}>{children}</button>
+
+function Item({ active, onClick, children }: { active?: boolean; onClick:()=>void; children:React.ReactNode }) {
+  return <button type="button" onClick={onClick} className={`w-full text-left px-3 py-2 rounded-lg transition ${active?"bg-indigo-600 text-white font-semibold shadow":"hover:bg-indigo-200 hover:text-indigo-800 text-white"}`}>{children}</button>;
 }
 
-function OptionGrid<T extends string>({ options, value, onChange }: { options: readonly T[], value: T | null, onChange: (v: T)=>void }) {
-  return <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">{options.map(opt=><button key={opt} type="button" onClick={()=>onChange(opt)} className={`px-3 py-2 rounded-lg border transition text-sm ${value===opt?"bg-indigo-600 border-indigo-700 text-white font-semibold ring-2 ring-indigo-300":"border-indigo-300 text-indigo-800 hover:bg-indigo-100"}`}>{opt}</button>)}</div>
+function OptionGrid<T extends string>({ options, value, onChange }: { options: readonly T[], value:T|null, onChange:(v:T)=>void }) {
+  return <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">{options.map(opt => {
+    const selected = value===opt;
+    return <button key={opt} type="button" onClick={()=>onChange(opt)} className={`px-3 py-2 rounded-lg border transition text-sm ${selected?"bg-indigo-600 border-indigo-700 text-white font-semibold ring-2 ring-indigo-300":"border-indigo-300 text-indigo-800 hover:bg-indigo-100"}`}>{opt}</button>
+  })}</div>;
 }
 
-function SummaryItem({ label, value }: { label: string, value: string }) {
-  return <div className="rounded-lg bg-white/70 border border-indigo-100 px-3 py-2"><div className="text-xs text-indigo-700">{label}</div><div className="font-medium text-gray-900 break-words">{value}</div></div>
+function SummaryItem({ label, value }: { label:string, value:string }) {
+  return <div className="rounded-lg bg-white/70 border border-indigo-100 px-3 py-2"><div className="text-xs text-indigo-700">{label}</div><div className="font-medium text-gray-900 break-words">{value}</div></div>;
 }
