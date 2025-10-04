@@ -32,6 +32,7 @@ RUN npm run build
 FROM node:20-alpine AS runner
 WORKDIR /app
 
+# Variables de entorno necesarias para producción
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
@@ -43,5 +44,5 @@ COPY --from=builder /app/public ./public
 
 EXPOSE 3000
 
-# Ejecuta Next.js standalone
-CMD ["node", "server.js"]
+# Ejecuta Next.js en modo standalone
+CMD ["node", "server.js"]  # Si tienes un archivo server.js. Si no, usa `next start` en su lugar.
