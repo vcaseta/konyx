@@ -3,6 +3,9 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Cookies from "js-cookie";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 /* ------------------ Constantes ------------------ */
 type MenuKey =
@@ -60,9 +63,6 @@ export default function DashboardPage() {
   const router = useRouter();
 
   // Requiere login: si no hay token de esta sesión, redirige a /
- import Cookies from "js-cookie";
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
 
 export default function DashboardPage() {
   const router = useRouter();
