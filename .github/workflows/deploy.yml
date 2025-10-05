@@ -1,4 +1,4 @@
-name: Deploy Konyx
+name: Deploy Konyx version2
 
 on:
   push:
@@ -8,32 +8,38 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      # -------------------- Frontend --------------------
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '20'
 
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: npm install
+
       - name: Build frontend
         working-directory: ./frontend
-        run: |
-          npm install
-          npm run build
+        run: npm run build
 
+      # -------------------- Backend --------------------
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.12'
 
-      - name: Install backend requirements
+      - name: Install backend dependencies
         working-directory: ./backend
         run: |
           pip install --upgrade pip
           pip install -r requirements.txt
 
+      # -------------------- Docker --------------------
       - name: Build Docker images
         run: |
           docker build -t konyx-frontend:version2 ./frontend
@@ -41,4 +47,4 @@ jobs:
 
       - name: Deploy stack
         run: |
-          docker stack deploy -c docker-compose.yml konyx
+          docker stack deploy -c docker-compose.yml konyx-v2
