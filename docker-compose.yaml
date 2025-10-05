@@ -1,34 +1,30 @@
 version: "3.9"
 
 services:
-  backend:
-    build: ./backend
-    container_name: konyx-backend
-    networks:
-      lan-local:
-        ipv4_address: 192.168.1.51
-    restart: unless-stopped
-    volumes:
-      - konyx-backend-data:/app/app/storage.json
-
   frontend:
-    build: ./frontend
+    image: ghcr.io/vcaseta/konyx-frontend:version2
     container_name: konyx-frontend
-    environment:
-      - NEXT_PUBLIC_API_KISSORO=http://192.168.1.51:8000
-      - NEXT_PUBLIC_API_ENPLURAL=http://192.168.1.51:8000
-      - NEXT_PUBLIC_LOGIN_PASS=admin123
     networks:
       lan-local:
         ipv4_address: 192.168.1.50
     ports:
       - "3000:3000"
     restart: unless-stopped
+    env_file:
+      - frontend/.env
+
+  backend:
+    image: ghcr.io/vcaseta/konyx-backend:version2
+    container_name: konyx-backend
+    networks:
+      lan-local:
+        ipv4_address: 192.168.1.51
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+    env_file:
+      - backend/.env
 
 networks:
   lan-local:
     external: true
-
-volumes:
-  konyx-backend-data:
-    driver: local
