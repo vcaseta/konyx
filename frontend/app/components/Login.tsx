@@ -15,11 +15,6 @@ export default function Login({ onOk }: LoginProps) {
   const [msg, setMsg] = useState<string | null>(null);
 
   const handleLogin = async () => {
-    if (user !== "admenplural") {
-      setMsg("Usuario incorrecto");
-      return;
-    }
-
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_ENPLURAL}/auth/login`, {
         method: "POST",
@@ -31,14 +26,11 @@ export default function Login({ onOk }: LoginProps) {
 
       const data = await res.json();
 
-      // Guardar token en cookies y storage
       Cookies.set("konyx_token", data.token, { expires: 1 });
       sessionStorage.setItem("konyx_token", data.token);
       localStorage.setItem("konyx_token", data.token);
 
       onOk(data.token);
-
-      // Redirigir al dashboard
       router.push("/dashboard");
     } catch (error: any) {
       setMsg(error.message);
@@ -47,7 +39,6 @@ export default function Login({ onOk }: LoginProps) {
 
   return (
     <div className="bg-white/80 p-6 rounded-xl shadow-md flex flex-col items-center">
-      {/* Logo */}
       <div className="mb-4">
         <img src="/logo.png" alt="Konyx" className="h-48 w-auto drop-shadow-md" />
       </div>
