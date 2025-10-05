@@ -1,55 +1,99 @@
-name: Build Konyx Frontend
+name: Build & Deploy Docker images
 
 on:
   push:
     branches:
       - main
-  pull_request:
 
 jobs:
-  build-frontend:
+  build:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./frontend
+    permissions:
+      packages: write
+      contents: read
 
     steps:
-      # 1. Checkout del repositorio
-      - name: Checkout repository
-        uses: actions/checkout@v3
+      # 1️⃣ Clonar repo
+      - uses: actions/checkout@v3
 
-      # 2. Setup Node.js 20
-      - name: Setup Node.js
+      # 2️⃣ Setup Node.js
+      - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: 20
-          cache: "npm"
 
-      # 3. Generar package-lock.json si no existe
-      - name: Ensure package-lock.json exists
-        run: |
-          if [ ! -f package-lock.json ]; then
-            echo "package-lock.json no existe, creando..."
-            npm install --package-lock-only
-          fi
-
-      # 4. Restaurar caché de node_modules basada en package-lock.json
-      - name: Cache node modules
+      # 3️⃣ Cache dependencias frontend
+      - name: Cache frontend node_modules
         uses: actions/cache@v3
         with:
-          path: node_modules
-          key: ${{ runner.os }}-node-${{ hashFiles('package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
+          path: frontend/node_modules
+          key: ${{ runner.os }}-node-frontend-${{ hashFiles('frontend/package-lock.json') }}
 
-      # 5. Instalar dependencias
-      - name: Install dependencies
+      # 4️⃣ Cache dependencias backend
+      - name: Cache backend node_modules
+        uses: actions/cache@v3
+        with:
+          path: backend/node_modules
+          key: ${{ runner.os }}-node-backend-${{ hashFiles('backend/package-lock.json') }}
+
+      # 5️⃣ Crear package-lock.json si no existe
+      - name: Ensure frontend lockfile
+        run: npm install --package-lock-only
+        working-directory: ./frontend
+
+      - name: Ensure backend lockfile
+        run: npm install --package-lock-only
+        working-directory: ./backend
+
+      # 6️⃣ Instalar dependencias
+      - name: Install frontend dependencies
         run: npm ci
+        working-directory: ./frontend
 
-      # 6. Construir proyecto Next.js
+      - name: Install backend dependencies
+        run: npm ci
+        working-directory: ./backend
+
+      # 7️⃣ Buildar proyectos
       - name: Build frontend
         run: npm run build
+        working-directory: ./frontend
 
-      # 7. (Opcional) Ejecutar tests si tienes
-      #- name: Run tests
-      #  run: npm test
+      - name: Build backend
+        run: npm run build
+        working-directory: ./backend
+
+      # 8️⃣ Setup Docker Buildx
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      # 9️⃣ Log in a GHCR
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # 🔟 Build & Push Docker images
+      - name: Build & Push backend Docker
+        uses: docker/build-push-action@v4
+        with:
+          context: ./backend
+          push: true
+          tags: ghcr.io/vcaseta/konyx-backend:latest
+
+      - name: Build & Push frontend Docker
+        uses: docker/build-push-action@v4
+        with:
+          context: ./frontend
+          push: true
+          tags: ghcr.io/vcaseta/konyx-frontend:latest
+          build-args: |
+            NEXT_PUBLIC_BACKEND_URL=http://192.168.1.51:8000
+            NEXT_PUBLIC_APP_NAME=Konyx
+            NEXT_PUBLIC_COMPANIES='[{"id":"001","name":"Kissoro"},{"id":"002","name":"En Plural Psicologia"}]'
+
+      # 11️⃣ Limpiar Buildx cache
+      - name: Clean up Docker Buildx
+        run: docker buildx prune --all --force
