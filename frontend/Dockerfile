@@ -1,25 +1,17 @@
 # ---------- Stage 1: Builder ----------
 FROM node:20-alpine AS builder
 
+# Crear directorio de trabajo
 WORKDIR /app
 
-# Copiamos solo package.json y package-lock.json para cachear deps
+# Copiar package.json y package-lock.json para instalar dependencias
 COPY package*.json ./
 
-# Instalamos todas las dependencias (dev + prod)
-RUN npm install
+# Instalar dependencias
+RUN npm ci
 
-# Copiamos el resto del proyecto
+# Copiar todo el proyecto
 COPY . .
-
-# Set environment variables for build
-ARG NEXT_PUBLIC_BACKEND_URL
-ARG NEXT_PUBLIC_APP_NAME
-ARG NEXT_PUBLIC_COMPANIES
-ENV NEXT_PUBLIC_BACKEND_URL=$NEXT_PUBLIC_BACKEND_URL
-ENV NEXT_PUBLIC_APP_NAME=$NEXT_PUBLIC_APP_NAME
-ENV NEXT_PUBLIC_COMPANIES=$NEXT_PUBLIC_COMPANIES
-ENV NODE_ENV=production
 
 # Build de Next.js
 RUN npm run build
@@ -27,20 +19,19 @@ RUN npm run build
 # ---------- Stage 2: Runtime ----------
 FROM node:20-alpine AS runtime
 
+# Crear directorio de trabajo
 WORKDIR /app
 
-# Solo instalamos deps de producción
-COPY package*.json ./
-RUN npm install --omit=dev
-
-# Copiamos build y public
+# Copiar los archivos necesarios del build
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/next.config.js ./next.config.js
+COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/node_modules ./node_modules
 
-# Exponemos puerto de Next.js
+# Exponer puerto de Next.js
 EXPOSE 3000
 
-# Comando de inicio en producción
-CMD ["npm", "start"]
+# Comando para arrancar Next.js en modo producción
+CMD ["npx", "next", "start", "-p", "3000"]
 
