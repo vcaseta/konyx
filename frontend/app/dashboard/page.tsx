@@ -33,18 +33,20 @@ type MenuKey =
   | "exportar"
   | "cerrar";
 
-
-
 export default function DashboardPage() {
   const router = useRouter();
 
   // -------------------- Autenticación --------------------
-useEffect(() => {
-  const t = sessionStorage.getItem("konyx_token") || localStorage.getItem("konyx_token");
-  if (!t) router.replace("/"); // login
-  else setToken(t);
-}, [router]);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [token, setToken] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const t = sessionStorage.getItem("konyx_token") || localStorage.getItem("konyx_token");
+    if (!t) router.replace("/"); // redirige a login si no hay token
+    else setToken(t); // guarda token en estado
+    setAuthChecked(true);
+  }, [router]);
 
   if (!authChecked || typeof window === "undefined") return null;
 
@@ -164,14 +166,6 @@ useEffect(() => {
     router.replace("/");
   };
 
-  // -------------------- Callbacks separados para hooks
-  const handleFormatoImportChange = (val: typeof FORMATO_IMPORT_OPTS[number]) => setFormatoImport(val);
-  const handleFormatoExportChange = (val: typeof FORMATO_EXPORT_OPTS[number]) => setFormatoExport(val);
-  const handleEmpresaChange = (val: typeof EMPRESAS[number]) => setEmpresa(val);
-  const handleProyectoChange = (val: typeof PROYECTOS[number]) => setProyecto(val);
-  const handleCuentaChange = (val: typeof CUENTAS[number]) => setCuenta(val);
-  const handleFechaChange = (val: string) => setFechaFactura(val);
-
   // -------------------- JSX --------------------
   return (
     <main className="min-h-screen bg-no-repeat bg-center bg-cover p-4" style={{ backgroundImage: "url(/fondo.png)", backgroundSize: "100% 100%" }}>
@@ -208,18 +202,18 @@ useEffect(() => {
 
         {/* Contenido */}
         <section className="space-y-6">
-          {menu === "formatoImport" && <PanelOption title="Formato Importación" options={FORMATO_IMPORT_OPTS} value={formatoImport} onChange={handleFormatoImportChange} />}
-          {menu === "formatoExport" && <PanelOption title="Formato Exportación" options={FORMATO_EXPORT_OPTS} value={formatoExport} onChange={handleFormatoExportChange} />}
-          {menu === "empresa" && <PanelOption title="Empresa" options={EMPRESAS} value={empresa} onChange={handleEmpresaChange} />}
-          {menu === "proyecto" && <PanelOption title="Proyecto" options={PROYECTOS} value={proyecto} onChange={handleProyectoChange} />}
+          {menu === "formatoImport" && <PanelOption title="Formato Importación" options={FORMATO_IMPORT_OPTS} value={formatoImport} onChange={setFormatoImport} />}
+          {menu === "formatoExport" && <PanelOption title="Formato Exportación" options={FORMATO_EXPORT_OPTS} value={formatoExport} onChange={setFormatoExport} />}
+          {menu === "empresa" && <PanelOption title="Empresa" options={EMPRESAS} value={empresa} onChange={setEmpresa} />}
+          {menu === "proyecto" && <PanelOption title="Proyecto" options={PROYECTOS} value={proyecto} onChange={setProyecto} />}
           {menu === "cuenta" && (
-            <PanelOption title="Cuenta contable" options={CUENTAS} value={cuenta} onChange={handleCuentaChange}>
+            <PanelOption title="Cuenta contable" options={CUENTAS} value={cuenta} onChange={setCuenta}>
               {cuenta === "Otra (introducir)" && (
                 <input type="text" value={cuentaOtra} onChange={e => setCuentaOtra(e.target.value)} placeholder="Introduce tu cuenta" className="w-full rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 mt-4" />
               )}
             </PanelOption>
           )}
-          {menu === "fecha" && <PanelDate title="Fecha factura" value={fechaFactura} onChange={handleFechaChange} />}
+          {menu === "fecha" && <PanelDate title="Fecha factura" value={fechaFactura} onChange={setFechaFactura} />}
           {menu === "fichero" && <PanelFile value={ficheroNombre} onPickFile={onPickFile} onPickFileClick={onPickFileClick} fileInputRef={fileInputRef} />}
           {menu === "config" && <PanelConfig
             passActual={passActual} passNueva={passNueva} passConfirma={passConfirma}
