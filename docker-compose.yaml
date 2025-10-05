@@ -1,99 +1,34 @@
-name: Build & Deploy Docker images (version2)
+version: "3.9"
 
-on:
-  push:
-    branches:
-      - version2
+services:
+  backend:
+    build: ./backend
+    container_name: konyx-backend
+    networks:
+      lan-local:
+        ipv4_address: 192.168.1.51
+    restart: unless-stopped
+    volumes:
+      - konyx-backend-data:/app/app/storage.json
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    permissions:
-      packages: write
-      contents: read
+  frontend:
+    build: ./frontend
+    container_name: konyx-frontend
+    environment:
+      - NEXT_PUBLIC_API_KISSORO=http://192.168.1.51:8000
+      - NEXT_PUBLIC_API_ENPLURAL=http://192.168.1.51:8000
+      - NEXT_PUBLIC_LOGIN_PASS=admin123
+    networks:
+      lan-local:
+        ipv4_address: 192.168.1.50
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
 
-    steps:
-      # 1️⃣ Clonar repo
-      - uses: actions/checkout@v3
+networks:
+  lan-local:
+    external: true
 
-      # 2️⃣ Setup Node.js
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: 20
-
-      # 3️⃣ Cache dependencias frontend
-      - name: Cache frontend node_modules
-        uses: actions/cache@v3
-        with:
-          path: frontend/node_modules
-          key: ${{ runner.os }}-node-frontend-${{ hashFiles('frontend/package-lock.json') }}
-
-      # 4️⃣ Cache dependencias backend
-      - name: Cache backend node_modules
-        uses: actions/cache@v3
-        with:
-          path: backend/node_modules
-          key: ${{ runner.os }}-node-backend-${{ hashFiles('backend/package-lock.json') }}
-
-      # 5️⃣ Crear package-lock.json si no existe
-      - name: Ensure frontend lockfile
-        run: npm install --package-lock-only
-        working-directory: ./frontend
-
-      - name: Ensure backend lockfile
-        run: npm install --package-lock-only
-        working-directory: ./backend
-
-      # 6️⃣ Instalar dependencias
-      - name: Install frontend dependencies
-        run: npm ci
-        working-directory: ./frontend
-
-      - name: Install backend dependencies
-        run: npm ci
-        working-directory: ./backend
-
-      # 7️⃣ Buildar proyectos
-      - name: Build frontend
-        run: npm run build
-        working-directory: ./frontend
-
-      - name: Build backend
-        run: npm run build
-        working-directory: ./backend
-
-      # 8️⃣ Setup Docker Buildx
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-
-      # 9️⃣ Log in a GHCR (usuario personal)
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v2
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      # 🔟 Build & Push Docker images con tag version2
-      - name: Build & Push backend Docker
-        uses: docker/build-push-action@v4
-        with:
-          context: ./backend
-          push: true
-          tags: ghcr.io/${{ github.actor }}/konyx-backend:version2
-
-      - name: Build & Push frontend Docker
-        uses: docker/build-push-action@v4
-        with:
-          context: ./frontend
-          push: true
-          tags: ghcr.io/${{ github.actor }}/konyx-frontend:version2
-          build-args: |
-            NEXT_PUBLIC_BACKEND_URL=http://192.168.1.51:8000
-            NEXT_PUBLIC_APP_NAME=Konyx
-            NEXT_PUBLIC_COMPANIES='[{"id":"001","name":"Kissoro"},{"id":"002","name":"En Plural Psicologia"}]'
-
-      # 11️⃣ Limpiar Buildx cache
-      - name: Clean up Docker Buildx
-        run: docker buildx prune --all --force
+volumes:
+  konyx-backend-data:
+    driver: local
