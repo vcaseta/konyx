@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import Login from "./components/Login";
+import Login from "../components/Login";
 import Cookies from "js-cookie";
 
 export const dynamic = "force-dynamic";
