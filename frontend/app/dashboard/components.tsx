@@ -15,6 +15,7 @@ export function Item({ active, onClick, children }: { active: boolean; onClick: 
   );
 }
 
+// ------------------ OptionGrid ------------------
 export function OptionGrid<T extends string>({ options, value, onChange }: { options: readonly T[]; value: T | null; onChange: (v: T) => void }) {
   return (
     <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -34,6 +35,7 @@ export function OptionGrid<T extends string>({ options, value, onChange }: { opt
   );
 }
 
+// ------------------ PanelOption ------------------
 export function PanelOption<T extends string>({
   title,
   options,
@@ -44,7 +46,7 @@ export function PanelOption<T extends string>({
   title: string;
   options: readonly T[];
   value: T | null;
-  onChange: (v: T) => void;
+  onChange: (v: T) => void; // ✅ corregido para usar T
   children?: React.ReactNode;
 }) {
   return (
@@ -56,6 +58,7 @@ export function PanelOption<T extends string>({
   );
 }
 
+// ------------------ PanelDate ------------------
 export function PanelDate({ title, value, onChange }: { title: string; value: string; onChange: (v: string) => void }) {
   return (
     <div className="bg-white/90 backdrop-blur rounded-2xl shadow p-6">
@@ -70,6 +73,7 @@ export function PanelDate({ title, value, onChange }: { title: string; value: st
   );
 }
 
+// ------------------ PanelFile ------------------
 export function PanelFile({
   value,
   onPickFile,
@@ -96,6 +100,7 @@ export function PanelFile({
   );
 }
 
+// ------------------ PanelConfig ------------------
 export function PanelConfig({
   passActual,
   passNueva,
@@ -176,6 +181,7 @@ export function PanelConfig({
   );
 }
 
+// ------------------ PanelExport ------------------
 export function PanelExport({ onConfirm }: { onConfirm: (ok: boolean) => void }) {
   return (
     <div className="bg-white/90 backdrop-blur rounded-2xl shadow p-6">
@@ -189,6 +195,7 @@ export function PanelExport({ onConfirm }: { onConfirm: (ok: boolean) => void })
   );
 }
 
+// ------------------ PanelCerrar ------------------
 export function PanelCerrar({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) {
   return (
     <div className="bg-white/90 backdrop-blur rounded-2xl shadow p-6">
@@ -202,6 +209,7 @@ export function PanelCerrar({ onConfirm, onCancel }: { onConfirm: () => void; on
   );
 }
 
+// ------------------ ResumenInferior ------------------
 export function ResumenInferior() {
   return (
     <div className="bg-indigo-100/90 rounded-2xl shadow p-6 border border-indigo-200 mt-8">
@@ -209,5 +217,7 @@ export function ResumenInferior() {
       {/* Mapear valores del estado aquí si quieres */}
     </div>
   );
+}
+
 }
 
