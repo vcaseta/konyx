@@ -204,18 +204,18 @@ export default function DashboardPage() {
 
         {/* Contenido */}
         <section className="space-y-6">
-          {menu === "formatoImport" && <PanelOption title="Formato Importación" options={FORMATO_IMPORT_OPTS} value={formatoImport} onChange={setFormatoImport} />}
-          {menu === "formatoExport" && <PanelOption title="Formato Exportación" options={FORMATO_EXPORT_OPTS} value={formatoExport} onChange={setFormatoExport} />}
-          {menu === "empresa" && <PanelOption title="Empresa" options={EMPRESAS} value={empresa} onChange={setEmpresa} />}
-          {menu === "proyecto" && <PanelOption title="Proyecto" options={PROYECTOS} value={proyecto} onChange={setProyecto} />}
+          {menu === "formatoImport" && <PanelOption title="Formato Importación" options={FORMATO_IMPORT_OPTS} value={formatoImport} onChange={(val) => setFormatoImport(val)} />}
+          {menu === "formatoExport" && <PanelOption title="Formato Exportación" options={FORMATO_EXPORT_OPTS} value={formatoExport} onChange={(val) => setFormatoExport(val)} />}
+          {menu === "empresa" && <PanelOption title="Empresa" options={EMPRESAS} value={empresa} onChange={(val) => setEmpresa(val)} />}
+          {menu === "proyecto" && <PanelOption title="Proyecto" options={PROYECTOS} value={proyecto} onChange={(val) => setProyecto(val)} />}
           {menu === "cuenta" && (
-            <PanelOption title="Cuenta contable" options={CUENTAS} value={cuenta} onChange={setCuenta}>
+            <PanelOption title="Cuenta contable" options={CUENTAS} value={cuenta} onChange={(val) => setCuenta(val)}>
               {cuenta === "Otra (introducir)" && (
                 <input type="text" value={cuentaOtra} onChange={e => setCuentaOtra(e.target.value)} placeholder="Introduce tu cuenta" className="w-full rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 mt-4" />
               )}
             </PanelOption>
           )}
-          {menu === "fecha" && <PanelDate title="Fecha factura" value={fechaFactura} onChange={setFechaFactura} />}
+          {menu === "fecha" && <PanelDate title="Fecha factura" value={fechaFactura} onChange={(val) => setFechaFactura(val)} />}
           {menu === "fichero" && <PanelFile value={ficheroNombre} onPickFile={onPickFile} onPickFileClick={onPickFileClick} fileInputRef={fileInputRef} />}
           {menu === "config" && <PanelConfig
             passActual={passActual} passNueva={passNueva} passConfirma={passConfirma}
@@ -233,5 +233,8 @@ export default function DashboardPage() {
 
       </div>
     </main>
+  );
+}
+
   );
 }
