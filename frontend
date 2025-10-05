@@ -1,0 +1,3 @@
+NEXT_PUBLIC_API_KISSORO=https://api.kissoro.example
+NEXT_PUBLIC_API_ENPLURAL=https://api.enplural.example
+NEXT_PUBLIC_LOGIN_PASS=admin123
