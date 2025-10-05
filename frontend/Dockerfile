@@ -1,18 +1,27 @@
 # ---------- Stage 1: Builder ----------
 FROM node:20-alpine AS builder
 
-# Variables de entorno para producción
-ENV NODE_ENV=production
 WORKDIR /app
 
-# Copiamos solo los archivos de dependencias primero para cachear npm install
+# Copiamos solo package.json y package-lock.json para cachear deps
 COPY package*.json ./
-RUN npm ci
 
-# Copiamos todo el proyecto
+# Instalamos todas las dependencias (dev + prod)
+RUN npm install
+
+# Copiamos el resto del proyecto
 COPY . .
 
-# Construimos la aplicación Next.js
+# Set environment variables for build
+ARG NEXT_PUBLIC_BACKEND_URL
+ARG NEXT_PUBLIC_APP_NAME
+ARG NEXT_PUBLIC_COMPANIES
+ENV NEXT_PUBLIC_BACKEND_URL=$NEXT_PUBLIC_BACKEND_URL
+ENV NEXT_PUBLIC_APP_NAME=$NEXT_PUBLIC_APP_NAME
+ENV NEXT_PUBLIC_COMPANIES=$NEXT_PUBLIC_COMPANIES
+ENV NODE_ENV=production
+
+# Build de Next.js
 RUN npm run build
 
 # ---------- Stage 2: Runtime ----------
@@ -20,17 +29,18 @@ FROM node:20-alpine AS runtime
 
 WORKDIR /app
 
-# Copiamos dependencias y archivos necesarios del builder
-COPY --from=builder /app/package*.json ./
+# Solo instalamos deps de producción
+COPY package*.json ./
+RUN npm install --omit=dev
+
+# Copiamos build y public
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/next.config.js ./next.config.js
 
-# Instalamos solo dependencias de producción
-RUN npm ci --omit=dev
-
-# Puerto de la aplicación
+# Exponemos puerto de Next.js
 EXPOSE 3000
 
-# Comando para iniciar la app
+# Comando de inicio en producción
 CMD ["npm", "start"]
+
