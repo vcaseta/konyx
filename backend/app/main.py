@@ -1,19 +1,12 @@
-
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from pathlib import Path
-import json
-import os
+import json, os
 
 app = FastAPI()
 
-# -------------------- CORS --------------------
-origins = [
-    "http://192.168.1.50:3000",
-    "http://localhost:3000",
-]
-
+# ---------------- CORS ----------------
+origins = ["http://192.168.1.50:3000"]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -22,65 +15,53 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# -------------------- Archivos de persistencia --------------------
-CREDENTIALS_FILE = Path(__file__).parent / "credentials.json"
-APIS_FILE = Path(__file__).parent / "apis.json"
+# ---------------- Configuración persistente ----------------
+CONFIG_FILE = "config.json"
 
-# Inicialización si no existen
-if not CREDENTIALS_FILE.exists():
-    json.dump(
-        {"user": "admenplural", "password": os.getenv("KONYX_PASSWORD", "admin123")},
-        open(CREDENTIALS_FILE, "w"),
-        indent=2
-    )
+if not os.path.exists(CONFIG_FILE):
+    config = {
+        "password": os.getenv("ADMIN_PASSWORD", "admin123"),  # contraseña inicial
+        "apis": {"kissoro": "", "enplural": ""}
+    }
+    with open(CONFIG_FILE, "w") as f:
+        json.dump(config, f)
+else:
+    with open(CONFIG_FILE, "r") as f:
+        config = json.load(f)
 
-if not APIS_FILE.exists():
-    json.dump({"kissoro": "", "enplural": ""}, open(APIS_FILE, "w"), indent=2)
-
-# -------------------- Modelos --------------------
+# ---------------- Modelos ----------------
 class LoginRequest(BaseModel):
     user: str
     password: str
 
-class PasswordChangeRequest(BaseModel):
+class ChangePasswordRequest(BaseModel):
     old_password: str
     new_password: str
 
-class APIsRequest(BaseModel):
+class UpdateApisRequest(BaseModel):
     kissoro: str
     enplural: str
 
-# -------------------- Helpers --------------------
-def load_credentials():
-    return json.load(open(CREDENTIALS_FILE))
-
-def save_credentials(creds):
-    json.dump(creds, open(CREDENTIALS_FILE, "w"), indent=2)
-
-def load_apis():
-    return json.load(open(APIS_FILE))
-
-def save_apis(apis):
-    json.dump(apis, open(APIS_FILE, "w"), indent=2)
-
-# -------------------- Endpoints --------------------
+# ---------------- Endpoints ----------------
 @app.post("/auth/login")
-async def login(data: LoginRequest):
-    creds = load_credentials()
-    if data.user != creds["user"] or data.password != creds["password"]:
-        raise HTTPException(status_code=401, detail="Usuario o contraseña incorrecta")
-    return {"token": "fake-jwt-token"}  # más adelante reemplazar por JWT real
+def login(req: LoginRequest):
+    if req.user != "admenplural" or req.password != config["password"]:
+        raise HTTPException(status_code=401, detail="Credenciales incorrectas")
+    return {"token": "dummy-token"}
 
 @app.post("/auth/change-password")
-async def change_password(req: PasswordChangeRequest):
-    creds = load_credentials()
-    if req.old_password != creds["password"]:
+def change_password(req: ChangePasswordRequest):
+    if req.old_password != config["password"]:
         raise HTTPException(status_code=401, detail="Contraseña actual incorrecta")
-    creds["password"] = req.new_password
-    save_credentials(creds)
-    return {"detail": "Contraseña cambiada correctamente"}
+    config["password"] = req.new_password
+    with open(CONFIG_FILE, "w") as f:
+        json.dump(config, f)
+    return {"msg": "Contraseña actualizada correctamente"}
 
 @app.post("/auth/apis")
-async def change_apis(req: APIsRequest):
-    save_apis({"kissoro": req.kissoro, "enplural": req.enplural})
-    return {"detail": "APIs actualizadas correctamente"}
+def update_apis(req: UpdateApisRequest):
+    config["apis"]["kissoro"] = req.kissoro
+    config["apis"]["enplural"] = req.enplural
+    with open(CONFIG_FILE, "w") as f:
+        json.dump(config, f)
+    return {"msg": "APIs actualizadas correctamente"}
