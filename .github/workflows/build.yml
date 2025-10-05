@@ -1,22 +1,6 @@
-name: Build and Push Docker Image
-
-on:
-  push:
-    branches:
-      - main
-  workflow_dispatch:
-
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      NEXT_PUBLIC_BACKEND_URL: http://192.168.1.51:8000
-      NEXT_PUBLIC_APP_NAME: Konyx
-      NEXT_PUBLIC_COMPANIES: '[{"id":"001","name":"Kissoro"},{"id":"002","name":"En Plural Psicologia"}]'
-      NEXT_PUBLIC_API_KISSORO: ${{ secrets.NEXT_PUBLIC_API_KISSORO }}
-      NEXT_PUBLIC_API_ENPLURAL: ${{ secrets.NEXT_PUBLIC_API_ENPLURAL }}
-      GHCR_PAT: ${{ secrets.GHCR_PAT }}
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
       - name: Checkout repository
@@ -27,9 +11,10 @@ jobs:
         with:
           node-version: 20
           cache: "npm"
+          cache-dependency-path: frontend/package-lock.json  # <- importante
 
-      # ---------- Generar package-lock.json automáticamente ----------
-      - name: Generate package-lock.json
+      - name: Install dependencies and update package-lock
+        working-directory: frontend
         run: |
           npm install
           git config user.name "github-actions"
@@ -50,6 +35,7 @@ jobs:
           password: ${{ secrets.GHCR_PAT }}
 
       - name: Build and push Docker image
+        working-directory: frontend
         run: |
           docker buildx build \
             --build-arg NEXT_PUBLIC_BACKEND_URL=${{ env.NEXT_PUBLIC_BACKEND_URL }} \
@@ -58,4 +44,5 @@ jobs:
             --build-arg NEXT_PUBLIC_API_KISSORO=${{ env.NEXT_PUBLIC_API_KISSORO }} \
             --build-arg NEXT_PUBLIC_API_ENPLURAL=${{ env.NEXT_PUBLIC_API_ENPLURAL }} \
             --tag ghcr.io/${{ github.repository_owner }}/konyx-frontend:latest \
-            --push ./frontend
+            --push .
+
