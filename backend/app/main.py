@@ -1,33 +1,40 @@
+import json
 from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-import os
-import secrets
+from pathlib import Path
 
 app = FastAPI()
 
-# Permitir frontend en CORS
-FRONTEND_ORIGINS = ["http://192.168.1.50:3000"]
+CREDENTIALS_FILE = Path(__file__).parent / "credentials.json"
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=FRONTEND_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["*"],      # permite GET, POST, OPTIONS
-    allow_headers=["*"],      # permite Content-Type, Authorization, etc.
-)
+def load_credentials():
+    with open(CREDENTIALS_FILE, "r") as f:
+        return json.load(f)
+
+def save_credentials(data):
+    with open(CREDENTIALS_FILE, "w") as f:
+        json.dump(data, f, indent=2)
 
 class LoginRequest(BaseModel):
     user: str
     password: str
 
-# Credenciales iniciales
-DEFAULT_USER = os.getenv("KONYX_USER", "adminplural")
-DEFAULT_PASSWORD = os.getenv("KONYX_PASSWORD", "admin123")
+class PasswordChangeRequest(BaseModel):
+    old_password: str
+    new_password: str
 
 @app.post("/auth/login")
 async def login(data: LoginRequest):
-    if data.user != DEFAULT_USER or data.password != DEFAULT_PASSWORD:
+    creds = load_credentials()
+    if data.user != creds["user"] or data.password != creds["password"]:
         raise HTTPException(status_code=401, detail="Usuario o contraseña incorrecta")
-    token = secrets.token_hex(16)
-    return {"token": token}
+    return {"token": "fake-jwt-token"}  # reemplazar por JWT real si quieres
+
+@app.post("/auth/change-password")
+async def change_password(req: PasswordChangeRequest):
+    creds = load_credentials()
+    if req.old_password != creds["password"]:
+        raise HTTPException(status_code=401, detail="Contraseña actual incorrecta")
+    creds["password"] = req.new_password
+    save_credentials(creds)
+    return {"detail": "Contraseña cambiada correctamente"}
