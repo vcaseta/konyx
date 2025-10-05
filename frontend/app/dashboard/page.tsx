@@ -10,6 +10,7 @@ import { PanelExport } from "../components/PanelExport";
 import { PanelCerrar } from "../components/PanelCerrar";
 import { ResumenInferior } from "../components/ResumenInferior";
 import { Item } from "../components/Item";
+import { useAuth } from "../context/authContext";
 
 const FORMATO_IMPORT_OPTS = ["Eholo", "Gestoria"] as const;
 const FORMATO_EXPORT_OPTS = ["Holded", "Gestoria"] as const;
@@ -133,7 +134,6 @@ export default function DashboardPage() {
   };
 
   // -------------------- Render condicional seguro --------------------
- import { useAuth } from "../context/authContext";
 
 export default function DashboardPage() {
   const { token } = useAuth();
