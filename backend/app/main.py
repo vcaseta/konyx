@@ -6,19 +6,16 @@ import os
 
 app = FastAPI()
 
-# Archivos de persistencia
 CREDENTIALS_FILE = Path(__file__).parent / "credentials.json"
 APIS_FILE = Path(__file__).parent / "apis.json"
 
 # Inicialización
 if not CREDENTIALS_FILE.exists():
-    password_init = os.getenv("KONYX_PASSWORD", "admin123")
-    json.dump({"user": "admenplural", "password": password_init}, open(CREDENTIALS_FILE, "w"))
+    json.dump({"user": "admenplural", "password": os.getenv("KONYX_PASSWORD", "admin123")}, open(CREDENTIALS_FILE, "w"))
 
 if not APIS_FILE.exists():
     json.dump({"kissoro": "", "enplural": ""}, open(APIS_FILE, "w"))
 
-# Modelos
 class LoginRequest(BaseModel):
     user: str
     password: str
@@ -31,7 +28,6 @@ class APIsRequest(BaseModel):
     kissoro: str
     enplural: str
 
-# Helpers
 def load_credentials():
     return json.load(open(CREDENTIALS_FILE))
 
@@ -44,13 +40,12 @@ def load_apis():
 def save_apis(apis):
     json.dump(apis, open(APIS_FILE, "w"), indent=2)
 
-# Endpoints
 @app.post("/auth/login")
 async def login(data: LoginRequest):
     creds = load_credentials()
     if data.user != creds["user"] or data.password != creds["password"]:
         raise HTTPException(status_code=401, detail="Usuario o contraseña incorrecta")
-    return {"token": "fake-jwt-token"}  # Luego cambiar a JWT real
+    return {"token": "fake-jwt-token"}
 
 @app.post("/auth/change-password")
 async def change_password(req: PasswordChangeRequest):
