@@ -168,6 +168,14 @@ export default function DashboardPage() {
     router.replace("/");
   };
 
+  // -------------------- Callbacks separados para hooks
+  const handleFormatoImportChange = (val: typeof FORMATO_IMPORT_OPTS[number]) => setFormatoImport(val);
+  const handleFormatoExportChange = (val: typeof FORMATO_EXPORT_OPTS[number]) => setFormatoExport(val);
+  const handleEmpresaChange = (val: typeof EMPRESAS[number]) => setEmpresa(val);
+  const handleProyectoChange = (val: typeof PROYECTOS[number]) => setProyecto(val);
+  const handleCuentaChange = (val: typeof CUENTAS[number]) => setCuenta(val);
+  const handleFechaChange = (val: string) => setFechaFactura(val);
+
   // -------------------- JSX --------------------
   return (
     <main className="min-h-screen bg-no-repeat bg-center bg-cover p-4" style={{ backgroundImage: "url(/fondo.png)", backgroundSize: "100% 100%" }}>
@@ -204,18 +212,18 @@ export default function DashboardPage() {
 
         {/* Contenido */}
         <section className="space-y-6">
-          {menu === "formatoImport" && <PanelOption title="Formato Importación" options={FORMATO_IMPORT_OPTS} value={formatoImport} onChange={(val) => setFormatoImport(val)} />}
-          {menu === "formatoExport" && <PanelOption title="Formato Exportación" options={FORMATO_EXPORT_OPTS} value={formatoExport} onChange={(val) => setFormatoExport(val)} />}
-          {menu === "empresa" && <PanelOption title="Empresa" options={EMPRESAS} value={empresa} onChange={(val) => setEmpresa(val)} />}
-          {menu === "proyecto" && <PanelOption title="Proyecto" options={PROYECTOS} value={proyecto} onChange={(val) => setProyecto(val)} />}
+          {menu === "formatoImport" && <PanelOption title="Formato Importación" options={FORMATO_IMPORT_OPTS} value={formatoImport} onChange={handleFormatoImportChange} />}
+          {menu === "formatoExport" && <PanelOption title="Formato Exportación" options={FORMATO_EXPORT_OPTS} value={formatoExport} onChange={handleFormatoExportChange} />}
+          {menu === "empresa" && <PanelOption title="Empresa" options={EMPRESAS} value={empresa} onChange={handleEmpresaChange} />}
+          {menu === "proyecto" && <PanelOption title="Proyecto" options={PROYECTOS} value={proyecto} onChange={handleProyectoChange} />}
           {menu === "cuenta" && (
-            <PanelOption title="Cuenta contable" options={CUENTAS} value={cuenta} onChange={(val) => setCuenta(val)}>
+            <PanelOption title="Cuenta contable" options={CUENTAS} value={cuenta} onChange={handleCuentaChange}>
               {cuenta === "Otra (introducir)" && (
                 <input type="text" value={cuentaOtra} onChange={e => setCuentaOtra(e.target.value)} placeholder="Introduce tu cuenta" className="w-full rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 mt-4" />
               )}
             </PanelOption>
           )}
-          {menu === "fecha" && <PanelDate title="Fecha factura" value={fechaFactura} onChange={(val) => setFechaFactura(val)} />}
+          {menu === "fecha" && <PanelDate title="Fecha factura" value={fechaFactura} onChange={handleFechaChange} />}
           {menu === "fichero" && <PanelFile value={ficheroNombre} onPickFile={onPickFile} onPickFileClick={onPickFileClick} fileInputRef={fileInputRef} />}
           {menu === "config" && <PanelConfig
             passActual={passActual} passNueva={passNueva} passConfirma={passConfirma}
