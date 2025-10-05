@@ -36,23 +36,10 @@ type MenuKey =
 export default function DashboardPage() {
   const router = useRouter();
 
-  // -------------------- Sesión --------------------
+  // -------------------- Hooks --------------------
   const [authChecked, setAuthChecked] = useState(false);
   const [token, setToken] = useState<string | null>(null);
 
-  useEffect(() => {
-    const t = sessionStorage.getItem("konyx_token") || localStorage.getItem("konyx_token");
-    if (!t) {
-      router.replace("/"); // redirige al login si no hay token
-    } else {
-      setToken(t);
-    }
-    setAuthChecked(true);
-  }, [router]);
-
-  if (!authChecked) return null;
-
-  // -------------------- Estados --------------------
   const [menu, setMenu] = useState<MenuKey>("formatoImport");
   const [formatoImport, setFormatoImport] = useState<typeof FORMATO_IMPORT_OPTS[number] | null>(null);
   const [formatoExport, setFormatoExport] = useState<typeof FORMATO_EXPORT_OPTS[number] | null>(null);
@@ -64,13 +51,11 @@ export default function DashboardPage() {
   const [ficheroNombre, setFicheroNombre] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Configuración password
   const [passActual, setPassActual] = useState("");
   const [passNueva, setPassNueva] = useState("");
   const [passConfirma, setPassConfirma] = useState("");
   const [passMsg, setPassMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
-  // Configuración APIs (valores iniciales desde env)
   const [apiKissoroVigente, setApiKissoroVigente] = useState(process.env.NEXT_PUBLIC_API_KISSORO || "");
   const [apiKissoroNuevo, setApiKissoroNuevo] = useState("");
   const [apiKissoroMsg, setApiKissoroMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
@@ -78,6 +63,14 @@ export default function DashboardPage() {
   const [apiEnPluralVigente, setApiEnPluralVigente] = useState(process.env.NEXT_PUBLIC_API_ENPLURAL || "");
   const [apiEnPluralNuevo, setApiEnPluralNuevo] = useState("");
   const [apiEnPluralMsg, setApiEnPluralMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+
+  // -------------------- Effects --------------------
+  useEffect(() => {
+    const t = sessionStorage.getItem("konyx_token") || localStorage.getItem("konyx_token");
+    if (!t) router.replace("/");
+    else setToken(t);
+    setAuthChecked(true);
+  }, [router]);
 
   // -------------------- Funciones --------------------
   const onPickFileClick = () => fileInputRef.current?.click();
@@ -87,7 +80,7 @@ export default function DashboardPage() {
   const exportReady = !!formatoImport && !!formatoExport && !!empresa && !!fechaFactura && !!proyecto && cuentaOk && !!ficheroNombre;
 
   const onExportAsk = () => { if (exportReady) setMenu("exportar"); };
-  const onConfirmExport = (ok: boolean) => { if (!ok) { setMenu("formatoImport"); return; } alert("Exportación iniciada (simulación)"); setMenu("formatoImport"); };
+  const onConfirmExport = (ok: boolean) => { if (!ok) { setMenu("formatoImport"); return; } alert("Exportación iniciada"); setMenu("formatoImport"); };
 
   const onCambioApis = async () => {
     setApiKissoroMsg(null); setApiEnPluralMsg(null);
@@ -102,8 +95,8 @@ export default function DashboardPage() {
       setApiKissoroVigente(apiKissoroNuevo || apiKissoroVigente);
       setApiEnPluralVigente(apiEnPluralNuevo || apiEnPluralVigente);
       setApiKissoroNuevo(""); setApiEnPluralNuevo("");
-      setApiKissoroMsg({ type: "ok", text: "API Kissoro actualizado." });
-      setApiEnPluralMsg({ type: "ok", text: "API En Plural actualizado." });
+      setApiKissoroMsg({ type: "ok", text: "API Kissoro actualizado" });
+      setApiEnPluralMsg({ type: "ok", text: "API En Plural actualizado" });
     } catch (error: any) {
       setApiKissoroMsg({ type: "err", text: error.message });
       setApiEnPluralMsg({ type: "err", text: error.message });
@@ -137,11 +130,10 @@ export default function DashboardPage() {
     router.replace("/");
   };
 
-  // -------------------- JSX --------------------
-  return (
+  // -------------------- JSX seguro --------------------
+  return authChecked ? (
     <main className="min-h-screen bg-no-repeat bg-center bg-cover p-4" style={{ backgroundImage: "url(/fondo.png)", backgroundSize: "100% 100%" }}>
       <div className="mx-auto max-w-7xl grid grid-cols-1 md:grid-cols-[260px_1fr] gap-6">
-        {/* Sidebar */}
         <aside className="md:sticky md:top-6">
           <div className="bg-slate-500/90 backdrop-blur rounded-2xl shadow p-4">
             <div className="flex justify-center mb-4">
@@ -157,7 +149,6 @@ export default function DashboardPage() {
             </nav>
           </div>
         </aside>
-        {/* Contenido */}
         <section className="space-y-6">
           {menu==="formatoImport" && <PanelOption title="Formato Importación" options={FORMATO_IMPORT_OPTS} value={formatoImport} onChange={setFormatoImport} />}
           {menu==="formatoExport" && <PanelOption title="Formato Exportación" options={FORMATO_EXPORT_OPTS} value={formatoExport} onChange={setFormatoExport} />}
@@ -186,5 +177,5 @@ export default function DashboardPage() {
         </section>
       </div>
     </main>
-  );
+  ) : null;
 }
