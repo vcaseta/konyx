@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "../context/authContext";
 import { PanelOption } from "../components/PanelOption";
 import { PanelDate } from "../components/PanelDate";
 import { PanelFile } from "../components/PanelFile";
@@ -10,7 +11,6 @@ import { PanelExport } from "../components/PanelExport";
 import { PanelCerrar } from "../components/PanelCerrar";
 import { ResumenInferior } from "../components/ResumenInferior";
 import { Item } from "../components/Item";
-import { useAuth } from "../context/authContext";
 
 const FORMATO_IMPORT_OPTS = ["Eholo", "Gestoria"] as const;
 const FORMATO_EXPORT_OPTS = ["Holded", "Gestoria"] as const;
@@ -36,11 +36,9 @@ type MenuKey =
 
 export default function DashboardPage() {
   const router = useRouter();
+  const { token } = useAuth();
 
-  // -------------------- Hooks --------------------
-  const [authChecked, setAuthChecked] = useState(false);
-  const [token, setToken] = useState<string | null>(null);
-
+  // -------------------- Estados --------------------
   const [menu, setMenu] = useState<MenuKey>("formatoImport");
   const [formatoImport, setFormatoImport] = useState<typeof FORMATO_IMPORT_OPTS[number] | null>(null);
   const [formatoExport, setFormatoExport] = useState<typeof FORMATO_EXPORT_OPTS[number] | null>(null);
@@ -65,13 +63,12 @@ export default function DashboardPage() {
   const [apiEnPluralNuevo, setApiEnPluralNuevo] = useState("");
   const [apiEnPluralMsg, setApiEnPluralMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
-  // -------------------- Effects --------------------
+  // -------------------- Efectos --------------------
   useEffect(() => {
-    // Leemos token al montar
-    const t = sessionStorage.getItem("konyx_token") || localStorage.getItem("konyx_token") || null;
-    setToken(t);
-    setAuthChecked(true);
-  }, []);
+    if (token === null) {
+      router.replace("/");
+    }
+  }, [token, router]);
 
   // -------------------- Funciones --------------------
   const onPickFileClick = () => fileInputRef.current?.click();
@@ -126,28 +123,16 @@ export default function DashboardPage() {
   const logout = () => {
     sessionStorage.removeItem("konyx_token");
     localStorage.removeItem("konyx_token");
-    setToken(null);
+    setApiKissoroNuevo(""); setApiEnPluralNuevo("");
     setFormatoImport(null); setFormatoExport(null); setEmpresa(null);
     setFechaFactura(""); setProyecto(null); setCuenta(null); setCuentaOtra("");
     setFicheroNombre(""); setMenu("formatoImport");
     router.replace("/");
   };
 
-  // -------------------- Render condicional seguro --------------------
-
-export default function DashboardPage() {
-  const { token } = useAuth();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (token === null) {
-      router.replace("/");
-    }
-  }, [token, router]);
-
+  // -------------------- JSX --------------------
   if (token === null) return null;
 
-  // -------------------- JSX --------------------
   return (
     <main className="min-h-screen bg-no-repeat bg-center bg-cover p-4" style={{ backgroundImage: "url(/fondo.png)", backgroundSize: "100% 100%" }}>
       <div className="mx-auto max-w-7xl grid grid-cols-1 md:grid-cols-[260px_1fr] gap-6">
