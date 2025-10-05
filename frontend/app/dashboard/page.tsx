@@ -68,13 +68,12 @@ export default function DashboardPage() {
   useEffect(() => {
     const t = sessionStorage.getItem("konyx_token") || localStorage.getItem("konyx_token");
     if (!t) {
-      // 🔹 Para pruebas temporales, desactivar login
-      setToken("dummy-token");
+      router.replace("/"); // redirige al login si no hay token
     } else {
       setToken(t);
     }
     setAuthChecked(true);
-  }, []);
+  }, [router]);
 
   if (!authChecked) return null;
 
@@ -161,13 +160,28 @@ export default function DashboardPage() {
         </aside>
         {/* Contenido */}
         <section className="space-y-6">
-          <div className="bg-white/80 rounded-xl p-6 shadow-md">
-            <h3 className="text-xl font-bold mb-4">Panel seguro</h3>
-            <p>Activa los paneles reales uno a uno para pruebas.</p>
-          </div>
-          <div className="bg-white/80 rounded-xl p-6 shadow-md">
-            <h3 className="text-xl font-bold mb-4">Resumen Inferior (placeholder)</h3>
-          </div>
+          {menu === "formatoImport" && <PanelOption title="Formato Importación" options={FORMATO_IMPORT_OPTS} value={formatoImport} onChange={setFormatoImport} />}
+          {menu === "formatoExport" && <PanelOption title="Formato Exportación" options={FORMATO_EXPORT_OPTS} value={formatoExport} onChange={setFormatoExport} />}
+          {menu === "empresa" && <PanelOption title="Empresa" options={EMPRESAS} value={empresa} onChange={setEmpresa} />}
+          {menu === "proyecto" && <PanelOption title="Proyecto" options={PROYECTOS} value={proyecto} onChange={setProyecto} />}
+          {menu === "cuenta" &&
+            <PanelOption title="Cuenta contable" options={CUENTAS} value={cuenta} onChange={setCuenta}>
+              {cuenta==="Otra (introducir)" && <input type="text" value={cuentaOtra} onChange={e=>setCuentaOtra(e.target.value)} placeholder="Introduce tu cuenta" className="w-full rounded-lg border border-indigo-300 px-3 py-2 mt-4 focus:outline-none focus:ring-2 focus:ring-indigo-500" />}
+            </PanelOption>
+          }
+          {menu==="fecha" && <PanelDate title="Fecha factura" value={fechaFactura} onChange={setFechaFactura} />}
+          {menu==="fichero" && <PanelFile value={ficheroNombre} onPickFile={onPickFile} onPickFileClick={onPickFileClick} fileInputRef={fileInputRef} />}
+          {menu==="config" && <PanelConfig
+            passActual={passActual} passNueva={passNueva} passConfirma={passConfirma}
+            setPassActual={setPassActual} setPassNueva={setPassNueva} setPassConfirma={setPassConfirma}
+            passMsg={passMsg} onCambioPassword={onCambioPassword}
+            apiKissoroVigente={apiKissoroVigente} apiKissoroNuevo={apiKissoroNuevo} setApiKissoroNuevo={setApiKissoroNuevo} apiKissoroMsg={apiKissoroMsg}
+            apiEnPluralVigente={apiEnPluralVigente} apiEnPluralNuevo={apiEnPluralNuevo} setApiEnPluralNuevo={setApiEnPluralNuevo} apiEnPluralMsg={apiEnPluralMsg}
+            onCambioApis={onCambioApis}
+          />}
+          {menu==="exportar" && <PanelExport onConfirm={onConfirmExport} />}
+          {menu==="cerrar" && <PanelCerrar onConfirm={logout} onCancel={()=>setMenu("formatoImport")} />}
+          <ResumenInferior />
         </section>
       </div>
     </main>
