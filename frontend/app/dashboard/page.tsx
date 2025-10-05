@@ -33,22 +33,18 @@ type MenuKey =
   | "exportar"
   | "cerrar";
 
+
+
 export default function DashboardPage() {
   const router = useRouter();
 
   // -------------------- Autenticación --------------------
-  const [authChecked, setAuthChecked] = useState(false);
-  const [token, setToken] = useState<string | null>(null);
+useEffect(() => {
+  const t = sessionStorage.getItem("konyx_token") || localStorage.getItem("konyx_token");
+  if (!t) router.replace("/"); // login
+  else setToken(t);
+}, [router]);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const t = sessionStorage.getItem("konyx_token") || localStorage.getItem("konyx_token");
-    if (!t) router.replace("/");
-    else {
-      setToken(t);
-      setAuthChecked(true);
-    }
-  }, [router]);
 
   if (!authChecked || typeof window === "undefined") return null;
 
