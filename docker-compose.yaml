@@ -1,0 +1,28 @@
+version: "3.9"
+
+services:
+  backend:
+    build: ./backend
+    container_name: konyx-backend
+    networks:
+      lan-local:
+        ipv4_address: 192.168.1.51
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    container_name: konyx-frontend
+    environment:
+      - NEXT_PUBLIC_API_KISSORO=https://api.kissoro.example
+      - NEXT_PUBLIC_API_ENPLURAL=https://api.enplural.example
+      - NEXT_PUBLIC_LOGIN_PASS=admin123
+    networks:
+      lan-local:
+        ipv4_address: 192.168.1.50
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+
+networks:
+  lan-local:
+    external: true
