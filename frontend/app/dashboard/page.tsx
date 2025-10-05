@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { PanelOption } from "../components/PanelOption";
 import { PanelDate } from "../components/PanelDate";
@@ -49,7 +49,7 @@ export default function DashboardPage() {
 
   if (!authChecked) return null;
 
-  // -------------------- Estados del dashboard --------------------
+  // -------------------- Estados --------------------
   const [menu, setMenu] = useState<MenuKey>("formatoImport");
   const [formatoImport, setFormatoImport] = useState<typeof FORMATO_IMPORT_OPTS[number] | null>(null);
   const [formatoExport, setFormatoExport] = useState<typeof FORMATO_EXPORT_OPTS[number] | null>(null);
@@ -61,13 +61,13 @@ export default function DashboardPage() {
   const [ficheroNombre, setFicheroNombre] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Configuración: password
+  // Configuración password
   const [passActual, setPassActual] = useState("");
   const [passNueva, setPassNueva] = useState("");
   const [passConfirma, setPassConfirma] = useState("");
   const [passMsg, setPassMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
-  // Configuración: APIs
+  // Configuración APIs
   const [apiKissoroVigente, setApiKissoroVigente] = useState("");
   const [apiKissoroNuevo, setApiKissoroNuevo] = useState("");
   const [apiKissoroMsg, setApiKissoroMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
@@ -78,10 +78,7 @@ export default function DashboardPage() {
 
   // -------------------- Funciones --------------------
   const onPickFileClick = () => fileInputRef.current?.click();
-  const onPickFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    setFicheroNombre(f ? f.name : "");
-  };
+  const onPickFile = (e: React.ChangeEvent<HTMLInputElement>) => setFicheroNombre(e.target.files?.[0]?.name || "");
 
   const cuentaOk = cuenta === "Otra (introducir)" ? cuentaOtra.trim().length > 0 : !!cuenta;
   const exportReady = !!formatoImport && !!formatoExport && !!empresa && !!fechaFactura && !!proyecto && cuentaOk && !!ficheroNombre;
@@ -157,11 +154,11 @@ export default function DashboardPage() {
           </div>
         </aside>
         <section className="space-y-6">
-          {menu === "formatoImport" && <PanelOption title="Formato Importación" options={FORMATO_IMPORT_OPTS} value={formatoImport} onChange={setFormatoImport} />}
-          {menu === "formatoExport" && <PanelOption title="Formato Exportación" options={FORMATO_EXPORT_OPTS} value={formatoExport} onChange={setFormatoExport} />}
-          {menu === "empresa" && <PanelOption title="Empresa" options={EMPRESAS} value={empresa} onChange={setEmpresa} />}
-          {menu === "proyecto" && <PanelOption title="Proyecto" options={PROYECTOS} value={proyecto} onChange={setProyecto} />}
-          {menu === "cuenta" && <PanelOption title="Cuenta contable" options={CUENTAS} value={cuenta} onChange={setCuenta}>
+          {menu==="formatoImport" && <PanelOption title="Formato Importación" options={FORMATO_IMPORT_OPTS} value={formatoImport} onChange={setFormatoImport} />}
+          {menu==="formatoExport" && <PanelOption title="Formato Exportación" options={FORMATO_EXPORT_OPTS} value={formatoExport} onChange={setFormatoExport} />}
+          {menu==="empresa" && <PanelOption title="Empresa" options={EMPRESAS} value={empresa} onChange={setEmpresa} />}
+          {menu==="proyecto" && <PanelOption title="Proyecto" options={PROYECTOS} value={proyecto} onChange={setProyecto} />}
+          {menu==="cuenta" && <PanelOption title="Cuenta contable" options={CUENTAS} value={cuenta} onChange={setCuenta}>
             {cuenta==="Otra (introducir)" && <input type="text" value={cuentaOtra} onChange={e=>setCuentaOtra(e.target.value)} placeholder="Introduce tu cuenta" className="w-full rounded-lg border border-indigo-300 px-3 py-2 mt-4 focus:outline-none focus:ring-2 focus:ring-indigo-500" />}
           </PanelOption>}
           {menu==="fecha" && <PanelDate title="Fecha factura" value={fechaFactura} onChange={setFechaFactura} />}
