@@ -65,15 +65,13 @@ export default function DashboardPage() {
   const [apiEnPluralMsg, setApiEnPluralMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
   // -------------------- Validación de sesión --------------------
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const t = sessionStorage.getItem("konyx_token") || localStorage.getItem("konyx_token");
-    if (!t) router.replace("/"); // redirige a login si no hay token
-    else setToken(t);
-    setAuthChecked(true);
-  }, [router]);
+ useEffect(() => {
+  setAuthChecked(true);
+  setToken("dummy-token"); // token ficticio para pruebas
+}, []);
 
-  if (!authChecked) return null;
+if (!authChecked) return null;
+
 
   // -------------------- Funciones --------------------
   const onPickFileClick = () => fileInputRef.current?.click();
