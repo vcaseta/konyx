@@ -1,31 +1,48 @@
-name: Build & Push Frontend Docker
+name: Build and Push Docker Image
 
 on:
   push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+    branches:
+      - main
+  workflow_dispatch:
 
 jobs:
-  build-and-push:
+  build:
     runs-on: ubuntu-latest
-
-    permissions:
-      contents: read
-      packages: write
-      id-token: write
+    env:
+      NEXT_PUBLIC_BACKEND_URL: http://192.168.1.51:8000
+      NEXT_PUBLIC_APP_NAME: Konyx
+      NEXT_PUBLIC_COMPANIES: '[{"id":"001","name":"Kissoro"},{"id":"002","name":"En Plural Psicologia"}]'
+      NEXT_PUBLIC_API_KISSORO: ${{ secrets.NEXT_PUBLIC_API_KISSORO }}
+      NEXT_PUBLIC_API_ENPLURAL: ${{ secrets.NEXT_PUBLIC_API_ENPLURAL }}
+      GHCR_PAT: ${{ secrets.GHCR_PAT }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+          cache: "npm"
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      # ---------- Generar package-lock.json automáticamente ----------
+      - name: Generate package-lock.json
+        run: |
+          npm install
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          if ! git diff --exit-code package-lock.json; then
+            git add package-lock.json
+            git commit -m "chore: update package-lock.json [skip ci]"
+            git push
+          else
+            echo "package-lock.json is up-to-date"
+          fi
 
-      - name: Log in to GHCR
+      - name: Log in to GitHub Container Registry
         uses: docker/login-action@v2
         with:
           registry: ghcr.io
@@ -33,14 +50,12 @@ jobs:
           password: ${{ secrets.GHCR_PAT }}
 
       - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./frontend
-          push: true
-          tags: ghcr.io/vcaseta/konyx-frontend:latest
-          cache-from: type=registry,ref=ghcr.io/vcaseta/konyx-frontend:cache
-          cache-to: type=registry,ref=ghcr.io/vcaseta/konyx-frontend:cache,mode=max
-          build-args: |
-            NEXT_PUBLIC_BACKEND_URL=http://192.168.1.51:8000
-            NEXT_PUBLIC_APP_NAME=Konyx
-            NEXT_PUBLIC_COMPANIES=[{"id":"001","name":"Kissoro"},{"id":"002","name":"En Plural Psicologia"}]
+        run: |
+          docker buildx build \
+            --build-arg NEXT_PUBLIC_BACKEND_URL=${{ env.NEXT_PUBLIC_BACKEND_URL }} \
+            --build-arg NEXT_PUBLIC_APP_NAME=${{ env.NEXT_PUBLIC_APP_NAME }} \
+            --build-arg NEXT_PUBLIC_COMPANIES='${{ env.NEXT_PUBLIC_COMPANIES }}' \
+            --build-arg NEXT_PUBLIC_API_KISSORO=${{ env.NEXT_PUBLIC_API_KISSORO }} \
+            --build-arg NEXT_PUBLIC_API_ENPLURAL=${{ env.NEXT_PUBLIC_API_ENPLURAL }} \
+            --tag ghcr.io/${{ github.repository_owner }}/konyx-frontend:latest \
+            --push ./frontend
