@@ -133,13 +133,19 @@ export default function DashboardPage() {
   };
 
   // -------------------- Render condicional seguro --------------------
-  if (!authChecked) return null;
+ import { useAuth } from "../context/authContext";
 
-  if (!token) {
-    // No hay token válido → redirigir al login
-    router.replace("/");
-    return null;
-  }
+export default function DashboardPage() {
+  const { token } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (token === null) {
+      router.replace("/");
+    }
+  }, [token, router]);
+
+  if (token === null) return null;
 
   // -------------------- JSX --------------------
   return (
