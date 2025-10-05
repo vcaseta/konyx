@@ -227,14 +227,10 @@ export default function DashboardPage() {
           />}
           {menu === "exportar" && <PanelExport onConfirm={onConfirmExport} />}
           {menu === "cerrar" && <PanelCerrar onConfirm={logout} onCancel={() => setMenu("formatoImport")} />}
-
           <ResumenInferior />
         </section>
 
       </div>
     </main>
-  );
-}
-
   );
 }
