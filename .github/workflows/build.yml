@@ -1,61 +1,55 @@
-name: Build & Deploy Frontend
+name: Build Konyx Frontend
 
 on:
   push:
     branches:
       - main
-  workflow_dispatch:
-
-env:
-  NEXT_PUBLIC_BACKEND_URL: http://192.168.1.51:8000
-  NEXT_PUBLIC_APP_NAME: Konyx
-  NEXT_PUBLIC_COMPANIES: '[{"id":"001","name":"Kissoro"},{"id":"002","name":"En Plural Psicologia"}]'
-  NEXT_PUBLIC_API_KISSORO: ''
-  NEXT_PUBLIC_API_ENPLURAL: ''
+  pull_request:
 
 jobs:
-  build:
+  build-frontend:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
 
     steps:
+      # 1. Checkout del repositorio
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Set up Node.js
+      # 2. Setup Node.js 20
+      - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: 20
           cache: "npm"
-          cache-dependency-path: frontend/package-lock.json
 
-      - name: Install dependencies and generate package-lock.json
-        working-directory: frontend
+      # 3. Generar package-lock.json si no existe
+      - name: Ensure package-lock.json exists
         run: |
-          npm install
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          if ! git diff --exit-code package-lock.json; then
-            git add package-lock.json
-            git commit -m "chore: update package-lock.json [skip ci]"
-            git push
-          else
-            echo "package-lock.json is up-to-date"
+          if [ ! -f package-lock.json ]; then
+            echo "package-lock.json no existe, creando..."
+            npm install --package-lock-only
+          fi
 
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v2
+      # 4. Restaurar caché de node_modules basada en package-lock.json
+      - name: Cache node modules
+        uses: actions/cache@v3
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GHCR_PAT }}
+          path: node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
 
-      - name: Build and push Docker image
-        working-directory: frontend
-        run: |
-          docker buildx build \
-            --build-arg NEXT_PUBLIC_BACKEND_URL=${{ env.NEXT_PUBLIC_BACKEND_URL }} \
-            --build-arg NEXT_PUBLIC_APP_NAME=${{ env.NEXT_PUBLIC_APP_NAME }} \
-            --build-arg NEXT_PUBLIC_COMPANIES='${{ env.NEXT_PUBLIC_COMPANIES }}' \
-            --build-arg NEXT_PUBLIC_API_KISSORO=${{ env.NEXT_PUBLIC_API_KISSORO }} \
-            --build-arg NEXT_PUBLIC_API_ENPLURAL=${{ env.NEXT_PUBLIC_API_ENPLURAL }} \
-            --tag ghcr.io/${{ github.repository_owner }}/konyx-frontend:latest \
-            --push .
+      # 5. Instalar dependencias
+      - name: Install dependencies
+        run: npm ci
+
+      # 6. Construir proyecto Next.js
+      - name: Build frontend
+        run: npm run build
+
+      # 7. (Opcional) Ejecutar tests si tienes
+      #- name: Run tests
+      #  run: npm test
