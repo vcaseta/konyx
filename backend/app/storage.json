@@ -1,0 +1,7 @@
+{
+  "password": "admin123",
+  "apis": {
+    "kissoro": "https://api.kissoro.example",
+    "enplural": "https://api.enplural.example"
+  }
+}
