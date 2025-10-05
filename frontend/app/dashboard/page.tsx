@@ -1,7 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { PanelOption } from "../components/PanelOption";
+import { PanelDate } from "../components/PanelDate";
+import { PanelFile } from "../components/PanelFile";
+import { PanelConfig } from "../components/PanelConfig";
+import { PanelExport } from "../components/PanelExport";
+import { PanelCerrar } from "../components/PanelCerrar";
+import { ResumenInferior } from "../components/ResumenInferior";
 import { Item } from "../components/Item";
 
 const FORMATO_IMPORT_OPTS = ["Eholo", "Gestoria"] as const;
@@ -29,7 +36,7 @@ type MenuKey =
 export default function DashboardPage() {
   const router = useRouter();
 
-  // -------------------- Hooks principales (nivel superior) --------------------
+  // -------------------- Hooks principales --------------------
   const [authChecked, setAuthChecked] = useState(false);
   const [token, setToken] = useState<string | null>(null);
 
@@ -61,7 +68,7 @@ export default function DashboardPage() {
   useEffect(() => {
     const t = sessionStorage.getItem("konyx_token") || localStorage.getItem("konyx_token");
     if (!t) {
-      // 🔹 Para pruebas temporales desactivamos el login
+      // 🔹 Para pruebas temporales, desactivar login
       setToken("dummy-token");
     } else {
       setToken(t);
@@ -78,33 +85,64 @@ export default function DashboardPage() {
     setFicheroNombre(f ? f.name : "");
   };
 
-  const exportReady = useMemo(() => {
-    const cuentaOk = cuenta === "Otra (introducir)" ? cuentaOtra.trim().length > 0 : !!cuenta;
-    return !!formatoImport && !!formatoExport && !!empresa && !!fechaFactura && !!proyecto && cuentaOk && !!ficheroNombre;
-  }, [formatoImport, formatoExport, empresa, fechaFactura, proyecto, cuenta, cuentaOtra, ficheroNombre]);
+  const cuentaOk = cuenta === "Otra (introducir)" ? cuentaOtra.trim().length > 0 : !!cuenta;
+  const exportReady = !!formatoImport && !!formatoExport && !!empresa && !!fechaFactura && !!proyecto && cuentaOk && !!ficheroNombre;
 
   const onExportAsk = () => { if (exportReady) setMenu("exportar"); };
+  const onConfirmExport = (ok: boolean) => { if (!ok) { setMenu("formatoImport"); return; } alert("Exportación iniciada (simulación)."); setMenu("formatoImport"); };
 
-  const onConfirmExport = (ok: boolean) => {
-    if (!ok) { setMenu("formatoImport"); return; }
-    alert("Exportación iniciada (simulación).");
-    setMenu("formatoImport");
+  const onCambioApis = async () => {
+    setApiKissoroMsg(null); setApiEnPluralMsg(null);
+    if (!token) return;
+    try {
+      const res = await fetch("http://192.168.1.51:8000/auth/apis", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ kissoro: apiKissoroNuevo || apiKissoroVigente, enplural: apiEnPluralNuevo || apiEnPluralVigente }),
+      });
+      if (!res.ok) throw new Error("Error al actualizar APIs");
+      setApiKissoroVigente(apiKissoroNuevo || apiKissoroVigente);
+      setApiEnPluralVigente(apiEnPluralNuevo || apiEnPluralVigente);
+      setApiKissoroNuevo(""); setApiEnPluralNuevo("");
+      setApiKissoroMsg({ type: "ok", text: "API Kissoro actualizado." });
+      setApiEnPluralMsg({ type: "ok", text: "API En Plural actualizado." });
+    } catch (error: any) {
+      setApiKissoroMsg({ type: "err", text: error.message });
+      setApiEnPluralMsg({ type: "err", text: error.message });
+    }
+  };
+
+  const onCambioPassword = async () => {
+    setPassMsg(null);
+    if (!token) return;
+    if (!passActual || !passNueva || !passConfirma) { setPassMsg({ type: "err", text: "Rellena todos los campos" }); return; }
+    if (passNueva !== passConfirma) { setPassMsg({ type: "err", text: "La nueva contraseña y su confirmación no coinciden." }); return; }
+    try {
+      const res = await fetch("http://192.168.1.51:8000/auth/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ old_password: passActual, new_password: passNueva }),
+      });
+      if (!res.ok) throw new Error("Error al cambiar contraseña");
+      setPassMsg({ type: "ok", text: "Contraseña actualizada correctamente" });
+      setPassActual(""); setPassNueva(""); setPassConfirma("");
+    } catch (error: any) {
+      setPassMsg({ type: "err", text: error.message });
+    }
   };
 
   const logout = () => {
-    sessionStorage.removeItem("konyx_token");
-    localStorage.removeItem("konyx_token");
+    sessionStorage.removeItem("konyx_token"); localStorage.removeItem("konyx_token");
     setFormatoImport(null); setFormatoExport(null); setEmpresa(null);
     setFechaFactura(""); setProyecto(null); setCuenta(null); setCuentaOtra("");
     setFicheroNombre(""); setMenu("formatoImport");
     router.replace("/");
   };
 
-  // -------------------- JSX con placeholders seguros --------------------
+  // -------------------- JSX --------------------
   return (
     <main className="min-h-screen bg-no-repeat bg-center bg-cover p-4" style={{ backgroundImage: "url(/fondo.png)", backgroundSize: "100% 100%" }}>
       <div className="mx-auto max-w-7xl grid grid-cols-1 md:grid-cols-[260px_1fr] gap-6">
-
         {/* Sidebar */}
         <aside className="md:sticky md:top-6">
           <div className="bg-slate-500/90 backdrop-blur rounded-2xl shadow p-4">
@@ -121,18 +159,16 @@ export default function DashboardPage() {
             </nav>
           </div>
         </aside>
-
-        {/* Contenido con placeholders */}
+        {/* Contenido */}
         <section className="space-y-6">
           <div className="bg-white/80 rounded-xl p-6 shadow-md">
-            <h3 className="text-xl font-bold mb-4">Panel de prueba seguro</h3>
-            <p>Este placeholder no usa hooks. Activa paneles reales uno a uno para test.</p>
+            <h3 className="text-xl font-bold mb-4">Panel seguro</h3>
+            <p>Activa los paneles reales uno a uno para pruebas.</p>
           </div>
           <div className="bg-white/80 rounded-xl p-6 shadow-md">
             <h3 className="text-xl font-bold mb-4">Resumen Inferior (placeholder)</h3>
           </div>
         </section>
-
       </div>
     </main>
   );
