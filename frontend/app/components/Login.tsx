@@ -31,12 +31,11 @@ export default function Login({ onOk }: LoginProps) {
 
       const data = await res.json();
 
-      // Guardar token en cookies y sessionStorage/localStorage
+      // Guardar token en cookies y storage
       Cookies.set("konyx_token", data.token, { expires: 1 });
       sessionStorage.setItem("konyx_token", data.token);
       localStorage.setItem("konyx_token", data.token);
 
-      // Callback opcional
       onOk(data.token);
 
       // Redirigir al dashboard
