@@ -23,6 +23,10 @@ jobs:
         working-directory: ./frontend
         run: npm install
 
+      - name: Install frontend types
+        working-directory: ./frontend
+        run: npm install --save-dev @types/react @types/node
+
       - name: Build frontend
         working-directory: ./frontend
         run: npm run build
@@ -48,3 +52,4 @@ jobs:
       - name: Deploy stack
         run: |
           docker stack deploy -c docker-compose.yml konyx-v2
+
