@@ -8,13 +8,15 @@ services:
       lan-local:
         ipv4_address: 192.168.1.51
     restart: unless-stopped
+    volumes:
+      - konyx-backend-data:/app/app/storage.json
 
   frontend:
     build: ./frontend
     container_name: konyx-frontend
     environment:
-      - NEXT_PUBLIC_API_KISSORO=https://api.kissoro.example
-      - NEXT_PUBLIC_API_ENPLURAL=https://api.enplural.example
+      - NEXT_PUBLIC_API_KISSORO=http://192.168.1.51:8000
+      - NEXT_PUBLIC_API_ENPLURAL=http://192.168.1.51:8000
       - NEXT_PUBLIC_LOGIN_PASS=admin123
     networks:
       lan-local:
@@ -26,3 +28,7 @@ services:
 networks:
   lan-local:
     external: true
+
+volumes:
+  konyx-backend-data:
+    driver: local
