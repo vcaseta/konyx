@@ -36,7 +36,7 @@ type MenuKey =
 export default function DashboardPage() {
   const router = useRouter();
 
-  // -------------------- Hooks principales --------------------
+  // -------------------- Hooks principales (nivel superior) --------------------
   const [authChecked, setAuthChecked] = useState(false);
   const [token, setToken] = useState<string | null>(null);
 
@@ -65,13 +65,19 @@ export default function DashboardPage() {
   const [apiEnPluralMsg, setApiEnPluralMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
   // -------------------- Validación de sesión --------------------
- useEffect(() => {
-  setAuthChecked(true);
-  setToken("dummy-token"); // token ficticio para pruebas
-}, []);
+  useEffect(() => {
+    // Para pruebas: desactivar validación cambiando la línea siguiente
+    const t = sessionStorage.getItem("konyx_token") || localStorage.getItem("konyx_token");
+    if (!t) {
+      // router.replace("/"); // 🔹 desactivado temporalmente para test
+      setToken("dummy-token"); // token ficticio
+    } else {
+      setToken(t);
+    }
+    setAuthChecked(true);
+  }, []);
 
-if (!authChecked) return null;
-
+  if (!authChecked) return null;
 
   // -------------------- Funciones --------------------
   const onPickFileClick = () => fileInputRef.current?.click();
@@ -85,22 +91,16 @@ if (!authChecked) return null;
     return !!formatoImport && !!formatoExport && !!empresa && !!fechaFactura && !!proyecto && cuentaOk && !!ficheroNombre;
   }, [formatoImport, formatoExport, empresa, fechaFactura, proyecto, cuenta, cuentaOtra, ficheroNombre]);
 
-  const onExportAsk = () => {
-    if (exportReady) setMenu("exportar");
-  };
+  const onExportAsk = () => { if (exportReady) setMenu("exportar"); };
 
   const onConfirmExport = (ok: boolean) => {
-    if (!ok) {
-      setMenu("formatoImport");
-      return;
-    }
+    if (!ok) { setMenu("formatoImport"); return; }
     alert("Exportación iniciada (conectaremos backend después).");
     setMenu("formatoImport");
   };
 
   const onCambioApis = async () => {
-    setApiKissoroMsg(null);
-    setApiEnPluralMsg(null);
+    setApiKissoroMsg(null); setApiEnPluralMsg(null);
     if (!token) return;
     try {
       const res = await fetch("http://192.168.1.51:8000/auth/apis", {
@@ -111,8 +111,7 @@ if (!authChecked) return null;
       if (!res.ok) throw new Error("Error al actualizar APIs");
       setApiKissoroVigente(apiKissoroNuevo || apiKissoroVigente);
       setApiEnPluralVigente(apiEnPluralNuevo || apiEnPluralVigente);
-      setApiKissoroNuevo("");
-      setApiEnPluralNuevo("");
+      setApiKissoroNuevo(""); setApiEnPluralNuevo("");
       setApiKissoroMsg({ type: "ok", text: "API Kissoro actualizado." });
       setApiEnPluralMsg({ type: "ok", text: "API En Plural actualizado." });
     } catch (error: any) {
@@ -124,14 +123,8 @@ if (!authChecked) return null;
   const onCambioPassword = async () => {
     setPassMsg(null);
     if (!token) return;
-    if (!passActual || !passNueva || !passConfirma) {
-      setPassMsg({ type: "err", text: "Rellena todos los campos" });
-      return;
-    }
-    if (passNueva !== passConfirma) {
-      setPassMsg({ type: "err", text: "La nueva contraseña y su confirmación no coinciden." });
-      return;
-    }
+    if (!passActual || !passNueva || !passConfirma) { setPassMsg({ type: "err", text: "Rellena todos los campos" }); return; }
+    if (passNueva !== passConfirma) { setPassMsg({ type: "err", text: "La nueva contraseña y su confirmación no coinciden." }); return; }
     try {
       const res = await fetch("http://192.168.1.51:8000/auth/change-password", {
         method: "POST",
@@ -140,9 +133,7 @@ if (!authChecked) return null;
       });
       if (!res.ok) throw new Error("Error al cambiar contraseña");
       setPassMsg({ type: "ok", text: "Contraseña actualizada correctamente" });
-      setPassActual("");
-      setPassNueva("");
-      setPassConfirma("");
+      setPassActual(""); setPassNueva(""); setPassConfirma("");
     } catch (error: any) {
       setPassMsg({ type: "err", text: error.message });
     }
@@ -151,14 +142,9 @@ if (!authChecked) return null;
   const logout = () => {
     sessionStorage.removeItem("konyx_token");
     localStorage.removeItem("konyx_token");
-    setFormatoImport(null);
-    setFormatoExport(null);
-    setEmpresa(null);
-    setFechaFactura("");
-    setProyecto(null);
-    setCuenta(null);
-    setCuentaOtra("");
-    setFicheroNombre("");
+    setFormatoImport(null); setFormatoExport(null); setEmpresa(null);
+    setFechaFactura(""); setProyecto(null); setCuenta(null); setCuentaOtra("");
+    setFicheroNombre(""); setMenu("formatoImport");
     router.replace("/");
   };
 
