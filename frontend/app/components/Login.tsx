@@ -10,15 +10,21 @@ interface LoginProps {
 
 export default function Login({ onOk }: LoginProps) {
   const router = useRouter();
+  const [user, setUser] = useState("");
   const [password, setPassword] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
 
   const handleLogin = async () => {
+    if (user !== "admenplural") {
+      setMsg("Usuario incorrecto");
+      return;
+    }
+
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_ENPLURAL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user: "admenplural", password }),
+        body: JSON.stringify({ user, password }),
       });
 
       if (!res.ok) throw new Error("Usuario o contraseña incorrecta");
@@ -41,9 +47,23 @@ export default function Login({ onOk }: LoginProps) {
   };
 
   return (
-    <div className="bg-white/80 p-6 rounded-xl shadow-md">
+    <div className="bg-white/80 p-6 rounded-xl shadow-md flex flex-col items-center">
+      {/* Logo */}
+      <div className="mb-4">
+        <img src="/logo.png" alt="Konyx" className="h-48 w-auto drop-shadow-md" />
+      </div>
+
       <h2 className="text-2xl font-bold mb-4 text-center">Iniciar Sesión</h2>
       {msg && <p className="text-red-600 mb-2">{msg}</p>}
+
+      <input
+        type="text"
+        placeholder="Usuario"
+        value={user}
+        onChange={e => setUser(e.target.value)}
+        className="w-full rounded-lg border border-gray-300 px-3 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+      />
+
       <input
         type="password"
         placeholder="Contraseña"
@@ -51,6 +71,7 @@ export default function Login({ onOk }: LoginProps) {
         onChange={e => setPassword(e.target.value)}
         className="w-full rounded-lg border border-gray-300 px-3 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500"
       />
+
       <button
         onClick={handleLogin}
         className="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition"
