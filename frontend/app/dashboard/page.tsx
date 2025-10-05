@@ -36,21 +36,10 @@ type MenuKey =
 export default function DashboardPage() {
   const router = useRouter();
 
-  // -------------------- Autenticación --------------------
+  // -------------------- Hooks principales --------------------
   const [authChecked, setAuthChecked] = useState(false);
   const [token, setToken] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const t = sessionStorage.getItem("konyx_token") || localStorage.getItem("konyx_token");
-    if (!t) router.replace("/"); // redirige a login si no hay token
-    else setToken(t); // guarda token en estado
-    setAuthChecked(true);
-  }, [router]);
-
-  if (!authChecked || typeof window === "undefined") return null;
-
-  // -------------------- Estados del dashboard --------------------
   const [menu, setMenu] = useState<MenuKey>("formatoImport");
   const [formatoImport, setFormatoImport] = useState<typeof FORMATO_IMPORT_OPTS[number] | null>(null);
   const [formatoExport, setFormatoExport] = useState<typeof FORMATO_EXPORT_OPTS[number] | null>(null);
@@ -62,13 +51,11 @@ export default function DashboardPage() {
   const [ficheroNombre, setFicheroNombre] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Configuración: contraseña
   const [passActual, setPassActual] = useState("");
   const [passNueva, setPassNueva] = useState("");
   const [passConfirma, setPassConfirma] = useState("");
   const [passMsg, setPassMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
-  // Configuración: APIs
   const [apiKissoroVigente, setApiKissoroVigente] = useState(process.env.NEXT_PUBLIC_API_KISSORO || "");
   const [apiKissoroNuevo, setApiKissoroNuevo] = useState("");
   const [apiKissoroMsg, setApiKissoroMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
@@ -76,6 +63,17 @@ export default function DashboardPage() {
   const [apiEnPluralVigente, setApiEnPluralVigente] = useState(process.env.NEXT_PUBLIC_API_ENPLURAL || "");
   const [apiEnPluralNuevo, setApiEnPluralNuevo] = useState("");
   const [apiEnPluralMsg, setApiEnPluralMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+
+  // -------------------- Validación de sesión --------------------
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const t = sessionStorage.getItem("konyx_token") || localStorage.getItem("konyx_token");
+    if (!t) router.replace("/"); // redirige a login si no hay token
+    else setToken(t);
+    setAuthChecked(true);
+  }, [router]);
+
+  if (!authChecked) return null;
 
   // -------------------- Funciones --------------------
   const onPickFileClick = () => fileInputRef.current?.click();
