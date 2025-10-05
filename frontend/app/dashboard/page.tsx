@@ -66,11 +66,11 @@ export default function DashboardPage() {
 
   // -------------------- Effects --------------------
   useEffect(() => {
-    const t = sessionStorage.getItem("konyx_token") || localStorage.getItem("konyx_token");
-    if (!t) router.replace("/");
-    else setToken(t);
+    // Leemos token al montar
+    const t = sessionStorage.getItem("konyx_token") || localStorage.getItem("konyx_token") || null;
+    setToken(t);
     setAuthChecked(true);
-  }, [router]);
+  }, []);
 
   // -------------------- Funciones --------------------
   const onPickFileClick = () => fileInputRef.current?.click();
@@ -123,15 +123,26 @@ export default function DashboardPage() {
   };
 
   const logout = () => {
-    sessionStorage.removeItem("konyx_token"); localStorage.removeItem("konyx_token");
+    sessionStorage.removeItem("konyx_token");
+    localStorage.removeItem("konyx_token");
+    setToken(null);
     setFormatoImport(null); setFormatoExport(null); setEmpresa(null);
     setFechaFactura(""); setProyecto(null); setCuenta(null); setCuentaOtra("");
     setFicheroNombre(""); setMenu("formatoImport");
     router.replace("/");
   };
 
-  // -------------------- JSX seguro --------------------
-  return authChecked ? (
+  // -------------------- Render condicional seguro --------------------
+  if (!authChecked) return null;
+
+  if (!token) {
+    // No hay token válido → redirigir al login
+    router.replace("/");
+    return null;
+  }
+
+  // -------------------- JSX --------------------
+  return (
     <main className="min-h-screen bg-no-repeat bg-center bg-cover p-4" style={{ backgroundImage: "url(/fondo.png)", backgroundSize: "100% 100%" }}>
       <div className="mx-auto max-w-7xl grid grid-cols-1 md:grid-cols-[260px_1fr] gap-6">
         <aside className="md:sticky md:top-6">
@@ -177,5 +188,5 @@ export default function DashboardPage() {
         </section>
       </div>
     </main>
-  ) : null;
+  );
 }
