@@ -90,18 +90,26 @@ export default function DashboardPage() {
   };
 
   return (
-    <main className="min-h-screen bg-no-repeat bg-center bg-cover p-4" style={{ backgroundImage: "url(/fondo.png)", backgroundSize: "100% 100%" }}>
+    <main
+      className="min-h-screen bg-no-repeat bg-center bg-cover p-4"
+      style={{ backgroundImage: "url(/fondo.png)", backgroundSize: "100% 100%" }}
+    >
       <div className="mx-auto max-w-7xl grid grid-cols-1 md:grid-cols-[260px_1fr] gap-6">
 
         {/* Sidebar */}
         <aside className="md:sticky md:top-6">
-          <div className="bg-slate-500/90 backdrop-blur rounded-2xl shadow p-4">
+          <div className="bg-white/70 backdrop-blur-md rounded-2xl shadow-lg p-4">
             <div className="flex justify-center mb-4">
-              <img src="/logo.png" alt="Konyx" className="h-48 w-auto drop-shadow-md" />
+              <img src="/logo.png" alt="Konyx" className="h-16 w-auto drop-shadow-md" />
             </div>
             <nav className="space-y-2">
               {["formatoImport","formatoExport","empresa","fecha","proyecto","cuenta","fichero","config","cerrar"].map(mk => (
-                <Item key={mk} active={menu===mk as MenuKey} onClick={()=>setMenu(mk as MenuKey)}>
+                <Item
+                  key={mk}
+                  active={menu===mk as MenuKey}
+                  onClick={()=>setMenu(mk as MenuKey)}
+                  className="hover:bg-indigo-200 transition-colors rounded-lg px-2 py-1"
+                >
                   {mk === "formatoImport" ? "Formato Importación" :
                    mk === "formatoExport" ? "Formato Exportación" :
                    mk === "empresa" ? "Empresa" :
@@ -123,7 +131,7 @@ export default function DashboardPage() {
           </div>
         </aside>
 
-        {/* Contenido */}
+        {/* Contenido derecho */}
         <section className="space-y-6">
           {menu === "formatoImport" && <PanelOption title="Formato Importación" options={FORMATO_IMPORT_OPTS} value={formatoImport} onChange={setFormatoImport} />}
           {menu === "formatoExport" && <PanelOption title="Formato Exportación" options={FORMATO_EXPORT_OPTS} value={formatoExport} onChange={setFormatoExport} />}
@@ -158,3 +166,4 @@ export default function DashboardPage() {
     </main>
   );
 }
+
