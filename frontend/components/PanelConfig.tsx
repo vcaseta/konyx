@@ -1,7 +1,5 @@
 "use client";
 
-import { useState } from "react";
-
 interface PanelConfigProps {
   // Password
   passActual: string;
@@ -25,6 +23,7 @@ interface PanelConfigProps {
   apiEnPluralMsg: { type: "ok" | "err"; text: string } | null;
 
   onCambioApis: () => void;
+  className?: string; // <--- opcional para estilos externos
 }
 
 export function PanelConfig({
@@ -45,10 +44,11 @@ export function PanelConfig({
   setApiEnPluralNuevo,
   apiEnPluralMsg,
   onCambioApis,
+  className,
 }: PanelConfigProps) {
 
   return (
-    <div className="bg-white/80 rounded-xl p-6 shadow-md space-y-6">
+    <div className={`bg-white/70 backdrop-blur-md rounded-2xl p-6 shadow-lg space-y-6 ${className || ""}`}>
       {/* Cambiar password */}
       <div>
         <h3 className="text-xl font-bold mb-4">Cambiar contraseña</h3>
@@ -58,25 +58,25 @@ export function PanelConfig({
           placeholder="Contraseña actual"
           value={passActual}
           onChange={(e) => setPassActual(e.target.value)}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 mb-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="w-full rounded-lg border border-indigo-300 px-3 py-2 mb-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
         />
         <input
           type="password"
           placeholder="Nueva contraseña"
           value={passNueva}
           onChange={(e) => setPassNueva(e.target.value)}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 mb-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="w-full rounded-lg border border-indigo-300 px-3 py-2 mb-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
         />
         <input
           type="password"
           placeholder="Confirmar nueva contraseña"
           value={passConfirma}
           onChange={(e) => setPassConfirma(e.target.value)}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="w-full rounded-lg border border-indigo-300 px-3 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500"
         />
         <button
           onClick={onCambioPassword}
-          className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition"
+          className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 shadow transition"
         >
           Cambiar contraseña
         </button>
@@ -93,7 +93,7 @@ export function PanelConfig({
               type="text"
               value={apiKissoroNuevo || apiKissoroVigente}
               onChange={(e) => setApiKissoroNuevo(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
             {apiKissoroMsg && <p className={`mt-1 ${apiKissoroMsg.type === "err" ? "text-red-600" : "text-green-600"}`}>{apiKissoroMsg.text}</p>}
           </div>
@@ -105,14 +105,14 @@ export function PanelConfig({
               type="text"
               value={apiEnPluralNuevo || apiEnPluralVigente}
               onChange={(e) => setApiEnPluralNuevo(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
             {apiEnPluralMsg && <p className={`mt-1 ${apiEnPluralMsg.type === "err" ? "text-red-600" : "text-green-600"}`}>{apiEnPluralMsg.text}</p>}
           </div>
 
           <button
             onClick={onCambioApis}
-            className="mt-4 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition"
+            className="mt-4 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 shadow transition"
           >
             Actualizar APIs
           </button>
