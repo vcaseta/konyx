@@ -20,15 +20,10 @@ export default function LoginPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user, password }),
       });
-
       if (!res.ok) throw new Error("Usuario o contraseña incorrectos");
       const data = await res.json();
-
-      // Guardamos token en AuthProvider y sessionStorage
       setToken(data.token);
       sessionStorage.setItem("konyx_token", data.token);
-
-      // Redirige al dashboard
       router.replace("/dashboard");
     } catch (error: any) {
       setMsg(error.message);
@@ -70,3 +65,4 @@ export default function LoginPage() {
     </main>
   );
 }
+
