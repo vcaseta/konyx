@@ -31,7 +31,6 @@ export default function Login() {
       const data = await res.json();
       if (!data.token) throw new Error("Token no recibido");
 
-      // Guardar token en estado global y storage
       setToken(data.token);
       sessionStorage.setItem("konyx_token", data.token);
       localStorage.setItem("konyx_token", data.token);
@@ -77,4 +76,3 @@ export default function Login() {
     </div>
   );
 }
-
