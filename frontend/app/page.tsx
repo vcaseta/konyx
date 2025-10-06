@@ -41,11 +41,9 @@ export default function LoginPage() {
         backgroundSize: "100% 100%",
       }}
     >
-      <div className="w-full max-w-sm bg-white/80 p-6 rounded-2xl shadow-md backdrop-blur">
-        <div className="flex justify-center mb-4">
-          <img src="/logo.png" alt="Konyx" className="h-48 w-auto drop-shadow-md" />
-        </div>
-        <h2 className="text-2xl font-bold mb-4 text-center text-indigo-700">Iniciar Sesión</h2>
+      <div className="w-full max-w-sm bg-white/70 backdrop-blur-md p-6 rounded-2xl shadow-lg flex flex-col items-center">
+        <img src="/logo.png" alt="Konyx" className="h-16 w-auto mb-4 drop-shadow-md" />
+        <h2 className="text-2xl font-bold text-center text-indigo-700 mb-4">Iniciar Sesión</h2>
         {msg && <p className="text-red-600 mb-2 text-center">{msg}</p>}
 
         <input
