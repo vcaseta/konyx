@@ -36,34 +36,31 @@ export default function LoginPage() {
   return (
     <main
       className="min-h-screen flex items-center justify-center bg-no-repeat bg-center bg-cover p-4"
-      style={{
-        backgroundImage: "url(/fondo.png)",
-        backgroundSize: "100% 100%",
-      }}
+      style={{ backgroundImage: "url(/fondo.png)", backgroundSize: "100% 100%" }}
     >
-      <div className="w-full max-w-sm bg-white/70 backdrop-blur-md p-6 rounded-2xl shadow-lg flex flex-col items-center">
-        <img src="/logo.png" alt="Konyx" className="h-16 w-auto mb-4 drop-shadow-md" />
-        <h2 className="text-2xl font-bold text-center text-indigo-700 mb-4">Iniciar Sesión</h2>
-        {msg && <p className="text-red-600 mb-2 text-center">{msg}</p>}
+      <div className="w-full max-w-sm bg-white/70 backdrop-blur-md p-8 rounded-2xl shadow-lg flex flex-col items-center">
+        <img src="/logo.png" alt="Konyx" className="h-16 w-auto mb-6 drop-shadow-md" />
+        <h2 className="text-2xl font-bold text-center text-indigo-700 mb-6">Iniciar Sesión</h2>
+        {msg && <p className="text-red-600 mb-4 text-center">{msg}</p>}
 
         <input
           type="text"
           placeholder="Usuario"
           value={user}
           onChange={(e) => setUser(e.target.value)}
-          className="w-full rounded-lg border border-indigo-300 px-3 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="w-full rounded-xl border border-indigo-300 px-4 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
         />
         <input
           type="password"
           placeholder="Contraseña"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full rounded-lg border border-indigo-300 px-3 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="w-full rounded-xl border border-indigo-300 px-4 py-2 mb-6 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
         />
 
         <button
           onClick={handleLogin}
-          className="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition"
+          className="w-full bg-indigo-600 text-white py-2 rounded-xl hover:bg-indigo-700 shadow-md transition"
         >
           Entrar
         </button>
