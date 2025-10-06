@@ -1,20 +1,15 @@
+import "../styles/globals.css"; // importa Tailwind
 import { AuthProvider } from "../context/authContext";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es">
-      <body>
+      <body
+        className="min-h-screen bg-no-repeat bg-center bg-cover"
+        style={{ backgroundImage: "url(/fondo.png)", backgroundSize: "100% 100%" }}
+      >
         <AuthProvider>
-          {/* Fondo global y contenedor principal */}
-          <div
-            className="min-h-screen bg-no-repeat bg-center bg-cover"
-            style={{
-              backgroundImage: "url(/fondo.png)",
-              backgroundSize: "100% 100%",
-            }}
-          >
-            {children}
-          </div>
+          <div className="min-h-screen flex flex-col">{children}</div>
         </AuthProvider>
       </body>
     </html>
