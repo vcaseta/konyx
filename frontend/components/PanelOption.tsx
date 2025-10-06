@@ -6,6 +6,7 @@ interface PanelOptionProps<T extends string> {
   value: T | null;
   onChange: (val: T) => void;
   children?: React.ReactNode;
+  className?: string; // opcional para estilos externos
 }
 
 export function PanelOption<T extends string>({
@@ -14,6 +15,7 @@ export function PanelOption<T extends string>({
   value,
   onChange,
   children,
+  className,
 }: PanelOptionProps<T>) {
 
   const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -24,10 +26,10 @@ export function PanelOption<T extends string>({
   };
 
   return (
-    <div className="bg-white/80 rounded-xl p-6 shadow-md">
+    <div className={`bg-white/70 backdrop-blur-md rounded-2xl p-6 shadow-lg ${className || ""}`}>
       <h3 className="text-xl font-bold mb-4">{title}</h3>
       <select
-        className="w-full rounded-lg border border-gray-300 px-3 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        className="w-full rounded-lg border border-indigo-300 px-3 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500"
         value={value || ""}
         onChange={handleChange}
       >
