@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 
 interface AuthContextType {
   token: string | null;
@@ -10,9 +10,13 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [token, setToken] = useState<string | null>(
-    sessionStorage.getItem("konyx_token") || localStorage.getItem("konyx_token") || null
-  );
+  const [token, setToken] = useState<string | null>(null);
+
+  // Leer token solo en el cliente
+  useEffect(() => {
+    const t = sessionStorage.getItem("konyx_token") || localStorage.getItem("konyx_token");
+    if (t) setToken(t);
+  }, []);
 
   return <AuthContext.Provider value={{ token, setToken }}>{children}</AuthContext.Provider>;
 };
