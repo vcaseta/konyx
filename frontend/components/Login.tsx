@@ -36,7 +36,6 @@ export default function Login() {
       sessionStorage.setItem("konyx_token", data.token);
       localStorage.setItem("konyx_token", data.token);
 
-      // Redirigir al dashboard
       window.location.href = "/dashboard";
     } catch (error: any) {
       setMsg(error.message || "Error desconocido");
