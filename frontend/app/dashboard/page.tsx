@@ -108,7 +108,8 @@ export default function DashboardPage() {
                   key={mk}
                   active={menu===mk as MenuKey}
                   onClick={()=>setMenu(mk as MenuKey)}
-                  className="hover:bg-indigo-200 transition-colors rounded-lg px-2 py-1"
+                  className={`px-3 py-2 rounded-lg font-semibold transition
+                    ${menu===mk ? "bg-indigo-500 text-white shadow-md" : "hover:bg-indigo-200 text-gray-700"}`}
                 >
                   {mk === "formatoImport" ? "Formato Importación" :
                    mk === "formatoExport" ? "Formato Exportación" :
@@ -122,7 +123,8 @@ export default function DashboardPage() {
                 </Item>
               ))}
               <button
-                className={`w-full text-left px-3 py-2 rounded-lg font-semibold border ${exportReady ? "border-indigo-600 text-indigo-700 bg-white/90 shadow hover:bg-indigo-200 hover:text-indigo-800" : "border-gray-300 text-gray-200 cursor-not-allowed"}`}
+                className={`w-full text-left px-3 py-2 rounded-lg font-semibold border transition
+                  ${exportReady ? "border-indigo-600 text-indigo-700 bg-white/90 shadow hover:bg-indigo-200 hover:text-indigo-800" : "border-gray-300 text-gray-200 cursor-not-allowed"}`}
                 onClick={onExportAsk}
               >
                 Exportar
@@ -133,33 +135,35 @@ export default function DashboardPage() {
 
         {/* Contenido derecho */}
         <section className="space-y-6">
-          {menu === "formatoImport" && <PanelOption title="Formato Importación" options={FORMATO_IMPORT_OPTS} value={formatoImport} onChange={setFormatoImport} />}
-          {menu === "formatoExport" && <PanelOption title="Formato Exportación" options={FORMATO_EXPORT_OPTS} value={formatoExport} onChange={setFormatoExport} />}
-          {menu === "empresa" && <PanelOption title="Empresa" options={EMPRESAS} value={empresa} onChange={setEmpresa} />}
-          {menu === "proyecto" && <PanelOption title="Proyecto" options={PROYECTOS} value={proyecto} onChange={setProyecto} />}
-          {menu === "cuenta" &&
-            <PanelOption title="Cuenta contable" options={CUENTAS} value={cuenta} onChange={setCuenta}>
-              {cuenta === "Otra (introducir)" &&
-                <input type="text" value={cuentaOtra} onChange={e=>setCuentaOtra(e.target.value)} placeholder="Introduce tu cuenta"
-                  className="w-full rounded-lg border border-indigo-300 px-3 py-2 mt-4 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              }
-            </PanelOption>
+          {menu === "formatoImport" && <div className="bg-white/80 p-4 rounded-2xl shadow-md"><PanelOption title="Formato Importación" options={FORMATO_IMPORT_OPTS} value={formatoImport} onChange={setFormatoImport} /></div>}
+          {menu === "formatoExport" && <div className="bg-white/80 p-4 rounded-2xl shadow-md"><PanelOption title="Formato Exportación" options={FORMATO_EXPORT_OPTS} value={formatoExport} onChange={setFormatoExport} /></div>}
+          {menu === "empresa" && <div className="bg-white/80 p-4 rounded-2xl shadow-md"><PanelOption title="Empresa" options={EMPRESAS} value={empresa} onChange={setEmpresa} /></div>}
+          {menu === "proyecto" && <div className="bg-white/80 p-4 rounded-2xl shadow-md"><PanelOption title="Proyecto" options={PROYECTOS} value={proyecto} onChange={setProyecto} /></div>}
+          {menu === "cuenta" && 
+            <div className="bg-white/80 p-4 rounded-2xl shadow-md">
+              <PanelOption title="Cuenta contable" options={CUENTAS} value={cuenta} onChange={setCuenta}>
+                {cuenta==="Otra (introducir)" &&
+                  <input type="text" value={cuentaOtra} onChange={e=>setCuentaOtra(e.target.value)} placeholder="Introduce tu cuenta"
+                    className="w-full rounded-lg border border-indigo-300 px-3 py-2 mt-4 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                }
+              </PanelOption>
+            </div>
           }
-          {menu === "fecha" && <PanelDate title="Fecha factura" value={fechaFactura} onChange={setFechaFactura} />}
-          {menu === "fichero" && <PanelFile value={ficheroNombre} onPickFile={onPickFile} onPickFileClick={onPickFileClick} fileInputRef={fileInputRef} />}
-          {menu === "config" &&
-            <PanelConfig
-              passActual={passActual} passNueva={passNueva} passConfirma={passConfirma}
-              setPassActual={setPassActual} setPassNueva={setPassNueva} setPassConfirma={setPassConfirma}
-              passMsg={passMsg} onCambioPassword={() => {}}
-              apiKissoroVigente={apiKissoroVigente} apiKissoroNuevo={apiKissoroNuevo} setApiKissoroNuevo={setApiKissoroNuevo} apiKissoroMsg={apiKissoroMsg}
-              apiEnPluralVigente={apiEnPluralVigente} apiEnPluralNuevo={apiEnPluralNuevo} setApiEnPluralNuevo={setApiEnPluralNuevo} apiEnPluralMsg={apiEnPluralMsg}
-              onCambioApis={() => {}}
-            />
-          }
-          {menu === "exportar" && <PanelExport onConfirm={onConfirmExport} />}
-          {menu === "cerrar" && <PanelCerrar onConfirm={logout} onCancel={()=>setMenu("formatoImport")} />}
+          {menu === "fecha" && <div className="bg-white/80 p-4 rounded-2xl shadow-md"><PanelDate title="Fecha factura" value={fechaFactura} onChange={setFechaFactura} /></div>}
+          {menu === "fichero" && <div className="bg-white/80 p-4 rounded-2xl shadow-md"><PanelFile value={ficheroNombre} onPickFile={onPickFile} onPickFileClick={onPickFileClick} fileInputRef={fileInputRef} /></div>}
+          {menu === "config" && <div className="bg-white/80 p-4 rounded-2xl shadow-md"><PanelConfig
+            passActual={passActual} passNueva={passNueva} passConfirma={passConfirma}
+            setPassActual={setPassActual} setPassNueva={setPassNueva} setPassConfirma={setPassConfirma}
+            passMsg={passMsg} onCambioPassword={() => {}}
+            apiKissoroVigente={apiKissoroVigente} apiKissoroNuevo={apiKissoroNuevo} setApiKissoroNuevo={setApiKissoroNuevo} apiKissoroMsg={apiKissoroMsg}
+            apiEnPluralVigente={apiEnPluralVigente} apiEnPluralNuevo={apiEnPluralNuevo} setApiEnPluralNuevo={setApiEnPluralNuevo} apiEnPluralMsg={apiEnPluralMsg}
+            onCambioApis={() => {}}
+          /></div>}
+          {menu === "exportar" && <div className="bg-white/80 p-4 rounded-2xl shadow-md"><PanelExport onConfirm={onConfirmExport} /></div>}
+          {menu === "cerrar" && <div className="bg-white/80 p-4 rounded-2xl shadow-md"><PanelCerrar onConfirm={logout} onCancel={()=>setMenu("formatoImport")} /></div>}
+          
+          {/* Resumen inferior */}
           <ResumenInferior />
         </section>
       </div>
