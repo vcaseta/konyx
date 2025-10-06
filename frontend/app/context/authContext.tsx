@@ -1,4 +1,3 @@
-// authContext.tsx
 "use client";
 
 import { createContext, useContext, useState, ReactNode } from "react";
@@ -14,6 +13,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [token, setToken] = useState<string | null>(
     sessionStorage.getItem("konyx_token") || localStorage.getItem("konyx_token") || null
   );
+
   return <AuthContext.Provider value={{ token, setToken }}>{children}</AuthContext.Provider>;
 };
 
