@@ -38,17 +38,12 @@ export default function DashboardPage() {
   const { token, loading } = useAuth();
   const router = useRouter();
 
-  // -------------------- Redirección segura --------------------
   useEffect(() => {
-    if (!loading && !token) {
-      router.replace("/"); // redirige al login solo después de cargar token
-    }
+    if (!loading && !token) router.replace("/");
   }, [token, loading, router]);
 
-  if (loading) return null; // espera a cargar token
-  if (!token) return null;  // si no hay token, no renderiza dashboard
+  if (loading || !token) return null;
 
-  // -------------------- Estados --------------------
   const [menu, setMenu] = useState<MenuKey>("formatoImport");
   const [formatoImport, setFormatoImport] = useState<typeof FORMATO_IMPORT_OPTS[number] | null>(null);
   const [formatoExport, setFormatoExport] = useState<typeof FORMATO_EXPORT_OPTS[number] | null>(null);
@@ -73,7 +68,6 @@ export default function DashboardPage() {
   const [apiEnPluralNuevo, setApiEnPluralNuevo] = useState("");
   const [apiEnPluralMsg, setApiEnPluralMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
-  // -------------------- Funciones --------------------
   const onPickFileClick = () => fileInputRef.current?.click();
   const onPickFile = (e: React.ChangeEvent<HTMLInputElement>) =>
     setFicheroNombre(e.target.files?.[0]?.name || "");
@@ -92,15 +86,11 @@ export default function DashboardPage() {
   const logout = () => {
     sessionStorage.removeItem("konyx_token");
     localStorage.removeItem("konyx_token");
-    router.replace("/"); // redirige a login
+    router.replace("/");
   };
 
-  // -------------------- JSX --------------------
   return (
-    <main
-      className="min-h-screen bg-no-repeat bg-center bg-cover p-4"
-      style={{ backgroundImage: "url(/fondo.png)", backgroundSize: "100% 100%" }}
-    >
+    <main className="min-h-screen bg-no-repeat bg-center bg-cover p-4" style={{ backgroundImage: "url(/fondo.png)", backgroundSize: "100% 100%" }}>
       <div className="mx-auto max-w-7xl grid grid-cols-1 md:grid-cols-[260px_1fr] gap-6">
 
         {/* Sidebar */}
