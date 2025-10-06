@@ -24,9 +24,11 @@ export default function LoginPage() {
       if (!res.ok) throw new Error("Usuario o contraseña incorrectos");
       const data = await res.json();
 
+      // Guardamos token en AuthProvider y sessionStorage
       setToken(data.token);
       sessionStorage.setItem("konyx_token", data.token);
 
+      // Redirige al dashboard
       router.replace("/dashboard");
     } catch (error: any) {
       setMsg(error.message);
@@ -48,19 +50,19 @@ export default function LoginPage() {
           placeholder="Usuario"
           value={user}
           onChange={(e) => setUser(e.target.value)}
-          className="w-full rounded-xl border border-indigo-300 px-4 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+          className="w-full rounded-lg border border-indigo-300 px-4 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
         />
         <input
           type="password"
           placeholder="Contraseña"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full rounded-xl border border-indigo-300 px-4 py-2 mb-6 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+          className="w-full rounded-lg border border-indigo-300 px-4 py-2 mb-6 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
         />
 
         <button
           onClick={handleLogin}
-          className="w-full bg-indigo-600 text-white py-2 rounded-xl hover:bg-indigo-700 shadow-md transition"
+          className="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 shadow-md transition"
         >
           Entrar
         </button>
