@@ -1,15 +1,13 @@
-import "../styles/globals.css";
-import { ReactNode } from "react";
+import { AuthProvider } from "../context/authContext";
 
-export const metadata = {
-  title: "Konyx",
-  description: "Dashboard Konyx",
-};
-
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es">
-      <body className="bg-gray-100 font-sans">{children}</body>
+      <body>
+        <AuthProvider>
+          {children}
+        </AuthProvider>
+      </body>
     </html>
   );
 }
