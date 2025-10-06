@@ -45,8 +45,8 @@ export default function DashboardPage() {
     }
   }, [token, loading, router]);
 
-  if (loading) return null; // Espera a cargar token
-  if (!token) return null;  // Si no hay token, no renderiza dashboard
+  if (loading) return null; // espera a cargar token
+  if (!token) return null;  // si no hay token, no renderiza dashboard
 
   // -------------------- Estados --------------------
   const [menu, setMenu] = useState<MenuKey>("formatoImport");
@@ -97,8 +97,13 @@ export default function DashboardPage() {
 
   // -------------------- JSX --------------------
   return (
-    <main className="min-h-screen bg-no-repeat bg-center bg-cover p-4" style={{ backgroundImage: "url(/fondo.png)", backgroundSize: "100% 100%" }}>
+    <main
+      className="min-h-screen bg-no-repeat bg-center bg-cover p-4"
+      style={{ backgroundImage: "url(/fondo.png)", backgroundSize: "100% 100%" }}
+    >
       <div className="mx-auto max-w-7xl grid grid-cols-1 md:grid-cols-[260px_1fr] gap-6">
+
+        {/* Sidebar */}
         <aside className="md:sticky md:top-6">
           <div className="bg-slate-500/90 backdrop-blur rounded-2xl shadow p-4">
             <div className="flex justify-center mb-4">
@@ -106,29 +111,46 @@ export default function DashboardPage() {
             </div>
             <nav className="space-y-2">
               {["formatoImport","formatoExport","empresa","fecha","proyecto","cuenta","fichero","config","cerrar"].map(mk => (
-                <Item key={mk} active={menu===mk as MenuKey} onClick={()=>setMenu(mk as MenuKey)}>{mk}</Item>
+                <Item key={mk} active={menu===mk as MenuKey} onClick={()=>setMenu(mk as MenuKey)}>
+                  {mk === "formatoImport" ? "Formato Importación" :
+                   mk === "formatoExport" ? "Formato Exportación" :
+                   mk === "empresa" ? "Empresa" :
+                   mk === "fecha" ? "Fecha factura" :
+                   mk === "proyecto" ? "Proyecto" :
+                   mk === "cuenta" ? "Cuenta contable" :
+                   mk === "fichero" ? "Fichero de datos" :
+                   mk === "config" ? "Configuración" :
+                   mk === "cerrar" ? "Cerrar Sesión" : mk}
+                </Item>
               ))}
-              <button className={`w-full text-left px-3 py-2 rounded-lg font-semibold border ${exportReady ? "border-indigo-600 text-indigo-700 bg-white/90" : "border-gray-300 text-gray-200 cursor-not-allowed"}`} onClick={onExportAsk}>
+              <button
+                className={`w-full text-left px-3 py-2 rounded-lg font-semibold border ${exportReady ? "border-indigo-600 text-indigo-700 bg-white/90 shadow hover:bg-indigo-200 hover:text-indigo-800" : "border-gray-300 text-gray-200 cursor-not-allowed"}`}
+                onClick={onExportAsk}
+              >
                 Exportar
               </button>
             </nav>
           </div>
         </aside>
+
+        {/* Contenido */}
         <section className="space-y-6">
-          {menu==="formatoImport" && <PanelOption title="Formato Importación" options={FORMATO_IMPORT_OPTS} value={formatoImport} onChange={setFormatoImport} />}
-          {menu==="formatoExport" && <PanelOption title="Formato Exportación" options={FORMATO_EXPORT_OPTS} value={formatoExport} onChange={setFormatoExport} />}
-          {menu==="empresa" && <PanelOption title="Empresa" options={EMPRESAS} value={empresa} onChange={setEmpresa} />}
-          {menu==="proyecto" && <PanelOption title="Proyecto" options={PROYECTOS} value={proyecto} onChange={setProyecto} />}
-          {menu==="cuenta" &&
+          {menu === "formatoImport" && <PanelOption title="Formato Importación" options={FORMATO_IMPORT_OPTS} value={formatoImport} onChange={setFormatoImport} />}
+          {menu === "formatoExport" && <PanelOption title="Formato Exportación" options={FORMATO_EXPORT_OPTS} value={formatoExport} onChange={setFormatoExport} />}
+          {menu === "empresa" && <PanelOption title="Empresa" options={EMPRESAS} value={empresa} onChange={setEmpresa} />}
+          {menu === "proyecto" && <PanelOption title="Proyecto" options={PROYECTOS} value={proyecto} onChange={setProyecto} />}
+          {menu === "cuenta" &&
             <PanelOption title="Cuenta contable" options={CUENTAS} value={cuenta} onChange={setCuenta}>
-              {cuenta==="Otra (introducir)" &&
-                <input type="text" value={cuentaOtra} onChange={e=>setCuentaOtra(e.target.value)} placeholder="Introduce tu cuenta" className="w-full rounded-lg border border-indigo-300 px-3 py-2 mt-4 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+              {cuenta === "Otra (introducir)" &&
+                <input type="text" value={cuentaOtra} onChange={e=>setCuentaOtra(e.target.value)} placeholder="Introduce tu cuenta"
+                  className="w-full rounded-lg border border-indigo-300 px-3 py-2 mt-4 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
               }
             </PanelOption>
           }
-          {menu==="fecha" && <PanelDate title="Fecha factura" value={fechaFactura} onChange={setFechaFactura} />}
-          {menu==="fichero" && <PanelFile value={ficheroNombre} onPickFile={onPickFile} onPickFileClick={onPickFileClick} fileInputRef={fileInputRef} />}
-          {menu==="config" &&
+          {menu === "fecha" && <PanelDate title="Fecha factura" value={fechaFactura} onChange={setFechaFactura} />}
+          {menu === "fichero" && <PanelFile value={ficheroNombre} onPickFile={onPickFile} onPickFileClick={onPickFileClick} fileInputRef={fileInputRef} />}
+          {menu === "config" &&
             <PanelConfig
               passActual={passActual} passNueva={passNueva} passConfirma={passConfirma}
               setPassActual={setPassActual} setPassNueva={setPassNueva} setPassConfirma={setPassConfirma}
@@ -138,8 +160,8 @@ export default function DashboardPage() {
               onCambioApis={() => {}}
             />
           }
-          {menu==="exportar" && <PanelExport onConfirm={onConfirmExport} />}
-          {menu==="cerrar" && <PanelCerrar onConfirm={logout} onCancel={()=>setMenu("formatoImport")} />}
+          {menu === "exportar" && <PanelExport onConfirm={onConfirmExport} />}
+          {menu === "cerrar" && <PanelCerrar onConfirm={logout} onCancel={()=>setMenu("formatoImport")} />}
           <ResumenInferior />
         </section>
       </div>
