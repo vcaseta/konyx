@@ -35,9 +35,17 @@ type MenuKey =
   | "cerrar";
 
 export default function DashboardPage() {
+  const { token, loading } = useAuth();
   const router = useRouter();
-  const { token } = useAuth();
 
+  // Esperar a que cargue token
+  useEffect(() => {
+    if (!loading && !token) router.replace("/");
+  }, [token, loading, router]);
+
+  if (loading) return <p>Cargando...</p>;
+  if (!token) return null;
+  
   // -------------------- Estados --------------------
   const [menu, setMenu] = useState<MenuKey>("formatoImport");
   const [formatoImport, setFormatoImport] = useState<typeof FORMATO_IMPORT_OPTS[number] | null>(null);
@@ -63,12 +71,6 @@ export default function DashboardPage() {
   const [apiEnPluralNuevo, setApiEnPluralNuevo] = useState("");
   const [apiEnPluralMsg, setApiEnPluralMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
-  // -------------------- Efectos --------------------
-  useEffect(() => {
-    if (token === null) {
-      router.replace("/");
-    }
-  }, [token, router]);
 
   // -------------------- Funciones --------------------
   const onPickFileClick = () => fileInputRef.current?.click();
