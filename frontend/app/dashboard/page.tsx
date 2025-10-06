@@ -35,18 +35,18 @@ type MenuKey =
   | "cerrar";
 
 export default function DashboardPage() {
-  const { token } = useAuth();
+  const { token, loading } = useAuth();
   const router = useRouter();
 
   // -------------------- Redirección segura --------------------
-  const [authChecked, setAuthChecked] = useState(false);
   useEffect(() => {
-    if (token === null) return; // todavía cargando
-    if (!token) router.replace("/"); // sin token → login
-    else setAuthChecked(true);
-  }, [token, router]);
+    if (!loading && !token) {
+      router.replace("/"); // redirige al login solo después de cargar token
+    }
+  }, [token, loading, router]);
 
-  if (!authChecked) return null;
+  if (loading) return null; // Espera a cargar token
+  if (!token) return null;  // Si no hay token, no renderiza dashboard
 
   // -------------------- Estados --------------------
   const [menu, setMenu] = useState<MenuKey>("formatoImport");
@@ -60,16 +60,15 @@ export default function DashboardPage() {
   const [ficheroNombre, setFicheroNombre] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Password
   const [passActual, setPassActual] = useState("");
   const [passNueva, setPassNueva] = useState("");
   const [passConfirma, setPassConfirma] = useState("");
   const [passMsg, setPassMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
-  // APIs
   const [apiKissoroVigente, setApiKissoroVigente] = useState(process.env.NEXT_PUBLIC_API_KISSORO || "");
   const [apiKissoroNuevo, setApiKissoroNuevo] = useState("");
   const [apiKissoroMsg, setApiKissoroMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+
   const [apiEnPluralVigente, setApiEnPluralVigente] = useState(process.env.NEXT_PUBLIC_API_ENPLURAL || "");
   const [apiEnPluralNuevo, setApiEnPluralNuevo] = useState("");
   const [apiEnPluralMsg, setApiEnPluralMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
@@ -93,17 +92,13 @@ export default function DashboardPage() {
   const logout = () => {
     sessionStorage.removeItem("konyx_token");
     localStorage.removeItem("konyx_token");
-    setFormatoImport(null); setFormatoExport(null); setEmpresa(null);
-    setFechaFactura(""); setProyecto(null); setCuenta(null); setCuentaOtra("");
-    setFicheroNombre(""); setMenu("formatoImport");
-    router.replace("/");
+    router.replace("/"); // redirige a login
   };
 
   // -------------------- JSX --------------------
   return (
     <main className="min-h-screen bg-no-repeat bg-center bg-cover p-4" style={{ backgroundImage: "url(/fondo.png)", backgroundSize: "100% 100%" }}>
       <div className="mx-auto max-w-7xl grid grid-cols-1 md:grid-cols-[260px_1fr] gap-6">
-        {/* Sidebar */}
         <aside className="md:sticky md:top-6">
           <div className="bg-slate-500/90 backdrop-blur rounded-2xl shadow p-4">
             <div className="flex justify-center mb-4">
@@ -119,8 +114,6 @@ export default function DashboardPage() {
             </nav>
           </div>
         </aside>
-
-        {/* Contenido */}
         <section className="space-y-6">
           {menu==="formatoImport" && <PanelOption title="Formato Importación" options={FORMATO_IMPORT_OPTS} value={formatoImport} onChange={setFormatoImport} />}
           {menu==="formatoExport" && <PanelOption title="Formato Exportación" options={FORMATO_EXPORT_OPTS} value={formatoExport} onChange={setFormatoExport} />}
@@ -153,4 +146,3 @@ export default function DashboardPage() {
     </main>
   );
 }
-
