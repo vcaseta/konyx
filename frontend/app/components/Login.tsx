@@ -31,12 +31,12 @@ export default function Login() {
       const data = await res.json();
       if (!data.token) throw new Error("Token no recibido");
 
-      // Guardar token en estado global y sessionStorage/localStorage
+      // Guardar token en estado global y storage
       setToken(data.token);
       sessionStorage.setItem("konyx_token", data.token);
       localStorage.setItem("konyx_token", data.token);
 
-      // Opcional: redirigir automáticamente al dashboard
+      // Redirigir al dashboard
       window.location.href = "/dashboard";
     } catch (error: any) {
       setMsg(error.message || "Error desconocido");
@@ -47,7 +47,7 @@ export default function Login() {
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100 p-4">
-      <div className="bg-white/80 p-6 rounded-xl shadow-md w-full max-w-md">
+      <div className="bg-white/80 p-6 rounded-xl shadow-md w-full max-w-sm">
         <div className="flex justify-center mb-4">
           <img src="/logo.png" className="h-48 w-auto" alt="Logo" />
         </div>
@@ -78,3 +78,4 @@ export default function Login() {
     </div>
   );
 }
+
