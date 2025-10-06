@@ -133,34 +133,30 @@ export default function DashboardPage() {
         </aside>
 
         {/* Contenido derecho */}
-        <section className="space-y-6">
-          {menu === "formatoImport" && <div className="bg-white/80 p-4 rounded-2xl shadow-md"><PanelOption title="Formato Importación" options={FORMATO_IMPORT_OPTS} value={formatoImport} onChange={setFormatoImport} /></div>}
-          {menu === "formatoExport" && <div className="bg-white/80 p-4 rounded-2xl shadow-md"><PanelOption title="Formato Exportación" options={FORMATO_EXPORT_OPTS} value={formatoExport} onChange={setFormatoExport} /></div>}
-          {menu === "empresa" && <div className="bg-white/80 p-4 rounded-2xl shadow-md"><PanelOption title="Empresa" options={EMPRESAS} value={empresa} onChange={setEmpresa} /></div>}
-          {menu === "proyecto" && <div className="bg-white/80 p-4 rounded-2xl shadow-md"><PanelOption title="Proyecto" options={PROYECTOS} value={proyecto} onChange={setProyecto} /></div>}
-          {menu === "cuenta" && 
-            <div className="bg-white/80 p-4 rounded-2xl shadow-md">
-              <PanelOption title="Cuenta contable" options={CUENTAS} value={cuenta} onChange={setCuenta}>
-                {cuenta==="Otra (introducir)" &&
-                  <input type="text" value={cuentaOtra} onChange={e=>setCuentaOtra(e.target.value)} placeholder="Introduce tu cuenta"
-                    className="w-full rounded-lg border border-indigo-300 px-3 py-2 mt-4 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
-                }
-              </PanelOption>
-            </div>
+        <section className="flex flex-col space-y-6">
+          {menu === "formatoImport" && <PanelOption title="Formato Importación" options={FORMATO_IMPORT_OPTS} value={formatoImport} onChange={setFormatoImport} />}
+          {menu === "formatoExport" && <PanelOption title="Formato Exportación" options={FORMATO_EXPORT_OPTS} value={formatoExport} onChange={setFormatoExport} />}
+          {menu === "empresa" && <PanelOption title="Empresa" options={EMPRESAS} value={empresa} onChange={setEmpresa} />}
+          {menu === "proyecto" && <PanelOption title="Proyecto" options={PROYECTOS} value={proyecto} onChange={setProyecto} />}
+          {menu === "cuenta" &&
+            <PanelOption title="Cuenta contable" options={CUENTAS} value={cuenta} onChange={setCuenta}>
+              {cuenta==="Otra (introducir)" &&
+                <input type="text" value={cuentaOtra} onChange={e=>setCuentaOtra(e.target.value)} placeholder="Introduce tu cuenta" className="w-full rounded-lg border border-indigo-300 px-3 py-2 mt-4 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+              }
+            </PanelOption>
           }
-          {menu === "fecha" && <div className="bg-white/80 p-4 rounded-2xl shadow-md"><PanelDate title="Fecha factura" value={fechaFactura} onChange={setFechaFactura} /></div>}
-          {menu === "fichero" && <div className="bg-white/80 p-4 rounded-2xl shadow-md"><PanelFile value={ficheroNombre} onPickFile={onPickFile} onPickFileClick={onPickFileClick} fileInputRef={fileInputRef} /></div>}
-          {menu === "config" && <div className="bg-white/80 p-4 rounded-2xl shadow-md"><PanelConfig
+          {menu === "fecha" && <PanelDate title="Fecha factura" value={fechaFactura} onChange={setFechaFactura} />}
+          {menu === "fichero" && <PanelFile value={ficheroNombre} onPickFile={onPickFile} onPickFileClick={onPickFileClick} fileInputRef={fileInputRef} />}
+          {menu === "config" && <PanelConfig
             passActual={passActual} passNueva={passNueva} passConfirma={passConfirma}
             setPassActual={setPassActual} setPassNueva={setPassNueva} setPassConfirma={setPassConfirma}
             passMsg={passMsg} onCambioPassword={() => {}}
             apiKissoroVigente={apiKissoroVigente} apiKissoroNuevo={apiKissoroNuevo} setApiKissoroNuevo={setApiKissoroNuevo} apiKissoroMsg={apiKissoroMsg}
             apiEnPluralVigente={apiEnPluralVigente} apiEnPluralNuevo={apiEnPluralNuevo} setApiEnPluralNuevo={setApiEnPluralNuevo} apiEnPluralMsg={apiEnPluralMsg}
             onCambioApis={() => {}}
-          /></div>}
-          {menu === "exportar" && <div className="bg-white/80 p-4 rounded-2xl shadow-md"><PanelExport onConfirm={onConfirmExport} /></div>}
-          {menu === "cerrar" && <div className="bg-white/80 p-4 rounded-2xl shadow-md"><PanelCerrar onConfirm={logout} onCancel={()=>setMenu("formatoImport")} /></div>}
+          />}
+          {menu === "exportar" && <PanelExport onConfirm={onConfirmExport} />}
+          {menu === "cerrar" && <PanelCerrar onConfirm={logout} onCancel={()=>setMenu("formatoImport")} />}
           
           {/* Resumen inferior */}
           <ResumenInferior />
@@ -169,4 +165,5 @@ export default function DashboardPage() {
     </main>
   );
 }
+
 
