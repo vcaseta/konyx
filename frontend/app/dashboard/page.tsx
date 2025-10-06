@@ -108,8 +108,7 @@ export default function DashboardPage() {
                   key={mk}
                   active={menu===mk as MenuKey}
                   onClick={()=>setMenu(mk as MenuKey)}
-                  className={`px-3 py-2 rounded-lg font-semibold transition
-                    ${menu===mk ? "bg-indigo-500 text-white shadow-md" : "hover:bg-indigo-200 text-gray-700"}`}
+                  className="hover:bg-indigo-200 hover:text-indigo-800 transition"
                 >
                   {mk === "formatoImport" ? "Formato Importación" :
                    mk === "formatoExport" ? "Formato Exportación" :
