@@ -1,8 +1,7 @@
 "use client";
 
-import { useState } from "react";
-
 interface PanelConfigProps {
+  // Contraseña
   passActual: string;
   passNueva: string;
   passConfirma: string;
@@ -11,10 +10,10 @@ interface PanelConfigProps {
   setPassConfirma: (val: string) => void;
   passMsg: { type: "ok" | "err"; text: string } | null;
   setPassMsg: (msg: { type: "ok" | "err"; text: string } | null) => void;
-  passwordGlobal: string; // variable que almacena la contraseña real
+  passwordGlobal: string;
   setPasswordGlobal: (val: string) => void;
 
-  // APIs (opcional)
+  // APIs
   apiKissoroVigente: string;
   apiKissoroNuevo: string;
   setApiKissoroNuevo: (val: string) => void;
@@ -68,7 +67,6 @@ export function PanelConfig({
       return;
     }
 
-    // Todo correcto, actualizar contraseña
     setPasswordGlobal(passNueva);
     setPassActual("");
     setPassNueva("");
@@ -76,8 +74,25 @@ export function PanelConfig({
     setPassMsg({ type: "ok", text: "Contraseña actualizada correctamente." });
   };
 
+  const handleActualizarApi = (tipo: "kissoro" | "enplural") => {
+    if (tipo === "kissoro") {
+      if (!apiKissoroNuevo) return; // no actualizar si vacío
+      setApiKissoroNuevo(""); // limpiar input
+      // Simulación de actualización exitosa
+      apiKissoroMsg = { type: "ok", text: "API Kissoro actualizada." };
+    }
+    if (tipo === "enplural") {
+      if (!apiEnPluralNuevo) return;
+      setApiEnPluralNuevo("");
+      apiEnPluralMsg = { type: "ok", text: "API En Plural actualizada." };
+    }
+    if (onCambioApis) onCambioApis();
+  };
+
   return (
     <div className="bg-white/70 backdrop-blur-md rounded-2xl p-6 shadow-lg space-y-6">
+
+      {/* Contraseña */}
       <div>
         <h3 className="text-xl font-bold mb-4">Cambiar contraseña</h3>
         {passMsg && <p className={`mb-2 ${passMsg.type === "err" ? "text-red-600" : "text-green-600"}`}>{passMsg.text}</p>}
@@ -109,8 +124,56 @@ export function PanelConfig({
           Cambiar contraseña
         </button>
       </div>
-      {/* Resto de configuración de APIs aquí */}
+
+      {/* API Kissoro */}
+      <div>
+        <h3 className="text-xl font-bold mb-4">API Kissoro</h3>
+        <input
+          type="text"
+          value={apiKissoroVigente}
+          disabled
+          className="w-full rounded-lg border border-gray-300 px-3 py-2 mb-2 bg-gray-100"
+        />
+        <input
+          type="text"
+          placeholder="Nueva API Kissoro"
+          value={apiKissoroNuevo}
+          onChange={e => setApiKissoroNuevo(e.target.value)}
+          className="w-full rounded-lg border border-indigo-300 px-3 py-2 mb-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        />
+        {apiKissoroMsg && <p className={`mb-2 ${apiKissoroMsg.type === "err" ? "text-red-600" : "text-green-600"}`}>{apiKissoroMsg.text}</p>}
+        <button
+          onClick={() => handleActualizarApi("kissoro")}
+          className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 shadow transition"
+        >
+          Actualizar API Kissoro
+        </button>
+      </div>
+
+      {/* API En Plural */}
+      <div>
+        <h3 className="text-xl font-bold mb-4">API En Plural</h3>
+        <input
+          type="text"
+          value={apiEnPluralVigente}
+          disabled
+          className="w-full rounded-lg border border-gray-300 px-3 py-2 mb-2 bg-gray-100"
+        />
+        <input
+          type="text"
+          placeholder="Nueva API En Plural"
+          value={apiEnPluralNuevo}
+          onChange={e => setApiEnPluralNuevo(e.target.value)}
+          className="w-full rounded-lg border border-indigo-300 px-3 py-2 mb-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        />
+        {apiEnPluralMsg && <p className={`mb-2 ${apiEnPluralMsg.type === "err" ? "text-red-600" : "text-green-600"}`}>{apiEnPluralMsg.text}</p>}
+        <button
+          onClick={() => handleActualizarApi("enplural")}
+          className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 shadow transition"
+        >
+          Actualizar API En Plural
+        </button>
+      </div>
     </div>
   );
 }
-
