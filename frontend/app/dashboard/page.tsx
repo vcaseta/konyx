@@ -55,11 +55,14 @@ export default function DashboardPage() {
   const [ficheroNombre, setFicheroNombre] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // ---------------- Contraseña ----------------
   const [passActual, setPassActual] = useState("");
   const [passNueva, setPassNueva] = useState("");
   const [passConfirma, setPassConfirma] = useState("");
   const [passMsg, setPassMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+  const [passwordGlobal, setPasswordGlobal] = useState("1234"); // contraseña inicial
 
+  // ---------------- APIs ----------------
   const [apiKissoroVigente, setApiKissoroVigente] = useState(process.env.NEXT_PUBLIC_API_KISSORO || "");
   const [apiKissoroNuevo, setApiKissoroNuevo] = useState("");
   const [apiKissoroMsg, setApiKissoroMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
@@ -68,6 +71,7 @@ export default function DashboardPage() {
   const [apiEnPluralNuevo, setApiEnPluralNuevo] = useState("");
   const [apiEnPluralMsg, setApiEnPluralMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
+  // ---------------- Funciones ----------------
   const onPickFileClick = () => fileInputRef.current?.click();
   const onPickFile = (e: React.ChangeEvent<HTMLInputElement>) =>
     setFicheroNombre(e.target.files?.[0]?.name || "");
@@ -89,6 +93,7 @@ export default function DashboardPage() {
     router.replace("/");
   };
 
+  // ---------------- JSX ----------------
   return (
     <main
       className="min-h-screen bg-no-repeat bg-center bg-cover p-4"
@@ -147,23 +152,36 @@ export default function DashboardPage() {
           }
           {menu === "fecha" && <PanelDate title="Fecha factura" value={fechaFactura} onChange={setFechaFactura} />}
           {menu === "fichero" && <PanelFile value={ficheroNombre} onPickFile={onPickFile} onPickFileClick={onPickFileClick} fileInputRef={fileInputRef} />}
+          
           {menu === "config" && <PanelConfig
-            passActual={passActual} passNueva={passNueva} passConfirma={passConfirma}
-            setPassActual={setPassActual} setPassNueva={setPassNueva} setPassConfirma={setPassConfirma}
-            passMsg={passMsg} onCambioPassword={() => {}}
-            apiKissoroVigente={apiKissoroVigente} apiKissoroNuevo={apiKissoroNuevo} setApiKissoroNuevo={setApiKissoroNuevo} apiKissoroMsg={apiKissoroMsg}
-            apiEnPluralVigente={apiEnPluralVigente} apiEnPluralNuevo={apiEnPluralNuevo} setApiEnPluralNuevo={setApiEnPluralNuevo} apiEnPluralMsg={apiEnPluralMsg}
+            passActual={passActual}
+            passNueva={passNueva}
+            passConfirma={passConfirma}
+            setPassActual={setPassActual}
+            setPassNueva={setPassNueva}
+            setPassConfirma={setPassConfirma}
+            passMsg={passMsg}
+            setPassMsg={setPassMsg}
+            passwordGlobal={passwordGlobal}
+            setPasswordGlobal={setPasswordGlobal}
+            apiKissoroVigente={apiKissoroVigente}
+            apiKissoroNuevo={apiKissoroNuevo}
+            setApiKissoroNuevo={setApiKissoroNuevo}
+            apiKissoroMsg={apiKissoroMsg}
+            apiEnPluralVigente={apiEnPluralVigente}
+            apiEnPluralNuevo={apiEnPluralNuevo}
+            setApiEnPluralNuevo={setApiEnPluralNuevo}
+            apiEnPluralMsg={apiEnPluralMsg}
             onCambioApis={() => {}}
           />}
+
           {menu === "exportar" && <PanelExport onConfirm={onConfirmExport} />}
           {menu === "cerrar" && <PanelCerrar onConfirm={logout} onCancel={()=>setMenu("formatoImport")} />}
-          
-          {/* Resumen inferior */}
+
           <ResumenInferior />
         </section>
       </div>
     </main>
   );
 }
-
 
