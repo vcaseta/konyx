@@ -1,17 +1,16 @@
 "use client";
 
-
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../context/authContext";
-import { PanelOption } from "../../components/PanelOption";
-import { PanelDate } from "../../components/PanelDate";
-import { PanelFile } from "../../components/PanelFile";
-import { PanelConfig } from "../../components/PanelConfig";
-import { PanelExport } from "../../components/PanelExport";
-import { PanelCerrar } from "../../components/PanelCerrar";
-import { ResumenInferior } from "../../components/ResumenInferior";
-import { Item } from "../../components/Item";
+import PanelOption from "@/components/PanelOption";
+import { PanelDate } from "@/components/PanelDate";
+import { PanelFile } from "@/components/PanelFile";
+import { PanelConfig } from "@/components/PanelConfig";
+import { PanelExport } from "@/components/PanelExport";
+import { PanelCerrar } from "@/components/PanelCerrar";
+import { ResumenInferior } from "@/components/ResumenInferior";
+import { Item } from "@/components/Item";
 
 const FORMATO_IMPORT_OPTS = ["Eholo", "Gestoria"] as const;
 const FORMATO_EXPORT_OPTS = ["Holded", "Gestoria"] as const;
@@ -61,7 +60,7 @@ export default function DashboardPage() {
   const [passNueva, setPassNueva] = useState("");
   const [passConfirma, setPassConfirma] = useState("");
   const [passMsg, setPassMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
-  const [passwordGlobal, setPasswordGlobal] = useState("1234"); // contraseña inicial
+  const [passwordGlobal, setPasswordGlobal] = useState("1234");
 
   // ---------------- APIs ----------------
   const [apiKissoroVigente, setApiKissoroVigente] = useState(process.env.NEXT_PUBLIC_API_KISSORO || "");
@@ -185,4 +184,3 @@ export default function DashboardPage() {
     </main>
   );
 }
-
