@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../context/authContext";
+
 import PanelOption from "@/components/PanelOption";
 import { PanelDate } from "@/components/PanelDate";
 import { PanelFile } from "@/components/PanelFile";
@@ -60,7 +61,7 @@ export default function DashboardPage() {
   const [passNueva, setPassNueva] = useState("");
   const [passConfirma, setPassConfirma] = useState("");
   const [passMsg, setPassMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
-  const [passwordGlobal, setPasswordGlobal] = useState("1234");
+  const [passwordGlobal, setPasswordGlobal] = useState("1234"); // contraseña inicial
 
   // ---------------- APIs ----------------
   const [apiKissoroVigente, setApiKissoroVigente] = useState(process.env.NEXT_PUBLIC_API_KISSORO || "");
