@@ -38,7 +38,6 @@ export default function DashboardPage() {
   const { token, loading } = useAuth();
   const router = useRouter();
 
-  // Redirección si no hay token
   useEffect(() => {
     if (!loading && !token) router.replace("/");
   }, [token, loading, router]);
@@ -73,6 +72,10 @@ export default function DashboardPage() {
   const [apiEnPluralNuevo, setApiEnPluralNuevo] = useState("");
   const [apiEnPluralMsg, setApiEnPluralMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
+  // Exportaciones
+  const [ultimoExport, setUltimoExport] = useState(() => localStorage.getItem("ultimoExport") || "-");
+  const [totalExportaciones, setTotalExportaciones] = useState(() => Number(localStorage.getItem("totalExportaciones") || 0));
+
   // Funciones
   const onPickFileClick = () => fileInputRef.current?.click();
   const onPickFile = (e: React.ChangeEvent<HTMLInputElement>) => setFicheroNombre(e.target.files?.[0]?.name || "");
@@ -81,8 +84,18 @@ export default function DashboardPage() {
   const exportReady = !!formatoImport && !!formatoExport && !!empresa && !!fechaFactura && !!proyecto && cuentaOk && !!ficheroNombre;
 
   const onExportAsk = () => { if (exportReady) setMenu("exportar"); };
+
   const onConfirmExport = (ok: boolean) => {
     if (!ok) { setMenu("formatoImport"); return; }
+
+    const hoy = new Date().toLocaleDateString();
+    setUltimoExport(hoy);
+    localStorage.setItem("ultimoExport", hoy);
+
+    const nuevasExportaciones = totalExportaciones + 1;
+    setTotalExportaciones(nuevasExportaciones);
+    localStorage.setItem("totalExportaciones", nuevasExportaciones.toString());
+
     alert("Exportación iniciada (simulación)");
     setMenu("formatoImport");
   };
@@ -92,6 +105,8 @@ export default function DashboardPage() {
     sessionStorage.removeItem("konyx_password");
     localStorage.removeItem("apiKissoro");
     localStorage.removeItem("apiEnPlural");
+    localStorage.removeItem("ultimoExport");
+    localStorage.removeItem("totalExportaciones");
     router.replace("/");
   };
 
@@ -166,42 +181,54 @@ export default function DashboardPage() {
           {menu === "exportar" && <PanelExport onConfirm={onConfirmExport} />}
           {menu === "cerrar" && <PanelCerrar onConfirm={logout} onCancel={()=>setMenu("formatoImport")} />}
 
-          {/* Panel resumen estilo KPI */}
+          {/* Panel resumen azul moderno */}
           {!["config","cerrar"].includes(menu) && (
-            <div className="bg-white/70 backdrop-blur-md rounded-2xl shadow-lg p-6 mt-4">
-              <h4 className="font-bold text-xl mb-4">Panel de Resumen</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {/* Grandes */}
-                <div className="bg-indigo-50/80 rounded-xl p-4 shadow flex flex-col justify-between">
-                  <span className="text-gray-500 font-semibold">Formato Importación</span>
-                  <span className="text-2xl font-bold">{formatoImport || "-"}</span>
+            <div className="bg-blue-100/80 backdrop-blur-md rounded-2xl shadow-lg p-6 mt-4">
+              <h4 className="font-bold text-xl mb-6 text-indigo-800">Panel de Resumen</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+
+                {/* Tarjetas principales */}
+                <div className="bg-white rounded-xl p-4 shadow flex flex-col justify-between hover:shadow-md transition">
+                  <span className="text-gray-500 font-semibold flex items-center gap-2">📥 Formato Importación</span>
+                  <span className="text-2xl font-bold text-indigo-700">{formatoImport || "-"}</span>
                 </div>
-                <div className="bg-indigo-50/80 rounded-xl p-4 shadow flex flex-col justify-between">
-                  <span className="text-gray-500 font-semibold">Formato Exportación</span>
-                  <span className="text-2xl font-bold">{formatoExport || "-"}</span>
+                <div className="bg-white rounded-xl p-4 shadow flex flex-col justify-between hover:shadow-md transition">
+                  <span className="text-gray-500 font-semibold flex items-center gap-2">📤 Formato Exportación</span>
+                  <span className="text-2xl font-bold text-indigo-700">{formatoExport || "-"}</span>
                 </div>
-                <div className="bg-indigo-50/80 rounded-xl p-4 shadow flex flex-col justify-between">
-                  <span className="text-gray-500 font-semibold">Empresa</span>
-                  <span className="text-2xl font-bold">{empresa || "-"}</span>
+                <div className="bg-white rounded-xl p-4 shadow flex flex-col justify-between hover:shadow-md transition">
+                  <span className="text-gray-500 font-semibold flex items-center gap-2">🏢 Empresa</span>
+                  <span className="text-2xl font-bold text-indigo-700">{empresa || "-"}</span>
                 </div>
-                <div className="bg-indigo-50/80 rounded-xl p-4 shadow flex flex-col justify-between">
-                  <span className="text-gray-500 font-semibold">Proyecto</span>
-                  <span className="text-2xl font-bold">{proyecto || "-"}</span>
+                <div className="bg-white rounded-xl p-4 shadow flex flex-col justify-between hover:shadow-md transition">
+                  <span className="text-gray-500 font-semibold flex items-center gap-2">🗂 Proyecto</span>
+                  <span className="text-2xl font-bold text-indigo-700">{proyecto || "-"}</span>
                 </div>
 
                 {/* Medianas */}
-                <div className="bg-gray-50/80 rounded-xl p-3 shadow flex justify-between">
-                  <span className="font-semibold">Cuenta</span>
+                <div className="bg-white/90 rounded-xl p-3 shadow flex justify-between items-center hover:shadow-md transition">
+                  <span className="font-semibold flex items-center gap-2">💳 Cuenta</span>
                   <span>{cuenta === "Otra (introducir)" ? cuentaOtra : cuenta || "-"}</span>
                 </div>
-                <div className="bg-gray-50/80 rounded-xl p-3 shadow flex justify-between">
-                  <span className="font-semibold">Fecha factura</span>
+                <div className="bg-white/90 rounded-xl p-3 shadow flex justify-between items-center hover:shadow-md transition">
+                  <span className="font-semibold flex items-center gap-2">📅 Fecha factura</span>
                   <span>{fechaFactura || "-"}</span>
                 </div>
-                <div className="bg-gray-50/80 rounded-xl p-3 shadow flex justify-between">
-                  <span className="font-semibold">Fichero</span>
+                <div className="bg-white/90 rounded-xl p-3 shadow flex justify-between items-center hover:shadow-md transition">
+                  <span className="font-semibold flex items-center gap-2">📁 Fichero</span>
                   <span>{ficheroNombre || "-"}</span>
                 </div>
+
+                {/* Exportaciones */}
+                <div className="bg-white/90 rounded-xl p-4 shadow flex flex-col justify-between hover:shadow-md transition">
+                  <span className="text-gray-500 font-semibold flex items-center gap-2">🕒 Última exportación</span>
+                  <span className="text-2xl font-bold text-green-700">{ultimoExport}</span>
+                </div>
+                <div className="bg-white/90 rounded-xl p-4 shadow flex flex-col justify-between hover:shadow-md transition">
+                  <span className="text-gray-500 font-semibold flex items-center gap-2">📊 Total exportaciones</span>
+                  <span className="text-2xl font-bold text-green-700">{totalExportaciones}</span>
+                </div>
+
               </div>
             </div>
           )}
