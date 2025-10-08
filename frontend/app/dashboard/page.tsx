@@ -104,10 +104,7 @@ export default function DashboardPage() {
   };
 
   const logout = () => {
-    // Solo eliminamos token
     sessionStorage.removeItem("konyx_token");
-
-    // NO borramos variables permanentes
     router.replace("/");
   };
 
@@ -175,10 +172,9 @@ export default function DashboardPage() {
                 setPassActual={setPassActual} setPassNueva={setPassNueva} setPassConfirma={setPassConfirma}
                 passMsg={passMsg} setPassMsg={setPassMsg}
                 passwordGlobal={passwordGlobal} setPasswordGlobal={setPasswordGlobal}
-                apiKissoroVigente={apiKissoroVigente} apiKissoroNuevo={apiKissoroNuevo} setApiKissoroNuevo={setApiKissoroNuevo} setApiKissoroVigente={setApiKissoroVigente} apiKissoroMsg={apiKissoroMsg}
-                apiEnPluralVigente={apiEnPluralVigente} apiEnPluralNuevo={apiEnPluralNuevo} setApiEnPluralNuevo={setApiEnPluralNuevo} setApiEnPluralVigente={setApiEnPluralVigente} apiEnPluralMsg={apiEnPluralMsg}
+                apiKissoroVigente={apiKissoroVigente} apiKissoroNuevo={apiKissoroNuevo} setApiKissoroNuevo={setApiKissoroNuevo} apiKissoroMsg={apiKissoroMsg}
+                apiEnPluralVigente={apiEnPluralVigente} apiEnPluralNuevo={apiEnPluralNuevo} setApiEnPluralNuevo={setApiEnPluralNuevo} apiEnPluralMsg={apiEnPluralMsg}
               />
-              {/* PanelDebug solo en configuración */}
               <PanelDebug
                 passwordGlobal={passwordGlobal}
                 apiKissoroVigente={apiKissoroVigente}
@@ -191,7 +187,7 @@ export default function DashboardPage() {
 
           {menu === "exportar" && <PanelExport onConfirm={onConfirmExport} />}
           {menu === "cerrar" && <PanelCerrar onConfirm={logout} onCancel={()=>setMenu("formatoImport")} />}
-          
+
         </section>
       </div>
     </main>
