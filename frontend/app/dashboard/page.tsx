@@ -103,9 +103,16 @@ export default function DashboardPage() {
     setMenu("formatoImport");
   };
 
+  // Solo cerrar sesión: eliminar token. La contraseña NO se borra.
   const logout = () => {
     sessionStorage.removeItem("konyx_token");
     router.replace("/");
+  };
+
+  // Refrescar las APIs vigentes tras cambios en PanelConfig
+  const refreshApis = () => {
+    setApiKissoroVigente(localStorage.getItem("apiKissoro") || "");
+    setApiEnPluralVigente(localStorage.getItem("apiEnPlural") || "");
   };
 
   return (
@@ -174,6 +181,7 @@ export default function DashboardPage() {
                 passwordGlobal={passwordGlobal} setPasswordGlobal={setPasswordGlobal}
                 apiKissoroVigente={apiKissoroVigente} apiKissoroNuevo={apiKissoroNuevo} setApiKissoroNuevo={setApiKissoroNuevo} apiKissoroMsg={apiKissoroMsg}
                 apiEnPluralVigente={apiEnPluralVigente} apiEnPluralNuevo={apiEnPluralNuevo} setApiEnPluralNuevo={setApiEnPluralNuevo} apiEnPluralMsg={apiEnPluralMsg}
+                onCambioApis={refreshApis}
               />
               <PanelDebug
                 passwordGlobal={passwordGlobal}
@@ -187,7 +195,7 @@ export default function DashboardPage() {
 
           {menu === "exportar" && <PanelExport onConfirm={onConfirmExport} />}
           {menu === "cerrar" && <PanelCerrar onConfirm={logout} onCancel={()=>setMenu("formatoImport")} />}
-          
+
         </section>
       </div>
     </main>
