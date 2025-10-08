@@ -21,12 +21,17 @@ export default function LoginPage() {
         body: JSON.stringify({ user, password }),
       });
       if (!res.ok) throw new Error("Usuario o contraseña incorrectos");
+
       const data = await res.json();
 
-      // Guardamos token y contraseña en sessionStorage
+      // Guardamos token de sesión
       setToken(data.token);
       sessionStorage.setItem("konyx_token", data.token);
-      sessionStorage.setItem("konyx_password", password); // <--- contraseña global
+
+      // SOLO guardar contraseña global si aún no existe (primer uso)
+      if (!sessionStorage.getItem("konyx_password")) {
+        sessionStorage.setItem("konyx_password", password);
+      }
 
       router.replace("/dashboard");
     } catch (error: any) {
