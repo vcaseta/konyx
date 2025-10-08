@@ -36,7 +36,7 @@ export function PanelConfig({
   setPassConfirma,
   passMsg,
   setPassMsg,
-  passwordGlobal,
+  passwordGlobal,        // se usa para mostrar/estado, pero la validación leerá de sessionStorage
   setPasswordGlobal,
   apiKissoroVigente,
   apiKissoroNuevo,
@@ -52,12 +52,35 @@ export function PanelConfig({
   const handleCambioPassword = () => {
     setPassMsg(null);
 
+    // Fuente de verdad: sessionStorage
+    const vigente = sessionStorage.getItem("konyx_password") || "";
+
+    // Primer set (no existe contraseña previa): no pedimos "actual"
+    if (!vigente) {
+      if (!passNueva || !passConfirma) {
+        setPassMsg({ type: "err", text: "Introduce y confirma la nueva contraseña." });
+        return;
+      }
+      if (passNueva !== passConfirma) {
+        setPassMsg({ type: "err", text: "La nueva contraseña y la confirmación no coinciden." });
+        return;
+      }
+      sessionStorage.setItem("konyx_password", passNueva);
+      setPasswordGlobal(passNueva);
+      setPassActual("");
+      setPassNueva("");
+      setPassConfirma("");
+      setPassMsg({ type: "ok", text: "Contraseña creada correctamente." });
+      return;
+    }
+
+    // Ya existe contraseña: validar la actual
     if (!passActual || !passNueva || !passConfirma) {
       setPassMsg({ type: "err", text: "Rellena todos los campos." });
       return;
     }
 
-    if (passActual !== passwordGlobal) {
+    if (passActual !== vigente) {
       setPassMsg({ type: "err", text: "La contraseña actual no es correcta." });
       return;
     }
@@ -67,8 +90,8 @@ export function PanelConfig({
       return;
     }
 
+    sessionStorage.setItem("konyx_password", passNueva);
     setPasswordGlobal(passNueva);
-    sessionStorage.setItem("konyx_password", passNueva); // <--- guardamos permanentemente
     setPassActual("");
     setPassNueva("");
     setPassConfirma("");
@@ -78,13 +101,13 @@ export function PanelConfig({
   const handleActualizarApi = (tipo: "kissoro" | "enplural") => {
     if (tipo === "kissoro") {
       if (!apiKissoroNuevo) return;
-      localStorage.setItem("apiKissoro", apiKissoroNuevo); // <--- guardamos permanente
+      localStorage.setItem("apiKissoro", apiKissoroNuevo);
       setApiKissoroNuevo("");
       if (onCambioApis) onCambioApis();
     }
     if (tipo === "enplural") {
       if (!apiEnPluralNuevo) return;
-      localStorage.setItem("apiEnPlural", apiEnPluralNuevo); // <--- guardamos permanente
+      localStorage.setItem("apiEnPlural", apiEnPluralNuevo);
       setApiEnPluralNuevo("");
       if (onCambioApis) onCambioApis();
     }
@@ -187,4 +210,5 @@ export function PanelConfig({
     </div>
   );
 }
+
 
