@@ -2,15 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "../context/authContext";
+import { useAuth } from "../../context/authContext";
 
-import PanelOption from "../components/PanelOption";
-import { PanelDate } from "../components/PanelDate";
-import { PanelFile } from "../components/PanelFile";
-import { PanelConfig } from "../components/PanelConfig";
-import { PanelExport } from "../components/PanelExport";
-import { PanelCerrar } from "../components/PanelCerrar";
-import { ResumenInferior } from "../components/ResumenInferior";
+import PanelOption from "../../components/PanelOption";
+import { PanelDate } from "../../components/PanelDate";
+import { PanelFile } from "../../components/PanelFile";
+import { PanelConfig } from "../../components/PanelConfig";
+import { PanelExport } from "../../components/PanelExport";
+import { PanelCerrar } from "../../components/PanelCerrar";
+import { ResumenInferior } from "../../components/ResumenInferior";
 import { Item } from "../components/Item";
 
 const FORMATO_IMPORT_OPTS = ["Eholo", "Gestoria"] as const;
