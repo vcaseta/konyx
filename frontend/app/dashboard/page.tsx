@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../context/authContext";
 
-import PanelOption from "../../components/PanelOption";
+// Imports finales
+import PanelOption from "../../components/PanelOption"; // default export
 import { PanelDate } from "../../components/PanelDate";
 import { PanelFile } from "../../components/PanelFile";
 import { PanelConfig } from "../../components/PanelConfig";
@@ -56,14 +57,14 @@ export default function DashboardPage() {
   const [ficheroNombre, setFicheroNombre] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // ---------------- Contraseña ----------------
+  // Contraseña
   const [passActual, setPassActual] = useState("");
   const [passNueva, setPassNueva] = useState("");
   const [passConfirma, setPassConfirma] = useState("");
   const [passMsg, setPassMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
   const [passwordGlobal, setPasswordGlobal] = useState("1234"); // contraseña inicial
 
-  // ---------------- APIs ----------------
+  // APIs
   const [apiKissoroVigente, setApiKissoroVigente] = useState(process.env.NEXT_PUBLIC_API_KISSORO || "");
   const [apiKissoroNuevo, setApiKissoroNuevo] = useState("");
   const [apiKissoroMsg, setApiKissoroMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
@@ -72,7 +73,7 @@ export default function DashboardPage() {
   const [apiEnPluralNuevo, setApiEnPluralNuevo] = useState("");
   const [apiEnPluralMsg, setApiEnPluralMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
-  // ---------------- Funciones ----------------
+  // Funciones
   const onPickFileClick = () => fileInputRef.current?.click();
   const onPickFile = (e: React.ChangeEvent<HTMLInputElement>) =>
     setFicheroNombre(e.target.files?.[0]?.name || "");
@@ -94,7 +95,6 @@ export default function DashboardPage() {
     router.replace("/");
   };
 
-  // ---------------- JSX ----------------
   return (
     <main
       className="min-h-screen bg-no-repeat bg-center bg-cover p-4"
