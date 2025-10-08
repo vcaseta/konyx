@@ -68,7 +68,7 @@ export function PanelConfig({
     }
 
     setPasswordGlobal(passNueva);
-    sessionStorage.setItem("konyx_password", passNueva); // guarda permanentemente
+    sessionStorage.setItem("konyx_password", passNueva); // <--- guardamos permanentemente
     setPassActual("");
     setPassNueva("");
     setPassConfirma("");
@@ -78,13 +78,13 @@ export function PanelConfig({
   const handleActualizarApi = (tipo: "kissoro" | "enplural") => {
     if (tipo === "kissoro") {
       if (!apiKissoroNuevo) return;
-      localStorage.setItem("apiKissoro", apiKissoroNuevo);
+      localStorage.setItem("apiKissoro", apiKissoroNuevo); // <--- guardamos permanente
       setApiKissoroNuevo("");
       if (onCambioApis) onCambioApis();
     }
     if (tipo === "enplural") {
       if (!apiEnPluralNuevo) return;
-      localStorage.setItem("apiEnPlural", apiEnPluralNuevo);
+      localStorage.setItem("apiEnPlural", apiEnPluralNuevo); // <--- guardamos permanente
       setApiEnPluralNuevo("");
       if (onCambioApis) onCambioApis();
     }
@@ -155,7 +155,6 @@ export function PanelConfig({
               Actualizar
             </button>
           </div>
-          {apiKissoroMsg && <p className={`mt-1 ${apiKissoroMsg.type === "err" ? "text-red-600" : "text-green-600"}`}>{apiKissoroMsg.text}</p>}
         </div>
 
         {/* En Plural */}
@@ -182,7 +181,6 @@ export function PanelConfig({
               Actualizar
             </button>
           </div>
-          {apiEnPluralMsg && <p className={`mt-1 ${apiEnPluralMsg.type === "err" ? "text-red-600" : "text-green-600"}`}>{apiEnPluralMsg.text}</p>}
         </div>
 
       </div>
