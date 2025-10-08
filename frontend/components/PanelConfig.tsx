@@ -68,6 +68,7 @@ export function PanelConfig({
     }
 
     setPasswordGlobal(passNueva);
+    sessionStorage.setItem("konyx_password", passNueva); // persistencia
     setPassActual("");
     setPassNueva("");
     setPassConfirma("");
@@ -77,16 +78,19 @@ export function PanelConfig({
   const handleActualizarApi = (tipo: "kissoro" | "enplural") => {
     if (tipo === "kissoro" && apiKissoroNuevo) {
       setApiKissoroVigente(apiKissoroNuevo);
+      localStorage.setItem("apiKissoro", apiKissoroNuevo);
       setApiKissoroNuevo("");
     }
     if (tipo === "enplural" && apiEnPluralNuevo) {
       setApiEnPluralVigente(apiEnPluralNuevo);
+      localStorage.setItem("apiEnPlural", apiEnPluralNuevo);
       setApiEnPluralNuevo("");
     }
   };
 
   return (
     <div className="bg-white/70 backdrop-blur-md rounded-2xl p-6 shadow-lg space-y-6">
+
       {/* Contraseña */}
       <div>
         <h3 className="text-xl font-bold mb-4">Cambiar contraseña</h3>
@@ -124,16 +128,11 @@ export function PanelConfig({
 
       {/* APIs */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
         {/* Kissoro */}
         <div>
           <h3 className="text-xl font-bold mb-2">API Kissoro</h3>
           <div className="flex items-center space-x-4">
-            <button
-              onClick={() => handleActualizarApi("kissoro")}
-              className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition"
-            >
-              Actualizar
-            </button>
             <input
               type="text"
               value={apiKissoroNuevo}
@@ -141,6 +140,12 @@ export function PanelConfig({
               placeholder="Nueva API Kissoro"
               className="flex-1 rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
+            <button
+              onClick={() => handleActualizarApi("kissoro")}
+              className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition"
+            >
+              Actualizar
+            </button>
           </div>
           <input
             type="text"
@@ -148,19 +153,12 @@ export function PanelConfig({
             readOnly
             className="w-full mt-2 rounded-lg border border-gray-300 px-3 py-2 bg-gray-100"
           />
-          {apiKissoroMsg && <p className={`mt-1 ${apiKissoroMsg.type === "err" ? "text-red-600" : "text-green-600"}`}>{apiKissoroMsg.text}</p>}
         </div>
 
         {/* En Plural */}
         <div>
           <h3 className="text-xl font-bold mb-2">API En Plural</h3>
           <div className="flex items-center space-x-4">
-            <button
-              onClick={() => handleActualizarApi("enplural")}
-              className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition"
-            >
-              Actualizar
-            </button>
             <input
               type="text"
               value={apiEnPluralNuevo}
@@ -168,6 +166,12 @@ export function PanelConfig({
               placeholder="Nueva API En Plural"
               className="flex-1 rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
+            <button
+              onClick={() => handleActualizarApi("enplural")}
+              className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition"
+            >
+              Actualizar
+            </button>
           </div>
           <input
             type="text"
@@ -175,8 +179,8 @@ export function PanelConfig({
             readOnly
             className="w-full mt-2 rounded-lg border border-gray-300 px-3 py-2 bg-gray-100"
           />
-          {apiEnPluralMsg && <p className={`mt-1 ${apiEnPluralMsg.type === "err" ? "text-red-600" : "text-green-600"}`}>{apiEnPluralMsg.text}</p>}
         </div>
+
       </div>
     </div>
   );
