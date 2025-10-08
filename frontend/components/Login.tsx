@@ -38,7 +38,7 @@ export default function LoginPage() {
     <main className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
       <div className="w-full max-w-sm bg-white/80 p-6 rounded-xl shadow-md">
         <div className="flex justify-center mb-4">
-          <img src="/logo.png" className="h-48 w-auto" alt="Konyx" />
+          <img src="/logo.png" className="h-64 w-auto" alt="Konyx" />
         </div>
         <h2 className="text-2xl font-bold mb-4 text-center">Iniciar Sesión</h2>
         {msg && <p className="text-red-600 mb-2">{msg}</p>}
