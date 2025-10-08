@@ -10,6 +10,7 @@ import { PanelFile } from "../../components/PanelFile";
 import { PanelConfig } from "../../components/PanelConfig";
 import { PanelExport } from "../../components/PanelExport";
 import { PanelCerrar } from "../../components/PanelCerrar";
+import { PanelDebug } from "../../components/PanelDebug";
 import { Item } from "../../components/Item";
 
 const FORMATO_IMPORT_OPTS = ["Eholo", "Gestoria"] as const;
@@ -103,12 +104,10 @@ export default function DashboardPage() {
   };
 
   const logout = () => {
+    // Solo eliminamos token
     sessionStorage.removeItem("konyx_token");
-    // No borramos la contraseña permanente
-    localStorage.removeItem("apiKissoro");
-    localStorage.removeItem("apiEnPlural");
-    localStorage.removeItem("ultimoExport");
-    localStorage.removeItem("totalExportaciones");
+
+    // NO borramos variables permanentes
     router.replace("/");
   };
 
@@ -120,7 +119,7 @@ export default function DashboardPage() {
         <aside className="md:sticky md:top-6">
           <div className="bg-white/70 backdrop-blur-md rounded-2xl shadow-lg p-4">
             <div className="flex justify-center mb-4">
-              <img src="/logo.png" alt="Konyx" className="h-48 w-auto drop-shadow-md" />
+              <img src="/logo.png" alt="Konyx" className="h-64 w-auto drop-shadow-md" />
             </div>
             <nav className="space-y-2">
               {["formatoImport","formatoExport","empresa","fecha","proyecto","cuenta","fichero","config","cerrar"].map(mk => (
@@ -170,27 +169,29 @@ export default function DashboardPage() {
           {menu === "fichero" && <PanelFile value={ficheroNombre} onPickFile={onPickFile} onPickFileClick={onPickFileClick} fileInputRef={fileInputRef} />}
 
           {menu === "config" &&
-            <PanelConfig
-              passActual={passActual} passNueva={passNueva} passConfirma={passConfirma}
-              setPassActual={setPassActual} setPassNueva={setPassNueva} setPassConfirma={setPassConfirma}
-              passMsg={passMsg} setPassMsg={setPassMsg}
-              passwordGlobal={passwordGlobal} setPasswordGlobal={setPasswordGlobal}
-              apiKissoroVigente={apiKissoroVigente} apiKissoroNuevo={apiKissoroNuevo} setApiKissoroNuevo={setApiKissoroNuevo} setApiKissoroVigente={setApiKissoroVigente} apiKissoroMsg={apiKissoroMsg}
-              apiEnPluralVigente={apiEnPluralVigente} apiEnPluralNuevo={apiEnPluralNuevo} setApiEnPluralNuevo={setApiEnPluralNuevo} setApiEnPluralVigente={setApiEnPluralVigente} apiEnPluralMsg={apiEnPluralMsg}
-            />
+            <div className="space-y-6">
+              <PanelConfig
+                passActual={passActual} passNueva={passNueva} passConfirma={passConfirma}
+                setPassActual={setPassActual} setPassNueva={setPassNueva} setPassConfirma={setPassConfirma}
+                passMsg={passMsg} setPassMsg={setPassMsg}
+                passwordGlobal={passwordGlobal} setPasswordGlobal={setPasswordGlobal}
+                apiKissoroVigente={apiKissoroVigente} apiKissoroNuevo={apiKissoroNuevo} setApiKissoroNuevo={setApiKissoroNuevo} setApiKissoroVigente={setApiKissoroVigente} apiKissoroMsg={apiKissoroMsg}
+                apiEnPluralVigente={apiEnPluralVigente} apiEnPluralNuevo={apiEnPluralNuevo} setApiEnPluralNuevo={setApiEnPluralNuevo} setApiEnPluralVigente={setApiEnPluralVigente} apiEnPluralMsg={apiEnPluralMsg}
+              />
+              {/* PanelDebug solo en configuración */}
+              <PanelDebug
+                passwordGlobal={passwordGlobal}
+                apiKissoroVigente={apiKissoroVigente}
+                apiEnPluralVigente={apiEnPluralVigente}
+                ultimoExport={ultimoExport}
+                totalExportaciones={totalExportaciones}
+              />
+            </div>
           }
 
           {menu === "exportar" && <PanelExport onConfirm={onConfirmExport} />}
           {menu === "cerrar" && <PanelCerrar onConfirm={logout} onCancel={()=>setMenu("formatoImport")} />}
           
-          {/* Panel de resumen */}
-          {!["config","cerrar"].includes(menu) && (
-            <div className="bg-blue-100/80 backdrop-blur-md rounded-2xl shadow-lg p-6 mt-4">
-              <h4 className="font-bold text-xl mb-6 text-indigo-800">Panel de Resumen</h4>
-              {/* Reorganizado según tus especificaciones... */}
-            </div>
-          )}
-
         </section>
       </div>
     </main>
