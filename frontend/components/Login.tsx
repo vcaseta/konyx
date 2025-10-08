@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "../../context/authContext";
+import { useAuth } from "../context/authContext";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -23,11 +23,11 @@ export default function LoginPage() {
       if (!res.ok) throw new Error("Usuario o contraseña incorrectos");
       const data = await res.json();
 
-      // Guardamos token en AuthProvider y en sessionStorage
+      // Guardamos token y contraseña en sessionStorage
       setToken(data.token);
       sessionStorage.setItem("konyx_token", data.token);
+      sessionStorage.setItem("konyx_password", password); // <--- contraseña global
 
-      // Redirige al dashboard
       router.replace("/dashboard");
     } catch (error: any) {
       setMsg(error.message);
@@ -38,7 +38,7 @@ export default function LoginPage() {
     <main className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
       <div className="w-full max-w-sm bg-white/80 p-6 rounded-xl shadow-md">
         <div className="flex justify-center mb-4">
-          <img src="/logo.png" className="h-64 w-auto" alt="Konyx" />
+          <img src="/logo.png" className="h-48 w-auto" alt="Konyx" />
         </div>
         <h2 className="text-2xl font-bold mb-4 text-center">Iniciar Sesión</h2>
         {msg && <p className="text-red-600 mb-2">{msg}</p>}
