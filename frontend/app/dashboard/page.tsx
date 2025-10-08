@@ -57,13 +57,13 @@ export default function DashboardPage() {
   const [ficheroNombre, setFicheroNombre] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Contraseña
+  // Contraseña global unificada
   const [passActual, setPassActual] = useState("");
   const [passNueva, setPassNueva] = useState("");
   const [passConfirma, setPassConfirma] = useState("");
   const [passMsg, setPassMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
   const [passwordGlobal, setPasswordGlobal] = useState(() => {
-    return sessionStorage.getItem("konyx_password") || "1234";
+    return sessionStorage.getItem("konyx_password") || "";
   });
 
   // APIs
@@ -187,7 +187,7 @@ export default function DashboardPage() {
 
           {menu === "exportar" && <PanelExport onConfirm={onConfirmExport} />}
           {menu === "cerrar" && <PanelCerrar onConfirm={logout} onCancel={()=>setMenu("formatoImport")} />}
-
+          
         </section>
       </div>
     </main>
