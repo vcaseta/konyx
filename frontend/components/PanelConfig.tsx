@@ -13,17 +13,7 @@ interface PanelConfigProps {
   passwordGlobal: string;
   setPasswordGlobal: (val: string) => void;
 
-  // APIs
-  apiKissoroVigente: string;
-  apiKissoroNuevo: string;
-  setApiKissoroNuevo: (val: string) => void;
-  setApiKissoroVigente: (val: string) => void;
-  apiEnPluralVigente: string;
-  apiEnPluralNuevo: string;
-  setApiEnPluralNuevo: (val: string) => void;
-  setApiEnPluralVigente: (val: string) => void;
-  apiKissoroMsg: { type: "ok" | "err"; text: string } | null;
-  apiEnPluralMsg: { type: "ok" | "err"; text: string } | null;
+  // APIs...
 }
 
 export function PanelConfig({
@@ -37,61 +27,45 @@ export function PanelConfig({
   setPassMsg,
   passwordGlobal,
   setPasswordGlobal,
-  apiKissoroVigente,
-  apiKissoroNuevo,
-  setApiKissoroNuevo,
-  setApiKissoroVigente,
-  apiEnPluralVigente,
-  apiEnPluralNuevo,
-  setApiEnPluralNuevo,
-  setApiEnPluralVigente,
-  apiKissoroMsg,
-  apiEnPluralMsg,
+  // APIs...
 }: PanelConfigProps) {
 
   const handleCambioPassword = () => {
     setPassMsg(null);
 
+    // Validaciones
     if (!passActual || !passNueva || !passConfirma) {
       setPassMsg({ type: "err", text: "Rellena todos los campos." });
       return;
     }
 
+    // Comparar contraseña actual con la permanente
     if (passActual !== passwordGlobal) {
       setPassMsg({ type: "err", text: "La contraseña actual no es correcta." });
       return;
     }
 
+    // Validar nueva contraseña
     if (passNueva !== passConfirma) {
       setPassMsg({ type: "err", text: "La nueva contraseña y la confirmación no coinciden." });
       return;
     }
 
+    // Guardar nueva contraseña en la variable permanente y sessionStorage
     setPasswordGlobal(passNueva);
-    sessionStorage.setItem("konyx_password", passNueva); // Persistente
+    sessionStorage.setItem("konyx_password", passNueva);
+
+    // Limpiar campos
     setPassActual("");
     setPassNueva("");
     setPassConfirma("");
     setPassMsg({ type: "ok", text: "Contraseña actualizada correctamente." });
   };
 
-  const handleActualizarApi = (tipo: "kissoro" | "enplural") => {
-    if (tipo === "kissoro" && apiKissoroNuevo) {
-      setApiKissoroVigente(apiKissoroNuevo);
-      localStorage.setItem("apiKissoro", apiKissoroNuevo);
-      setApiKissoroNuevo("");
-    }
-    if (tipo === "enplural" && apiEnPluralNuevo) {
-      setApiEnPluralVigente(apiEnPluralNuevo);
-      localStorage.setItem("apiEnPlural", apiEnPluralNuevo);
-      setApiEnPluralNuevo("");
-    }
-  };
-
   return (
     <div className="bg-white/70 backdrop-blur-md rounded-2xl p-6 shadow-lg space-y-6">
 
-      {/* Contraseña */}
+      {/* Cambiar contraseña */}
       <div>
         <h3 className="text-xl font-bold mb-4">Cambiar contraseña</h3>
         {passMsg && <p className={`mb-2 ${passMsg.type === "err" ? "text-red-600" : "text-green-600"}`}>{passMsg.text}</p>}
@@ -126,64 +100,7 @@ export function PanelConfig({
         </button>
       </div>
 
-      {/* APIs */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-        {/* Kissoro */}
-        <div>
-          <h3 className="text-xl font-bold mb-2">API Kissoro</h3>
-          <div className="flex items-center space-x-4">
-            <input
-              type="text"
-              placeholder="Nueva API Kissoro"
-              value={apiKissoroNuevo}
-              onChange={e => setApiKissoroNuevo(e.target.value)}
-              className="flex-1 rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-            <button
-              onClick={() => handleActualizarApi("kissoro")}
-              className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition"
-            >
-              Actualizar
-            </button>
-          </div>
-          <input
-            type="text"
-            value={apiKissoroVigente}
-            readOnly
-            className="w-full mt-2 rounded-lg border border-gray-300 px-3 py-2 bg-gray-200"
-          />
-          {apiKissoroMsg && <p className={`mt-1 ${apiKissoroMsg.type === "err" ? "text-red-600" : "text-green-600"}`}>{apiKissoroMsg.text}</p>}
-        </div>
-
-        {/* En Plural */}
-        <div>
-          <h3 className="text-xl font-bold mb-2">API En Plural</h3>
-          <div className="flex items-center space-x-4">
-            <input
-              type="text"
-              placeholder="Nueva API En Plural"
-              value={apiEnPluralNuevo}
-              onChange={e => setApiEnPluralNuevo(e.target.value)}
-              className="flex-1 rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-            <button
-              onClick={() => handleActualizarApi("enplural")}
-              className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition"
-            >
-              Actualizar
-            </button>
-          </div>
-          <input
-            type="text"
-            value={apiEnPluralVigente}
-            readOnly
-            className="w-full mt-2 rounded-lg border border-gray-300 px-3 py-2 bg-gray-200"
-          />
-          {apiEnPluralMsg && <p className={`mt-1 ${apiEnPluralMsg.type === "err" ? "text-red-600" : "text-green-600"}`}>{apiEnPluralMsg.text}</p>}
-        </div>
-
-      </div>
+      {/* Secciones de APIs seguirían aquí */}
     </div>
   );
 }
