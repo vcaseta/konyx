@@ -15,13 +15,11 @@ interface PanelConfigProps {
 
   // APIs
   apiKissoroVigente: string;
-  setApiKissoroVigente: (val: string) => void;
   apiKissoroNuevo: string;
   setApiKissoroNuevo: (val: string) => void;
   apiKissoroMsg: { type: "ok" | "err"; text: string } | null;
 
   apiEnPluralVigente: string;
-  setApiEnPluralVigente: (val: string) => void;
   apiEnPluralNuevo: string;
   setApiEnPluralNuevo: (val: string) => void;
   apiEnPluralMsg: { type: "ok" | "err"; text: string } | null;
@@ -41,19 +39,16 @@ export function PanelConfig({
   passwordGlobal,
   setPasswordGlobal,
   apiKissoroVigente,
-  setApiKissoroVigente,
   apiKissoroNuevo,
   setApiKissoroNuevo,
   apiKissoroMsg,
   apiEnPluralVigente,
-  setApiEnPluralVigente,
   apiEnPluralNuevo,
   setApiEnPluralNuevo,
   apiEnPluralMsg,
   onCambioApis,
 }: PanelConfigProps) {
 
-  // Cambio de contraseña
   const handleCambioPassword = () => {
     setPassMsg(null);
 
@@ -72,27 +67,23 @@ export function PanelConfig({
       return;
     }
 
-    // Guardar contraseña permanente
     setPasswordGlobal(passNueva);
-    sessionStorage.setItem("konyx_password", passNueva);
-
+    sessionStorage.setItem("konyx_password", passNueva); // guarda permanentemente
     setPassActual("");
     setPassNueva("");
     setPassConfirma("");
     setPassMsg({ type: "ok", text: "Contraseña actualizada correctamente." });
   };
 
-  // Actualizar APIs
   const handleActualizarApi = (tipo: "kissoro" | "enplural") => {
     if (tipo === "kissoro") {
       if (!apiKissoroNuevo) return;
-      setApiKissoroVigente(apiKissoroNuevo);
       localStorage.setItem("apiKissoro", apiKissoroNuevo);
       setApiKissoroNuevo("");
       if (onCambioApis) onCambioApis();
-    } else if (tipo === "enplural") {
+    }
+    if (tipo === "enplural") {
       if (!apiEnPluralNuevo) return;
-      setApiEnPluralVigente(apiEnPluralNuevo);
       localStorage.setItem("apiEnPlural", apiEnPluralNuevo);
       setApiEnPluralNuevo("");
       if (onCambioApis) onCambioApis();
@@ -143,8 +134,13 @@ export function PanelConfig({
         {/* Kissoro */}
         <div>
           <h3 className="text-xl font-bold mb-2">API Kissoro</h3>
-          <input type="text" value={apiKissoroVigente} disabled className="w-full rounded-lg border border-gray-300 px-3 py-2 mb-2 bg-gray-100" />
-          <div className="flex gap-2">
+          <input
+            type="text"
+            value={apiKissoroVigente}
+            disabled
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 mb-2 bg-gray-100"
+          />
+          <div className="flex space-x-2">
             <input
               type="text"
               placeholder="Nueva API Kissoro"
@@ -165,8 +161,13 @@ export function PanelConfig({
         {/* En Plural */}
         <div>
           <h3 className="text-xl font-bold mb-2">API En Plural</h3>
-          <input type="text" value={apiEnPluralVigente} disabled className="w-full rounded-lg border border-gray-300 px-3 py-2 mb-2 bg-gray-100" />
-          <div className="flex gap-2">
+          <input
+            type="text"
+            value={apiEnPluralVigente}
+            disabled
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 mb-2 bg-gray-100"
+          />
+          <div className="flex space-x-2">
             <input
               type="text"
               placeholder="Nueva API En Plural"
@@ -188,3 +189,4 @@ export function PanelConfig({
     </div>
   );
 }
+
