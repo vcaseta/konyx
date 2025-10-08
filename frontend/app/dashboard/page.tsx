@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../context/authContext";
 
-import PanelOption from "../../components/PanelOption"; // default export
+import PanelOption from "../../components/PanelOption";
 import { PanelDate } from "../../components/PanelDate";
 import { PanelFile } from "../../components/PanelFile";
 import { PanelConfig } from "../../components/PanelConfig";
@@ -137,6 +137,7 @@ export default function DashboardPage() {
 
         {/* Contenido */}
         <section className="flex flex-col space-y-6">
+
           {menu === "formatoImport" && <PanelOption title="Formato Importación" options={FORMATO_IMPORT_OPTS} value={formatoImport} onChange={setFormatoImport} />}
           {menu === "formatoExport" && <PanelOption title="Formato Exportación" options={FORMATO_EXPORT_OPTS} value={formatoExport} onChange={setFormatoExport} />}
           {menu === "empresa" && <PanelOption title="Empresa" options={EMPRESAS} value={empresa} onChange={setEmpresa} />}
@@ -165,36 +166,42 @@ export default function DashboardPage() {
           {menu === "exportar" && <PanelExport onConfirm={onConfirmExport} />}
           {menu === "cerrar" && <PanelCerrar onConfirm={logout} onCancel={()=>setMenu("formatoImport")} />}
 
-          {/* Panel resumen moderno */}
+          {/* Panel resumen estilo KPI */}
           {!["config","cerrar"].includes(menu) && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-              <div className="bg-white/80 backdrop-blur-md rounded-xl p-4 shadow flex justify-between">
-                <span className="font-semibold">Formato Importación:</span>
-                <span>{formatoImport || "-"}</span>
-              </div>
-              <div className="bg-white/80 backdrop-blur-md rounded-xl p-4 shadow flex justify-between">
-                <span className="font-semibold">Formato Exportación:</span>
-                <span>{formatoExport || "-"}</span>
-              </div>
-              <div className="bg-white/80 backdrop-blur-md rounded-xl p-4 shadow flex justify-between">
-                <span className="font-semibold">Empresa:</span>
-                <span>{empresa || "-"}</span>
-              </div>
-              <div className="bg-white/80 backdrop-blur-md rounded-xl p-4 shadow flex justify-between">
-                <span className="font-semibold">Proyecto:</span>
-                <span>{proyecto || "-"}</span>
-              </div>
-              <div className="bg-white/80 backdrop-blur-md rounded-xl p-4 shadow flex justify-between">
-                <span className="font-semibold">Cuenta:</span>
-                <span>{cuenta === "Otra (introducir)" ? cuentaOtra : cuenta || "-"}</span>
-              </div>
-              <div className="bg-white/80 backdrop-blur-md rounded-xl p-4 shadow flex justify-between">
-                <span className="font-semibold">Fecha factura:</span>
-                <span>{fechaFactura || "-"}</span>
-              </div>
-              <div className="bg-white/80 backdrop-blur-md rounded-xl p-4 shadow flex justify-between">
-                <span className="font-semibold">Fichero:</span>
-                <span>{ficheroNombre || "-"}</span>
+            <div className="bg-white/70 backdrop-blur-md rounded-2xl shadow-lg p-6 mt-4">
+              <h4 className="font-bold text-xl mb-4">Panel de Resumen</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* Grandes */}
+                <div className="bg-indigo-50/80 rounded-xl p-4 shadow flex flex-col justify-between">
+                  <span className="text-gray-500 font-semibold">Formato Importación</span>
+                  <span className="text-2xl font-bold">{formatoImport || "-"}</span>
+                </div>
+                <div className="bg-indigo-50/80 rounded-xl p-4 shadow flex flex-col justify-between">
+                  <span className="text-gray-500 font-semibold">Formato Exportación</span>
+                  <span className="text-2xl font-bold">{formatoExport || "-"}</span>
+                </div>
+                <div className="bg-indigo-50/80 rounded-xl p-4 shadow flex flex-col justify-between">
+                  <span className="text-gray-500 font-semibold">Empresa</span>
+                  <span className="text-2xl font-bold">{empresa || "-"}</span>
+                </div>
+                <div className="bg-indigo-50/80 rounded-xl p-4 shadow flex flex-col justify-between">
+                  <span className="text-gray-500 font-semibold">Proyecto</span>
+                  <span className="text-2xl font-bold">{proyecto || "-"}</span>
+                </div>
+
+                {/* Medianas */}
+                <div className="bg-gray-50/80 rounded-xl p-3 shadow flex justify-between">
+                  <span className="font-semibold">Cuenta</span>
+                  <span>{cuenta === "Otra (introducir)" ? cuentaOtra : cuenta || "-"}</span>
+                </div>
+                <div className="bg-gray-50/80 rounded-xl p-3 shadow flex justify-between">
+                  <span className="font-semibold">Fecha factura</span>
+                  <span>{fechaFactura || "-"}</span>
+                </div>
+                <div className="bg-gray-50/80 rounded-xl p-3 shadow flex justify-between">
+                  <span className="font-semibold">Fichero</span>
+                  <span>{ficheroNombre || "-"}</span>
+                </div>
               </div>
             </div>
           )}
