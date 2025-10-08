@@ -68,7 +68,7 @@ export function PanelConfig({
     }
 
     setPasswordGlobal(passNueva);
-    sessionStorage.setItem("konyx_password", passNueva); // persistencia
+    sessionStorage.setItem("konyx_password", passNueva); // Persistente
     setPassActual("");
     setPassNueva("");
     setPassConfirma("");
@@ -135,9 +135,9 @@ export function PanelConfig({
           <div className="flex items-center space-x-4">
             <input
               type="text"
+              placeholder="Nueva API Kissoro"
               value={apiKissoroNuevo}
               onChange={e => setApiKissoroNuevo(e.target.value)}
-              placeholder="Nueva API Kissoro"
               className="flex-1 rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
             <button
@@ -151,8 +151,9 @@ export function PanelConfig({
             type="text"
             value={apiKissoroVigente}
             readOnly
-            className="w-full mt-2 rounded-lg border border-gray-300 px-3 py-2 bg-gray-100"
+            className="w-full mt-2 rounded-lg border border-gray-300 px-3 py-2 bg-gray-200"
           />
+          {apiKissoroMsg && <p className={`mt-1 ${apiKissoroMsg.type === "err" ? "text-red-600" : "text-green-600"}`}>{apiKissoroMsg.text}</p>}
         </div>
 
         {/* En Plural */}
@@ -161,9 +162,9 @@ export function PanelConfig({
           <div className="flex items-center space-x-4">
             <input
               type="text"
+              placeholder="Nueva API En Plural"
               value={apiEnPluralNuevo}
               onChange={e => setApiEnPluralNuevo(e.target.value)}
-              placeholder="Nueva API En Plural"
               className="flex-1 rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
             <button
@@ -177,8 +178,9 @@ export function PanelConfig({
             type="text"
             value={apiEnPluralVigente}
             readOnly
-            className="w-full mt-2 rounded-lg border border-gray-300 px-3 py-2 bg-gray-100"
+            className="w-full mt-2 rounded-lg border border-gray-300 px-3 py-2 bg-gray-200"
           />
+          {apiEnPluralMsg && <p className={`mt-1 ${apiEnPluralMsg.type === "err" ? "text-red-600" : "text-green-600"}`}>{apiEnPluralMsg.text}</p>}
         </div>
 
       </div>
