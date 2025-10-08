@@ -11,7 +11,7 @@ import { PanelConfig } from "../../components/PanelConfig";
 import { PanelExport } from "../../components/PanelExport";
 import { PanelCerrar } from "../../components/PanelCerrar";
 import { ResumenInferior } from "../../components/ResumenInferior";
-import { Item } from "../components/Item";
+import { Item } from "../../components/Item";
 
 const FORMATO_IMPORT_OPTS = ["Eholo", "Gestoria"] as const;
 const FORMATO_EXPORT_OPTS = ["Holded", "Gestoria"] as const;
