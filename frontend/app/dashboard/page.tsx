@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../context/authContext";
 
-// Imports finales
 import PanelOption from "../../components/PanelOption"; // default export
 import { PanelDate } from "../../components/PanelDate";
 import { PanelFile } from "../../components/PanelFile";
@@ -168,18 +167,31 @@ export default function DashboardPage() {
             apiKissoroVigente={apiKissoroVigente}
             apiKissoroNuevo={apiKissoroNuevo}
             setApiKissoroNuevo={setApiKissoroNuevo}
+            setApiKissoroVigente={setApiKissoroVigente}
             apiKissoroMsg={apiKissoroMsg}
             apiEnPluralVigente={apiEnPluralVigente}
             apiEnPluralNuevo={apiEnPluralNuevo}
             setApiEnPluralNuevo={setApiEnPluralNuevo}
+            setApiEnPluralVigente={setApiEnPluralVigente}
             apiEnPluralMsg={apiEnPluralMsg}
-            onCambioApis={() => {}}
           />}
 
           {menu === "exportar" && <PanelExport onConfirm={onConfirmExport} />}
           {menu === "cerrar" && <PanelCerrar onConfirm={logout} onCancel={()=>setMenu("formatoImport")} />}
 
-          <ResumenInferior />
+          {/* Resumen */}
+          <div className="bg-blue-100/90 rounded-xl p-4 shadow-md mt-4">
+            <h4 className="font-semibold mb-2">Resumen</h4>
+            <ul className="text-gray-800">
+              <li>Formato Importación: {formatoImport || "-"}</li>
+              <li>Formato Exportación: {formatoExport || "-"}</li>
+              <li>Empresa: {empresa || "-"}</li>
+              <li>Proyecto: {proyecto || "-"}</li>
+              <li>Cuenta: {cuenta === "Otra (introducir)" ? cuentaOtra : cuenta || "-"}</li>
+              <li>Fecha factura: {fechaFactura || "-"}</li>
+              <li>Fichero: {ficheroNombre || "-"}</li>
+            </ul>
+          </div>
         </section>
       </div>
     </main>
