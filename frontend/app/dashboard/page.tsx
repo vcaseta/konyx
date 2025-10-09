@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "../../context/authContext";
+import { useAuth } from "../context/authContext";
 
 import PanelOption from "../../components/PanelOption";
 import { PanelDate } from "../../components/PanelDate";
