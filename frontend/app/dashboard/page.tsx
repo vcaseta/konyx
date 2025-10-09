@@ -69,8 +69,10 @@ export default function DashboardPage() {
   // APIs
   const [apiKissoroVigente, setApiKissoroVigente] = useState(() => localStorage.getItem("apiKissoro") || "");
   const [apiKissoroNuevo, setApiKissoroNuevo] = useState("");
+  const [apiKissoroMsg, setApiKissoroMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
   const [apiEnPluralVigente, setApiEnPluralVigente] = useState(() => localStorage.getItem("apiEnPlural") || "");
   const [apiEnPluralNuevo, setApiEnPluralNuevo] = useState("");
+  const [apiEnPluralMsg, setApiEnPluralMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
   // Exportaciones (solo sesión)
   const [ultimoExport, setUltimoExport] = useState(() => localStorage.getItem("ultimoExport") || "-");
@@ -235,6 +237,7 @@ export default function DashboardPage() {
           {menu === "fecha" && <PanelDate title="Fecha factura" value={fechaFactura} onChange={setFechaFactura} />}
           {menu === "fichero" && <PanelFile value={ficheroNombre} onPickFile={onPickFile} onPickFileClick={onPickFileClick} fileInputRef={fileInputRef} />}
 
+          {/* ✅ CONFIGURACIÓN (corregido) */}
           {menu === "config" &&
             <div className="space-y-6">
               <PanelConfig
@@ -243,7 +246,9 @@ export default function DashboardPage() {
                 passMsg={passMsg} setPassMsg={setPassMsg}
                 passwordGlobal={passwordGlobal} setPasswordGlobal={setPasswordGlobal}
                 apiKissoroVigente={apiKissoroVigente} apiKissoroNuevo={apiKissoroNuevo} setApiKissoroNuevo={setApiKissoroNuevo}
+                apiKissoroMsg={apiKissoroMsg} setApiKissoroVigente={setApiKissoroVigente}
                 apiEnPluralVigente={apiEnPluralVigente} apiEnPluralNuevo={apiEnPluralNuevo} setApiEnPluralNuevo={setApiEnPluralNuevo}
+                apiEnPluralMsg={apiEnPluralMsg} setApiEnPluralVigente={setApiEnPluralVigente}
               />
               <PanelDebug
                 passwordGlobal={passwordGlobal}
@@ -258,7 +263,7 @@ export default function DashboardPage() {
           {menu === "exportar" && <PanelExport onConfirm={onConfirmExport} />}
           {menu === "cerrar" && <PanelCerrar onConfirm={logout} onCancel={() => setMenu("formatoImport")} />}
 
-          {/* Panel de Resumen (sin estadísticas de exportación) */}
+          {/* Panel de Resumen */}
           {!["config", "cerrar"].includes(menu) && (
             <div className="bg-blue-100/80 backdrop-blur-md rounded-2xl shadow-lg p-6 mt-4">
               <h4 className="font-bold text-xl mb-6 text-indigo-800">Panel de Resumen</h4>
