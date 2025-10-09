@@ -1,7 +1,6 @@
 "use client";
 
 interface PanelConfigProps {
-  // Contraseña
   passActual: string;
   passNueva: string;
   passConfirma: string;
@@ -13,13 +12,14 @@ interface PanelConfigProps {
   passwordGlobal: string;
   setPasswordGlobal: (val: string) => void;
 
-  // APIs
   apiKissoroVigente: string;
+  setApiKissoroVigente: (val: string) => void;
   apiKissoroNuevo: string;
   setApiKissoroNuevo: (val: string) => void;
   apiKissoroMsg: { type: "ok" | "err"; text: string } | null;
 
   apiEnPluralVigente: string;
+  setApiEnPluralVigente: (val: string) => void;
   apiEnPluralNuevo: string;
   setApiEnPluralNuevo: (val: string) => void;
   apiEnPluralMsg: { type: "ok" | "err"; text: string } | null;
@@ -37,115 +37,90 @@ export function PanelConfig({
   passwordGlobal,
   setPasswordGlobal,
   apiKissoroVigente,
+  setApiKissoroVigente,
   apiKissoroNuevo,
   setApiKissoroNuevo,
   apiKissoroMsg,
   apiEnPluralVigente,
+  setApiEnPluralVigente,
   apiEnPluralNuevo,
   setApiEnPluralNuevo,
   apiEnPluralMsg,
 }: PanelConfigProps) {
 
-  // === CONTRASEÑA ===
   const handleCambioPassword = () => {
-    setPassMsg(null);
-
-    const vigente = sessionStorage.getItem("konyx_password") || "";
-
-    // Si no existe ninguna contraseña previa -> permitir crearla directamente
-    if (!vigente) {
-      if (!passNueva || !passConfirma) {
-        setPassMsg({ type: "err", text: "Introduce y confirma la nueva contraseña." });
-        return;
-      }
-      if (passNueva !== passConfirma) {
-        setPassMsg({ type: "err", text: "La nueva contraseña y la confirmación no coinciden." });
-        return;
-      }
-
-      sessionStorage.setItem("konyx_password", passNueva);
-      setPasswordGlobal(passNueva);
-      setPassActual("");
-      setPassNueva("");
-      setPassConfirma("");
-      setPassMsg({ type: "ok", text: "Contraseña creada correctamente." });
-      return;
-    }
-
-    // Si ya existe, validar la actual
     if (!passActual || !passNueva || !passConfirma) {
       setPassMsg({ type: "err", text: "Rellena todos los campos." });
       return;
     }
 
-    if (passActual !== vigente) {
+    if (passActual !== passwordGlobal) {
       setPassMsg({ type: "err", text: "La contraseña actual no es correcta." });
       return;
     }
 
     if (passNueva !== passConfirma) {
-      setPassMsg({ type: "err", text: "La nueva contraseña y la confirmación no coinciden." });
+      setPassMsg({ type: "err", text: "Las contraseñas no coinciden." });
       return;
     }
 
-    sessionStorage.setItem("konyx_password", passNueva);
     setPasswordGlobal(passNueva);
+    sessionStorage.setItem("konyx_password", passNueva);
     setPassActual("");
     setPassNueva("");
     setPassConfirma("");
     setPassMsg({ type: "ok", text: "Contraseña actualizada correctamente." });
   };
 
-  // === ACTUALIZAR APIS ===
   const handleActualizarApi = (tipo: "kissoro" | "enplural") => {
-    if (tipo === "kissoro") {
-      if (!apiKissoroNuevo) return;
+    if (tipo === "kissoro" && apiKissoroNuevo) {
       localStorage.setItem("apiKissoro", apiKissoroNuevo);
+      setApiKissoroVigente(apiKissoroNuevo); // actualización instantánea
       setApiKissoroNuevo("");
     }
-    if (tipo === "enplural") {
-      if (!apiEnPluralNuevo) return;
+    if (tipo === "enplural" && apiEnPluralNuevo) {
       localStorage.setItem("apiEnPlural", apiEnPluralNuevo);
+      setApiEnPluralVigente(apiEnPluralNuevo); // actualización instantánea
       setApiEnPluralNuevo("");
     }
   };
 
   return (
     <div className="bg-white/70 backdrop-blur-md rounded-2xl p-6 shadow-lg space-y-6">
-
-      {/* Contraseña */}
       <div>
         <h3 className="text-xl font-bold mb-4">Cambiar contraseña</h3>
         {passMsg && (
-          <p className={`mb-2 ${passMsg.type === "err" ? "text-red-600" : "text-green-600"}`}>
+          <p
+            className={`mb-2 ${
+              passMsg.type === "err" ? "text-red-600" : "text-green-600"
+            }`}
+          >
             {passMsg.text}
           </p>
         )}
-
         <div className="flex flex-col md:flex-row md:space-x-4 space-y-2 md:space-y-0">
           <input
             type="password"
             placeholder="Contraseña actual"
             value={passActual}
-            onChange={e => setPassActual(e.target.value)}
+            onChange={(e) => setPassActual(e.target.value)}
             className="flex-1 rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
           <input
             type="password"
             placeholder="Nueva contraseña"
             value={passNueva}
-            onChange={e => setPassNueva(e.target.value)}
+            onChange={(e) => setPassNueva(e.target.value)}
             className="flex-1 rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
           <input
             type="password"
             placeholder="Confirmar nueva contraseña"
             value={passConfirma}
-            onChange={e => setPassConfirma(e.target.value)}
+            onChange={(e) => setPassConfirma(e.target.value)}
             className="flex-1 rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
         </div>
-
         <button
           onClick={handleCambioPassword}
           className="mt-4 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 shadow transition"
@@ -156,8 +131,6 @@ export function PanelConfig({
 
       {/* APIs */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-        {/* Kissoro */}
         <div>
           <h3 className="text-xl font-bold mb-2">API Kissoro</h3>
           <input
@@ -171,7 +144,7 @@ export function PanelConfig({
               type="text"
               placeholder="Nueva API Kissoro"
               value={apiKissoroNuevo}
-              onChange={e => setApiKissoroNuevo(e.target.value)}
+              onChange={(e) => setApiKissoroNuevo(e.target.value)}
               className="flex-1 rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
             <button
@@ -183,7 +156,6 @@ export function PanelConfig({
           </div>
         </div>
 
-        {/* En Plural */}
         <div>
           <h3 className="text-xl font-bold mb-2">API En Plural</h3>
           <input
@@ -197,7 +169,7 @@ export function PanelConfig({
               type="text"
               placeholder="Nueva API En Plural"
               value={apiEnPluralNuevo}
-              onChange={e => setApiEnPluralNuevo(e.target.value)}
+              onChange={(e) => setApiEnPluralNuevo(e.target.value)}
               className="flex-1 rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
             <button
