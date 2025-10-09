@@ -1,6 +1,7 @@
 "use client";
 
 interface PanelConfigProps {
+  // Contraseña
   passActual: string;
   passNueva: string;
   passConfirma: string;
@@ -12,17 +13,14 @@ interface PanelConfigProps {
   passwordGlobal: string;
   setPasswordGlobal: (val: string) => void;
 
+  // APIs
   apiKissoroVigente: string;
-  setApiKissoroVigente: (val: string) => void;
   apiKissoroNuevo: string;
   setApiKissoroNuevo: (val: string) => void;
-  apiKissoroMsg: { type: "ok" | "err"; text: string } | null;
 
   apiEnPluralVigente: string;
-  setApiEnPluralVigente: (val: string) => void;
   apiEnPluralNuevo: string;
   setApiEnPluralNuevo: (val: string) => void;
-  apiEnPluralMsg: { type: "ok" | "err"; text: string } | null;
 }
 
 export function PanelConfig({
@@ -37,17 +35,17 @@ export function PanelConfig({
   passwordGlobal,
   setPasswordGlobal,
   apiKissoroVigente,
-  setApiKissoroVigente,
   apiKissoroNuevo,
   setApiKissoroNuevo,
-  apiKissoroMsg,
   apiEnPluralVigente,
-  setApiEnPluralVigente,
   apiEnPluralNuevo,
   setApiEnPluralNuevo,
-  apiEnPluralMsg,
 }: PanelConfigProps) {
-  const handleCambioPassword = () => {
+
+  // 🧩 Actualizar contraseña en backend y frontend
+  const handleCambioPassword = async () => {
+    setPassMsg(null);
+
     if (!passActual || !passNueva || !passConfirma) {
       setPassMsg({ type: "err", text: "Rellena todos los campos." });
       return;
@@ -63,60 +61,103 @@ export function PanelConfig({
       return;
     }
 
-    setPasswordGlobal(passNueva);
-    sessionStorage.setItem("konyx_password", passNueva);
-    setPassActual("");
-    setPassNueva("");
-    setPassConfirma("");
-    setPassMsg({ type: "ok", text: "Contraseña actualizada correctamente." });
+    try {
+      const res = await fetch("http://192.168.1.51:8000/auth/update_password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: passNueva }),
+      });
+
+      if (!res.ok) throw new Error("Error al actualizar en backend");
+
+      setPasswordGlobal(passNueva);
+      sessionStorage.setItem("konyx_password", passNueva);
+      setPassActual("");
+      setPassNueva("");
+      setPassConfirma("");
+      setPassMsg({ type: "ok", text: "Contraseña actualizada correctamente." });
+    } catch (err) {
+      console.error(err);
+      setPassMsg({ type: "err", text: "No se pudo conectar con el backend." });
+    }
   };
 
-  const handleActualizarApi = (tipo: "kissoro" | "enplural") => {
-    if (tipo === "kissoro" && apiKissoroNuevo) {
-      localStorage.setItem("apiKissoro", apiKissoroNuevo);
-      setApiKissoroVigente(apiKissoroNuevo);
-      setApiKissoroNuevo("");
-    }
-    if (tipo === "enplural" && apiEnPluralNuevo) {
-      localStorage.setItem("apiEnPlural", apiEnPluralNuevo);
-      setApiEnPluralVigente(apiEnPluralNuevo);
-      setApiEnPluralNuevo("");
+  // 🧩 Actualizar APIs (Kissoro o En Plural)
+  const handleActualizarApi = async (tipo: "kissoro" | "enplural") => {
+    try {
+      const nuevaApi = tipo === "kissoro" ? apiKissoroNuevo : apiEnPluralNuevo;
+      if (!nuevaApi) return;
+
+      const body = tipo === "kissoro"
+        ? { apiKissoro: nuevaApi }
+        : { apiEnPlural: nuevaApi };
+
+      const res = await fetch("http://192.168.1.51:8000/auth/update_apis", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) throw new Error("Error al actualizar en backend");
+
+      // Actualización inmediata local
+      if (tipo === "kissoro") {
+        localStorage.setItem("apiKissoro", nuevaApi);
+        setApiKissoroNuevo("");
+      } else {
+        localStorage.setItem("apiEnPlural", nuevaApi);
+        setApiEnPluralNuevo("");
+      }
+
+      // 🔄 Recargar APIs desde backend para reflejar cambio
+      const resStatus = await fetch("http://192.168.1.51:8000/auth/status");
+      const data = await resStatus.json();
+      if (tipo === "kissoro") {
+        localStorage.setItem("apiKissoro", data.apiKissoro || nuevaApi);
+      } else {
+        localStorage.setItem("apiEnPlural", data.apiEnPlural || nuevaApi);
+      }
+
+      // Actualizamos en pantalla
+      if (tipo === "kissoro") {
+        window.dispatchEvent(new CustomEvent("apiUpdated", { detail: { apiKissoro: nuevaApi } }));
+      } else {
+        window.dispatchEvent(new CustomEvent("apiUpdated", { detail: { apiEnPlural: nuevaApi } }));
+      }
+
+    } catch (err) {
+      console.error(err);
+      alert("Error al actualizar API en backend.");
     }
   };
 
   return (
     <div className="bg-white/70 backdrop-blur-md rounded-2xl p-6 shadow-lg space-y-6">
+
+      {/* Contraseña */}
       <div>
         <h3 className="text-xl font-bold mb-4">Cambiar contraseña</h3>
-        {passMsg && (
-          <p
-            className={`mb-2 ${
-              passMsg.type === "err" ? "text-red-600" : "text-green-600"
-            }`}
-          >
-            {passMsg.text}
-          </p>
-        )}
+        {passMsg && <p className={`mb-2 ${passMsg.type === "err" ? "text-red-600" : "text-green-600"}`}>{passMsg.text}</p>}
         <div className="flex flex-col md:flex-row md:space-x-4 space-y-2 md:space-y-0">
           <input
             type="password"
             placeholder="Contraseña actual"
             value={passActual}
-            onChange={(e) => setPassActual(e.target.value)}
+            onChange={e => setPassActual(e.target.value)}
             className="flex-1 rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
           <input
             type="password"
             placeholder="Nueva contraseña"
             value={passNueva}
-            onChange={(e) => setPassNueva(e.target.value)}
+            onChange={e => setPassNueva(e.target.value)}
             className="flex-1 rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
           <input
             type="password"
             placeholder="Confirmar nueva contraseña"
             value={passConfirma}
-            onChange={(e) => setPassConfirma(e.target.value)}
+            onChange={e => setPassConfirma(e.target.value)}
             className="flex-1 rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
         </div>
@@ -130,6 +171,8 @@ export function PanelConfig({
 
       {/* APIs */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+        {/* Kissoro */}
         <div>
           <h3 className="text-xl font-bold mb-2">API Kissoro</h3>
           <input
@@ -143,7 +186,7 @@ export function PanelConfig({
               type="text"
               placeholder="Nueva API Kissoro"
               value={apiKissoroNuevo}
-              onChange={(e) => setApiKissoroNuevo(e.target.value)}
+              onChange={e => setApiKissoroNuevo(e.target.value)}
               className="flex-1 rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
             <button
@@ -155,6 +198,7 @@ export function PanelConfig({
           </div>
         </div>
 
+        {/* En Plural */}
         <div>
           <h3 className="text-xl font-bold mb-2">API En Plural</h3>
           <input
@@ -168,7 +212,7 @@ export function PanelConfig({
               type="text"
               placeholder="Nueva API En Plural"
               value={apiEnPluralNuevo}
-              onChange={(e) => setApiEnPluralNuevo(e.target.value)}
+              onChange={e => setApiEnPluralNuevo(e.target.value)}
               className="flex-1 rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
             <button
