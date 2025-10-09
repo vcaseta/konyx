@@ -17,10 +17,16 @@ interface PanelConfigProps {
   apiKissoroVigente: string;
   apiKissoroNuevo: string;
   setApiKissoroNuevo: (val: string) => void;
+  apiKissoroMsg: { type: "ok" | "err"; text: string } | null;
+  setApiKissoroVigente: (val: string) => void;
 
   apiEnPluralVigente: string;
   apiEnPluralNuevo: string;
   setApiEnPluralNuevo: (val: string) => void;
+  apiEnPluralMsg: { type: "ok" | "err"; text: string } | null;
+  setApiEnPluralVigente: (val: string) => void;
+
+  onCambioApis?: () => void;
 }
 
 export function PanelConfig({
@@ -37,12 +43,17 @@ export function PanelConfig({
   apiKissoroVigente,
   apiKissoroNuevo,
   setApiKissoroNuevo,
+  apiKissoroMsg,
+  setApiKissoroVigente,
   apiEnPluralVigente,
   apiEnPluralNuevo,
   setApiEnPluralNuevo,
+  apiEnPluralMsg,
+  setApiEnPluralVigente,
+  onCambioApis,
 }: PanelConfigProps) {
 
-  // 🧩 Actualizar contraseña en backend y frontend
+  // 🔐 CAMBIAR CONTRASEÑA
   const handleCambioPassword = async () => {
     setPassMsg(null);
 
@@ -50,94 +61,106 @@ export function PanelConfig({
       setPassMsg({ type: "err", text: "Rellena todos los campos." });
       return;
     }
-
     if (passActual !== passwordGlobal) {
       setPassMsg({ type: "err", text: "La contraseña actual no es correcta." });
       return;
     }
-
     if (passNueva !== passConfirma) {
-      setPassMsg({ type: "err", text: "Las contraseñas no coinciden." });
+      setPassMsg({ type: "err", text: "La nueva contraseña y la confirmación no coinciden." });
       return;
     }
 
     try {
-      const res = await fetch("http://192.168.1.51:8000/auth/update_password", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/update_password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password: passNueva }),
       });
 
-      if (!res.ok) throw new Error("Error al actualizar en backend");
+      if (!res.ok) throw new Error("Error al actualizar contraseña");
 
-      setPasswordGlobal(passNueva);
       sessionStorage.setItem("konyx_password", passNueva);
+      setPasswordGlobal(passNueva);
       setPassActual("");
       setPassNueva("");
       setPassConfirma("");
-      setPassMsg({ type: "ok", text: "Contraseña actualizada correctamente." });
+      setPassMsg({ type: "ok", text: "Contraseña actualizada correctamente ✅" });
+      setTimeout(() => setPassMsg(null), 3000);
     } catch (err) {
       console.error(err);
-      setPassMsg({ type: "err", text: "No se pudo conectar con el backend." });
+      setPassMsg({ type: "err", text: "Error al actualizar contraseña ❌" });
     }
   };
 
-  // 🧩 Actualizar APIs (Kissoro o En Plural)
+  // 🌐 ACTUALIZAR APIS
   const handleActualizarApi = async (tipo: "kissoro" | "enplural") => {
-    try {
-      const nuevaApi = tipo === "kissoro" ? apiKissoroNuevo : apiEnPluralNuevo;
-      if (!nuevaApi) return;
+    if (tipo === "kissoro") {
+      if (!apiKissoroNuevo) {
+        setApiKissoroVigente(apiKissoroVigente);
+        return;
+      }
+      try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/update_apis`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            kissoro: apiKissoroNuevo,
+            enplural: apiEnPluralVigente,
+          }),
+        });
+        if (!res.ok) throw new Error("Error al actualizar API Kissoro");
 
-      const body = tipo === "kissoro"
-        ? { apiKissoro: nuevaApi }
-        : { apiEnPlural: nuevaApi };
-
-      const res = await fetch("http://192.168.1.51:8000/auth/update_apis", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-
-      if (!res.ok) throw new Error("Error al actualizar en backend");
-
-      // Actualización inmediata local
-      if (tipo === "kissoro") {
-        localStorage.setItem("apiKissoro", nuevaApi);
+        localStorage.setItem("apiKissoro", apiKissoroNuevo);
+        setApiKissoroVigente(apiKissoroNuevo);
         setApiKissoroNuevo("");
-      } else {
-        localStorage.setItem("apiEnPlural", nuevaApi);
+        setPassMsg({ type: "ok", text: "API Kissoro actualizada correctamente ✅" });
+        setTimeout(() => setPassMsg(null), 3000);
+        if (onCambioApis) onCambioApis();
+      } catch (err) {
+        console.error(err);
+        setPassMsg({ type: "err", text: "Error al actualizar API Kissoro ❌" });
+      }
+    }
+
+    if (tipo === "enplural") {
+      if (!apiEnPluralNuevo) {
+        setApiEnPluralVigente(apiEnPluralVigente);
+        return;
+      }
+      try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/update_apis`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            kissoro: apiKissoroVigente,
+            enplural: apiEnPluralNuevo,
+          }),
+        });
+        if (!res.ok) throw new Error("Error al actualizar API En Plural");
+
+        localStorage.setItem("apiEnPlural", apiEnPluralNuevo);
+        setApiEnPluralVigente(apiEnPluralNuevo);
         setApiEnPluralNuevo("");
+        setPassMsg({ type: "ok", text: "API En Plural actualizada correctamente ✅" });
+        setTimeout(() => setPassMsg(null), 3000);
+        if (onCambioApis) onCambioApis();
+      } catch (err) {
+        console.error(err);
+        setPassMsg({ type: "err", text: "Error al actualizar API En Plural ❌" });
       }
-
-      // 🔄 Recargar APIs desde backend para reflejar cambio
-      const resStatus = await fetch("http://192.168.1.51:8000/auth/status");
-      const data = await resStatus.json();
-      if (tipo === "kissoro") {
-        localStorage.setItem("apiKissoro", data.apiKissoro || nuevaApi);
-      } else {
-        localStorage.setItem("apiEnPlural", data.apiEnPlural || nuevaApi);
-      }
-
-      // Actualizamos en pantalla
-      if (tipo === "kissoro") {
-        window.dispatchEvent(new CustomEvent("apiUpdated", { detail: { apiKissoro: nuevaApi } }));
-      } else {
-        window.dispatchEvent(new CustomEvent("apiUpdated", { detail: { apiEnPlural: nuevaApi } }));
-      }
-
-    } catch (err) {
-      console.error(err);
-      alert("Error al actualizar API en backend.");
     }
   };
 
   return (
     <div className="bg-white/70 backdrop-blur-md rounded-2xl p-6 shadow-lg space-y-6">
-
       {/* Contraseña */}
       <div>
         <h3 className="text-xl font-bold mb-4">Cambiar contraseña</h3>
-        {passMsg && <p className={`mb-2 ${passMsg.type === "err" ? "text-red-600" : "text-green-600"}`}>{passMsg.text}</p>}
+        {passMsg && (
+          <p className={`mb-2 text-sm ${passMsg.type === "err" ? "text-red-600" : "text-green-600"}`}>
+            {passMsg.text}
+          </p>
+        )}
         <div className="flex flex-col md:flex-row md:space-x-4 space-y-2 md:space-y-0">
           <input
             type="password"
@@ -171,7 +194,6 @@ export function PanelConfig({
 
       {/* APIs */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
         {/* Kissoro */}
         <div>
           <h3 className="text-xl font-bold mb-2">API Kissoro</h3>
@@ -196,6 +218,11 @@ export function PanelConfig({
               Actualizar
             </button>
           </div>
+          {apiKissoroMsg && (
+            <p className={`mt-2 text-sm ${apiKissoroMsg.type === "ok" ? "text-green-600" : "text-red-600"}`}>
+              {apiKissoroMsg.text}
+            </p>
+          )}
         </div>
 
         {/* En Plural */}
@@ -222,8 +249,17 @@ export function PanelConfig({
               Actualizar
             </button>
           </div>
+          {apiEnPluralMsg && (
+            <p className={`mt-2 text-sm ${apiEnPluralMsg.type === "ok" ? "text-green-600" : "text-red-600"}`}>
+              {apiEnPluralMsg.text}
+            </p>
+          )}
         </div>
       </div>
+    </div>
+  );
+}
+
     </div>
   );
 }
