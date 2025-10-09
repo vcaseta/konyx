@@ -259,7 +259,3 @@ export function PanelConfig({
     </div>
   );
 }
-
-    </div>
-  );
-}
