@@ -1,5 +1,5 @@
 import "../styles/globals.css"; // importa Tailwind
-import { AuthProvider } from "../context/authContext";
+import { AuthProvider } from "./context/authContext";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
