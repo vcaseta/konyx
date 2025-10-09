@@ -6,7 +6,7 @@ export function PanelAbout() {
       <div className="flex flex-col items-center text-center space-y-4">
         {/* Logo personal */}
         <img
-          src="/logo-victor.jpg"
+          src="/logo-victor.png"
           alt="Víctor Mut Vallvey"
           className="h-24 w-auto drop-shadow-md rounded-md"
         />
