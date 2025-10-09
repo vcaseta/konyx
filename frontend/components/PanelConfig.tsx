@@ -23,8 +23,6 @@ interface PanelConfigProps {
   apiEnPluralNuevo: string;
   setApiEnPluralNuevo: (val: string) => void;
   apiEnPluralMsg: { type: "ok" | "err"; text: string } | null;
-
-  onCambioApis?: () => void;
 }
 
 export function PanelConfig({
@@ -36,7 +34,7 @@ export function PanelConfig({
   setPassConfirma,
   passMsg,
   setPassMsg,
-  passwordGlobal,        // se usa para mostrar/estado, pero la validación leerá de sessionStorage
+  passwordGlobal,
   setPasswordGlobal,
   apiKissoroVigente,
   apiKissoroNuevo,
@@ -46,16 +44,15 @@ export function PanelConfig({
   apiEnPluralNuevo,
   setApiEnPluralNuevo,
   apiEnPluralMsg,
-  onCambioApis,
 }: PanelConfigProps) {
 
+  // === CONTRASEÑA ===
   const handleCambioPassword = () => {
     setPassMsg(null);
 
-    // Fuente de verdad: sessionStorage
     const vigente = sessionStorage.getItem("konyx_password") || "";
 
-    // Primer set (no existe contraseña previa): no pedimos "actual"
+    // Si no existe ninguna contraseña previa -> permitir crearla directamente
     if (!vigente) {
       if (!passNueva || !passConfirma) {
         setPassMsg({ type: "err", text: "Introduce y confirma la nueva contraseña." });
@@ -65,6 +62,7 @@ export function PanelConfig({
         setPassMsg({ type: "err", text: "La nueva contraseña y la confirmación no coinciden." });
         return;
       }
+
       sessionStorage.setItem("konyx_password", passNueva);
       setPasswordGlobal(passNueva);
       setPassActual("");
@@ -74,7 +72,7 @@ export function PanelConfig({
       return;
     }
 
-    // Ya existe contraseña: validar la actual
+    // Si ya existe, validar la actual
     if (!passActual || !passNueva || !passConfirma) {
       setPassMsg({ type: "err", text: "Rellena todos los campos." });
       return;
@@ -98,18 +96,17 @@ export function PanelConfig({
     setPassMsg({ type: "ok", text: "Contraseña actualizada correctamente." });
   };
 
+  // === ACTUALIZAR APIS ===
   const handleActualizarApi = (tipo: "kissoro" | "enplural") => {
     if (tipo === "kissoro") {
       if (!apiKissoroNuevo) return;
       localStorage.setItem("apiKissoro", apiKissoroNuevo);
       setApiKissoroNuevo("");
-      if (onCambioApis) onCambioApis();
     }
     if (tipo === "enplural") {
       if (!apiEnPluralNuevo) return;
       localStorage.setItem("apiEnPlural", apiEnPluralNuevo);
       setApiEnPluralNuevo("");
-      if (onCambioApis) onCambioApis();
     }
   };
 
@@ -119,7 +116,12 @@ export function PanelConfig({
       {/* Contraseña */}
       <div>
         <h3 className="text-xl font-bold mb-4">Cambiar contraseña</h3>
-        {passMsg && <p className={`mb-2 ${passMsg.type === "err" ? "text-red-600" : "text-green-600"}`}>{passMsg.text}</p>}
+        {passMsg && (
+          <p className={`mb-2 ${passMsg.type === "err" ? "text-red-600" : "text-green-600"}`}>
+            {passMsg.text}
+          </p>
+        )}
+
         <div className="flex flex-col md:flex-row md:space-x-4 space-y-2 md:space-y-0">
           <input
             type="password"
@@ -143,6 +145,7 @@ export function PanelConfig({
             className="flex-1 rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
         </div>
+
         <button
           onClick={handleCambioPassword}
           className="mt-4 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 shadow transition"
@@ -205,10 +208,8 @@ export function PanelConfig({
             </button>
           </div>
         </div>
-
       </div>
     </div>
   );
 }
-
 
