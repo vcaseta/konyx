@@ -18,24 +18,22 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const res = await fetch("http://192.168.1.51:8000/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user, password }),
-      });
+      // Leer contraseña global o usar por defecto "1234"
+      const storedPassword = sessionStorage.getItem("konyx_password") || "1234";
 
-      if (!res.ok) throw new Error("Usuario o contraseña incorrectos");
+      // Validación local (sin backend)
+      if (password !== storedPassword) {
+        throw new Error("Contraseña incorrecta");
+      }
 
-      const data = await res.json();
+      // Simulación de token (ya que no dependemos del backend aún)
+      const fakeToken = "token_" + Math.random().toString(36).slice(2);
+      setToken(fakeToken);
+      sessionStorage.setItem("konyx_token", fakeToken);
 
-      // Guardamos solo el token de sesión (no la contraseña global)
-      setToken(data.token);
-      sessionStorage.setItem("konyx_token", data.token);
-
-      // La contraseña global se gestiona solo desde PanelConfig
       router.replace("/dashboard");
     } catch (error: any) {
-      setMsg(error.message || "Error al iniciar sesión");
+      setMsg(error.message);
     } finally {
       setLoading(false);
     }
@@ -46,23 +44,18 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
-      <div className="w-full max-w-sm bg-white/80 p-6 rounded-xl shadow-md">
+    <main
+      className="min-h-screen flex items-center justify-center bg-no-repeat bg-center bg-cover p-4"
+      style={{ backgroundImage: "url(/fondo.png)", backgroundSize: "100% 100%" }}
+    >
+      <div className="w-full max-w-sm bg-white/80 p-6 rounded-xl shadow-md backdrop-blur-md">
         <div className="flex justify-center mb-4">
           <img src="/logo.png" className="h-48 w-auto" alt="Konyx" />
         </div>
 
         <h2 className="text-2xl font-bold mb-4 text-center">Iniciar Sesión</h2>
 
-        {msg && (
-          <p
-            className={`mb-3 text-center ${
-              msg.includes("incorrectos") ? "text-red-600" : "text-green-600"
-            }`}
-          >
-            {msg}
-          </p>
-        )}
+        {msg && <p className="text-red-600 mb-2 text-center">{msg}</p>}
 
         <input
           type="text"
@@ -97,4 +90,3 @@ export default function LoginPage() {
     </main>
   );
 }
-
