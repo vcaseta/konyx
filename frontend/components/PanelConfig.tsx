@@ -47,7 +47,6 @@ export function PanelConfig({
   setApiEnPluralNuevo,
   apiEnPluralMsg,
 }: PanelConfigProps) {
-
   const handleCambioPassword = () => {
     if (!passActual || !passNueva || !passConfirma) {
       setPassMsg({ type: "err", text: "Rellena todos los campos." });
@@ -75,12 +74,12 @@ export function PanelConfig({
   const handleActualizarApi = (tipo: "kissoro" | "enplural") => {
     if (tipo === "kissoro" && apiKissoroNuevo) {
       localStorage.setItem("apiKissoro", apiKissoroNuevo);
-      setApiKissoroVigente(apiKissoroNuevo); // actualización instantánea
+      setApiKissoroVigente(apiKissoroNuevo);
       setApiKissoroNuevo("");
     }
     if (tipo === "enplural" && apiEnPluralNuevo) {
       localStorage.setItem("apiEnPlural", apiEnPluralNuevo);
-      setApiEnPluralVigente(apiEnPluralNuevo); // actualización instantánea
+      setApiEnPluralVigente(apiEnPluralNuevo);
       setApiEnPluralNuevo("");
     }
   };
