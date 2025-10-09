@@ -10,7 +10,6 @@ import { PanelFile } from "../../components/PanelFile";
 import { PanelConfig } from "../../components/PanelConfig";
 import { PanelExport } from "../../components/PanelExport";
 import { PanelCerrar } from "../../components/PanelCerrar";
-import { PanelDebug } from "../../components/PanelDebug";
 import { Item } from "../../components/Item";
 
 const FORMATO_IMPORT_OPTS = ["Eholo", "Gestoria"] as const;
@@ -57,14 +56,12 @@ export default function DashboardPage() {
   const [ficheroNombre, setFicheroNombre] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Contraseña global unificada
+  // Contraseña
   const [passActual, setPassActual] = useState("");
   const [passNueva, setPassNueva] = useState("");
   const [passConfirma, setPassConfirma] = useState("");
   const [passMsg, setPassMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
-  const [passwordGlobal, setPasswordGlobal] = useState(() => {
-    return sessionStorage.getItem("konyx_password") || "";
-  });
+  const [passwordGlobal, setPasswordGlobal] = useState(() => sessionStorage.getItem("konyx_password") || "1234");
 
   // APIs
   const [apiKissoroVigente, setApiKissoroVigente] = useState(() => localStorage.getItem("apiKissoro") || "");
@@ -109,12 +106,6 @@ export default function DashboardPage() {
     router.replace("/");
   };
 
-  // Refrescar las APIs vigentes tras cambios en PanelConfig
-  const refreshApis = () => {
-    setApiKissoroVigente(localStorage.getItem("apiKissoro") || "");
-    setApiEnPluralVigente(localStorage.getItem("apiEnPlural") || "");
-  };
-
   return (
     <main className="min-h-screen bg-no-repeat bg-center bg-cover p-4" style={{ backgroundImage: "url(/fondo.png)", backgroundSize: "100% 100%" }}>
       <div className="mx-auto max-w-7xl grid grid-cols-1 md:grid-cols-[260px_1fr] gap-6">
@@ -123,7 +114,7 @@ export default function DashboardPage() {
         <aside className="md:sticky md:top-6">
           <div className="bg-white/70 backdrop-blur-md rounded-2xl shadow-lg p-4">
             <div className="flex justify-center mb-4">
-              <img src="/logo.png" alt="Konyx" className="h-64 w-auto drop-shadow-md" />
+              <img src="/logo.png" alt="Konyx" className="h-48 w-auto drop-shadow-md" />
             </div>
             <nav className="space-y-2">
               {["formatoImport","formatoExport","empresa","fecha","proyecto","cuenta","fichero","config","cerrar"].map(mk => (
@@ -173,28 +164,76 @@ export default function DashboardPage() {
           {menu === "fichero" && <PanelFile value={ficheroNombre} onPickFile={onPickFile} onPickFileClick={onPickFileClick} fileInputRef={fileInputRef} />}
 
           {menu === "config" &&
-            <div className="space-y-6">
-              <PanelConfig
-                passActual={passActual} passNueva={passNueva} passConfirma={passConfirma}
-                setPassActual={setPassActual} setPassNueva={setPassNueva} setPassConfirma={setPassConfirma}
-                passMsg={passMsg} setPassMsg={setPassMsg}
-                passwordGlobal={passwordGlobal} setPasswordGlobal={setPasswordGlobal}
-                apiKissoroVigente={apiKissoroVigente} apiKissoroNuevo={apiKissoroNuevo} setApiKissoroNuevo={setApiKissoroNuevo} apiKissoroMsg={apiKissoroMsg}
-                apiEnPluralVigente={apiEnPluralVigente} apiEnPluralNuevo={apiEnPluralNuevo} setApiEnPluralNuevo={setApiEnPluralNuevo} apiEnPluralMsg={apiEnPluralMsg}
-                onCambioApis={refreshApis}
-              />
-              <PanelDebug
-                passwordGlobal={passwordGlobal}
-                apiKissoroVigente={apiKissoroVigente}
-                apiEnPluralVigente={apiEnPluralVigente}
-                ultimoExport={ultimoExport}
-                totalExportaciones={totalExportaciones}
-              />
-            </div>
+            <PanelConfig
+              passActual={passActual} passNueva={passNueva} passConfirma={passConfirma}
+              setPassActual={setPassActual} setPassNueva={setPassNueva} setPassConfirma={setPassConfirma}
+              passMsg={passMsg} setPassMsg={setPassMsg}
+              passwordGlobal={passwordGlobal} setPasswordGlobal={setPasswordGlobal}
+              apiKissoroVigente={apiKissoroVigente} apiKissoroNuevo={apiKissoroNuevo} setApiKissoroNuevo={setApiKissoroNuevo} apiKissoroMsg={apiKissoroMsg}
+              apiEnPluralVigente={apiEnPluralVigente} apiEnPluralNuevo={apiEnPluralNuevo} setApiEnPluralNuevo={setApiEnPluralNuevo} apiEnPluralMsg={apiEnPluralMsg}
+            />
           }
 
           {menu === "exportar" && <PanelExport onConfirm={onConfirmExport} />}
           {menu === "cerrar" && <PanelCerrar onConfirm={logout} onCancel={()=>setMenu("formatoImport")} />}
+
+          {/* Panel resumen azul moderno */}
+          {!["config","cerrar"].includes(menu) && (
+            <div className="bg-blue-100/80 backdrop-blur-md rounded-2xl shadow-lg p-6 mt-4">
+              <h4 className="font-bold text-xl mb-6 text-indigo-800">Panel de Resumen</h4>
+              
+              {/* Línea 1 */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div className="bg-white rounded-xl p-4 shadow flex flex-col justify-between">
+                  <span className="text-gray-500 font-semibold">📥 Importación</span>
+                  <span className="text-2xl font-bold text-indigo-700">{formatoImport || "-"}</span>
+                </div>
+                <div className="bg-white rounded-xl p-4 shadow flex flex-col justify-between">
+                  <span className="text-gray-500 font-semibold">📤 Exportación</span>
+                  <span className="text-2xl font-bold text-indigo-700">{formatoExport || "-"}</span>
+                </div>
+                <div className="bg-white rounded-xl p-4 shadow flex flex-col justify-between">
+                  <span className="text-gray-500 font-semibold">🏢 Empresa</span>
+                  <span className="text-2xl font-bold text-indigo-700">{empresa || "-"}</span>
+                </div>
+              </div>
+
+              {/* Línea 2 */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div className="bg-white/90 rounded-xl p-3 shadow flex flex-col justify-between">
+                  <span className="font-semibold text-gray-500">📅 Fecha factura</span>
+                  <span>{fechaFactura ? new Date(fechaFactura).toLocaleDateString('es-ES') : "-"}</span>
+                </div>
+                <div className="bg-white/90 rounded-xl p-3 shadow flex flex-col justify-between">
+                  <span className="font-semibold text-gray-500">💳 Cuenta</span>
+                  <span>{cuenta === "Otra (introducir)" ? cuentaOtra : cuenta || "-"}</span>
+                </div>
+                <div className="bg-white/90 rounded-xl p-3 shadow flex flex-col justify-between">
+                  <span className="font-semibold text-gray-500">🗂 Proyecto</span>
+                  <span>{proyecto || "-"}</span>
+                </div>
+              </div>
+
+              {/* Línea 3 */}
+              <div className="bg-white/90 rounded-xl p-4 shadow flex flex-col justify-between mb-4">
+                <span className="font-semibold text-gray-500">📁 Fichero</span>
+                <span className="truncate text-indigo-700">{ficheroNombre || "-"}</span>
+              </div>
+
+              {/* Línea 4 */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-green-50/80 rounded-xl p-3 shadow flex flex-col justify-between">
+                  <span className="text-gray-500 font-semibold">🕒 Última exportación</span>
+                  <span className="text-lg font-bold text-green-700">{ultimoExport}</span>
+                </div>
+                <div className="bg-green-50/80 rounded-xl p-3 shadow flex flex-col justify-between">
+                  <span className="text-gray-500 font-semibold">📊 Total exportaciones</span>
+                  <span className="text-lg font-bold text-green-700">{totalExportaciones}</span>
+                </div>
+              </div>
+
+            </div>
+          )}
 
         </section>
       </div>
