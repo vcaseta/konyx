@@ -29,7 +29,9 @@ def load_data():
         default_data = {
             "password": "admin123",
             "apiKissoro": "",
-            "apiEnPlural": ""
+            "apiEnPlural": "",
+            "ultimoExport": "-",
+            "totalExportaciones": 0
         }
         with open(DATA_FILE, "w", encoding="utf-8") as f:
             json.dump(default_data, f, indent=2, ensure_ascii=False)
@@ -79,11 +81,9 @@ class ExportRequest(BaseModel):
 def login(req: LoginRequest):
     data = load_data()
 
-    # Validar la contraseña con la almacenada en data.json
     if req.password != data.get("password"):
         raise HTTPException(status_code=401, detail="Usuario o contraseña incorrectos")
 
-    # Usuario validado (token ficticio)
     return {"token": "konyx_token_demo"}
 
 
@@ -96,7 +96,9 @@ def status():
     return {
         "password": data.get("password", "admin123"),
         "apiKissoro": data.get("apiKissoro", ""),
-        "apiEnPlural": data.get("apiEnPlural", "")
+        "apiEnPlural": data.get("apiEnPlural", ""),
+        "ultimoExport": data.get("ultimoExport", "-"),
+        "totalExportaciones": data.get("totalExportaciones", 0)
     }
 
 
@@ -130,10 +132,12 @@ def update_apis(req: ApiUpdate):
 
 
 # -----------------------------
-# 🧾 EXPORT (no persistente)
+# 🧾 EXPORT (persistente)
 # -----------------------------
 @app.post("/export")
 def registrar_export(req: ExportRequest):
+    data = load_data()
+
     nueva = {
         "fecha": datetime.now().strftime("%d-%m-%Y %H:%M:%S"),
         "formatoImport": req.formatoImport,
@@ -146,15 +150,16 @@ def registrar_export(req: ExportRequest):
         "usuario": req.usuario
     }
 
-    # Solo se imprime en consola (no se guarda en disco)
+    # Actualizar contador persistente
+    data["ultimoExport"] = datetime.now().strftime("%d/%m/%Y")
+    data["totalExportaciones"] = data.get("totalExportaciones", 0) + 1
+    save_data(data)
+
     print("🧾 Nueva exportación recibida:", nueva)
-    return {"message": "Exportación registrada (solo sesión actual)", "export": nueva}
+    return {
+        "message": "Exportación registrada correctamente",
+        "export": nueva,
+        "ultimoExport": data["ultimoExport"],
+        "totalExportaciones": data["totalExportaciones"]
+    }
 
-
-# -----------------------------
-# 🧹 LIMPIAR EXPORTACIONES (opcional)
-# -----------------------------
-@app.post("/export/clear")
-def limpiar_exportaciones():
-    # Endpoint de placeholder (por compatibilidad futura)
-    return {"message": "Exportaciones limpiadas (no persistentes)"}
