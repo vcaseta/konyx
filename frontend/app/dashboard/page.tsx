@@ -11,6 +11,7 @@ import { PanelConfig } from "../../components/PanelConfig";
 import { PanelExport } from "../../components/PanelExport";
 import { PanelCerrar } from "../../components/PanelCerrar";
 import { PanelDebug } from "../../components/PanelDebug";
+import { PanelAbout } from "../../components/PanelAbout";
 import { Item } from "../../components/Item";
 
 const FORMATO_IMPORT_OPTS = ["Eholo", "Gestoria"] as const;
@@ -32,6 +33,7 @@ type MenuKey =
   | "cuenta"
   | "fichero"
   | "config"
+  | "about"
   | "exportar"
   | "cerrar";
 
@@ -150,7 +152,6 @@ Total: ${data.totalExportaciones}`);
     setMenu("formatoImport");
   };
 
-  // 🔐 Cerrar sesión
   const logout = () => {
     sessionStorage.removeItem("konyx_token");
     router.replace("/");
@@ -172,7 +173,7 @@ Total: ${data.totalExportaciones}`);
               <img src="/logo.png" alt="Konyx" className="h-48 w-auto drop-shadow-md" />
             </div>
             <nav className="space-y-2">
-              {["formatoImport","formatoExport","empresa","fecha","proyecto","cuenta","fichero","config","cerrar"].map(mk => (
+              {["formatoImport","formatoExport","empresa","fecha","proyecto","cuenta","fichero","config","about","cerrar"].map(mk => (
                 <Item key={mk} active={menu === mk as MenuKey} onClick={() => setMenu(mk as MenuKey)}>
                   {mk === "formatoImport" ? "Formato Importación" :
                    mk === "formatoExport" ? "Formato Exportación" :
@@ -182,6 +183,7 @@ Total: ${data.totalExportaciones}`);
                    mk === "cuenta" ? "Cuenta contable" :
                    mk === "fichero" ? "Fichero de datos" :
                    mk === "config" ? "Configuración" :
+                   mk === "about" ? "Acerca de Konyx" :
                    "Cerrar Sesión"}
                 </Item>
               ))}
@@ -200,6 +202,27 @@ Total: ${data.totalExportaciones}`);
 
         {/* Contenido */}
         <section className="flex flex-col space-y-6">
+          {/* Paneles principales */}
+          {menu === "formatoImport" && <PanelOption title="Formato Importación" options={FORMATO_IMPORT_OPTS} value={formatoImport} onChange={setFormatoImport} />}
+          {menu === "formatoExport" && <PanelOption title="Formato Exportación" options={FORMATO_EXPORT_OPTS} value={formatoExport} onChange={setFormatoExport} />}
+          {menu === "empresa" && <PanelOption title="Empresa" options={EMPRESAS} value={empresa} onChange={setEmpresa} />}
+          {menu === "proyecto" && <PanelOption title="Proyecto" options={PROYECTOS} value={proyecto} onChange={setProyecto} />}
+          {menu === "cuenta" &&
+            <PanelOption title="Cuenta contable" options={CUENTAS} value={cuenta} onChange={setCuenta}>
+              {cuenta === "Otra (introducir)" &&
+                <input
+                  type="text"
+                  value={cuentaOtra}
+                  onChange={(e) => setCuentaOtra(e.target.value)}
+                  placeholder="Introduce tu cuenta"
+                  className="w-full rounded-lg border border-indigo-300 px-3 py-2 mt-4 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              }
+            </PanelOption>
+          }
+          {menu === "fecha" && <PanelDate title="Fecha factura" value={fechaFactura} onChange={setFechaFactura} />}
+          {menu === "fichero" && <PanelFile value={ficheroNombre} onPickFile={onPickFile} onPickFileClick={onPickFileClick} fileInputRef={fileInputRef} />}
+
           {menu === "config" && (
             <div className="space-y-6">
               <PanelConfig
@@ -207,18 +230,10 @@ Total: ${data.totalExportaciones}`);
                 setPassActual={setPassActual} setPassNueva={setPassNueva} setPassConfirma={setPassConfirma}
                 passMsg={passMsg} setPassMsg={setPassMsg}
                 passwordGlobal={passwordGlobal} setPasswordGlobal={setPasswordGlobal}
-
-                apiKissoroVigente={apiKissoroVigente}
-                apiKissoroNuevo={apiKissoroNuevo}
-                setApiKissoroNuevo={setApiKissoroNuevo}
-                apiKissoroMsg={null}
-                setApiKissoroVigente={setApiKissoroVigente}
-
-                apiEnPluralVigente={apiEnPluralVigente}
-                apiEnPluralNuevo={apiEnPluralNuevo}
-                setApiEnPluralNuevo={setApiEnPluralNuevo}
-                apiEnPluralMsg={null}
-                setApiEnPluralVigente={setApiEnPluralVigente}
+                apiKissoroVigente={apiKissoroVigente} apiKissoroNuevo={apiKissoroNuevo} setApiKissoroNuevo={setApiKissoroNuevo}
+                apiKissoroMsg={null} setApiKissoroVigente={setApiKissoroVigente}
+                apiEnPluralVigente={apiEnPluralVigente} apiEnPluralNuevo={apiEnPluralNuevo} setApiEnPluralNuevo={setApiEnPluralNuevo}
+                apiEnPluralMsg={null} setApiEnPluralVigente={setApiEnPluralVigente}
               />
               <PanelDebug
                 passwordGlobal={passwordGlobal}
@@ -230,8 +245,55 @@ Total: ${data.totalExportaciones}`);
             </div>
           )}
 
+          {menu === "about" && <PanelAbout />}
+
           {menu === "exportar" && <PanelExport onConfirm={onConfirmExport} />}
           {menu === "cerrar" && <PanelCerrar onConfirm={logout} onCancel={() => setMenu("formatoImport")} />}
+
+          {/* Panel de Resumen */}
+          {!["config", "cerrar", "about"].includes(menu) && (
+            <div className="bg-blue-100/80 backdrop-blur-md rounded-2xl shadow-lg p-6 mt-4">
+              <h4 className="font-bold text-xl mb-6 text-indigo-800">Panel de Resumen</h4>
+
+              {/* Línea 1 */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div className="bg-white rounded-xl p-4 shadow">
+                  <span className="text-gray-500 font-semibold">📥 Importación</span>
+                  <span className="text-2xl font-bold text-indigo-700">{formatoImport || "-"}</span>
+                </div>
+                <div className="bg-white rounded-xl p-4 shadow">
+                  <span className="text-gray-500 font-semibold">📤 Exportación</span>
+                  <span className="text-2xl font-bold text-indigo-700">{formatoExport || "-"}</span>
+                </div>
+                <div className="bg-white rounded-xl p-4 shadow">
+                  <span className="text-gray-500 font-semibold">🏢 Empresa</span>
+                  <span className="text-2xl font-bold text-indigo-700">{empresa || "-"}</span>
+                </div>
+              </div>
+
+              {/* Línea 2 */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div className="bg-white/90 rounded-xl p-3 shadow">
+                  <span className="font-semibold text-gray-500">📅 Fecha factura</span>
+                  <span>{fechaFactura ? new Date(fechaFactura).toLocaleDateString("es-ES") : "-"}</span>
+                </div>
+                <div className="bg-white/90 rounded-xl p-3 shadow">
+                  <span className="font-semibold text-gray-500">💳 Cuenta</span>
+                  <span>{cuenta === "Otra (introducir)" ? cuentaOtra : cuenta || "-"}</span>
+                </div>
+                <div className="bg-white/90 rounded-xl p-3 shadow">
+                  <span className="font-semibold text-gray-500">🗂 Proyecto</span>
+                  <span>{proyecto || "-"}</span>
+                </div>
+              </div>
+
+              {/* Línea 3 */}
+              <div className="bg-white/90 rounded-xl p-4 shadow">
+                <span className="font-semibold text-gray-500">📁 Fichero</span>
+                <span className="truncate text-indigo-700">{ficheroNombre || "-"}</span>
+              </div>
+            </div>
+          )}
         </section>
       </div>
     </main>
