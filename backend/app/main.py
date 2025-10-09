@@ -4,32 +4,31 @@ from pydantic import BaseModel
 import json, os, secrets
 from datetime import datetime
 
-app = FastAPI(title="Konyx Backend", version="2.0")
+app = FastAPI(title="Konyx Backend", version="2.1")
 
-# CORS: permite conexión desde el frontend (Next.js)
+# -------------------------
+# CORS (permite conexión desde el frontend)
+# -------------------------
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # puedes restringir luego a ["http://192.168.1.50:3000"]
+    allow_origins=["*"],  # puedes restringirlo a ["http://192.168.1.50:3000"]
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Ruta del fichero de datos persistente
+# -------------------------
+# Archivo persistente
+# -------------------------
 DATA_FILE = os.path.join(os.path.dirname(__file__), "data.json")
 
-# Inicializar data.json si no existe
 if not os.path.exists(DATA_FILE):
     with open(DATA_FILE, "w") as f:
         json.dump({
             "password": "1234",
             "apiKissoro": "",
-            "apiEnPlural": "",
-            "exportaciones": []
+            "apiEnPlural": ""
         }, f, indent=2)
 
-# -------------------------
-# Funciones auxiliares
-# -------------------------
 def read_data():
     with open(DATA_FILE, "r") as f:
         return json.load(f)
@@ -39,7 +38,7 @@ def write_data(data):
         json.dump(data, f, indent=2)
 
 # -------------------------
-# Modelos Pydantic
+# Modelos de datos
 # -------------------------
 class LoginRequest(BaseModel):
     username: str
@@ -64,7 +63,7 @@ class ExportRequest(BaseModel):
     usuario: str
 
 # -------------------------
-# Endpoints
+# ENDPOINTS
 # -------------------------
 
 ## --- LOGIN ---
@@ -86,19 +85,14 @@ def change_password(req: PasswordChange):
     write_data(data)
     return {"message": "Contraseña actualizada correctamente"}
 
-## --- ESTADO ACTUAL ---
+## --- OBTENER ESTADO GENERAL ---
 @app.get("/auth/status")
 def get_status():
     data = read_data()
     return {
         "password": data.get("password", "1234"),
         "apiKissoro": data.get("apiKissoro", ""),
-        "apiEnPlural": data.get("apiEnPlural", ""),
-        "totalExportaciones": len(data.get("exportaciones", [])),
-        "ultimoExport": (
-            data["exportaciones"][-1]["fecha"]
-            if data.get("exportaciones") else "-"
-        )
+        "apiEnPlural": data.get("apiEnPlural", "")
     }
 
 ## --- ACTUALIZAR APIS ---
@@ -121,11 +115,9 @@ def get_apis():
         "apiEnPlural": data.get("apiEnPlural", "")
     }
 
-## --- REGISTRAR EXPORT ---
+## --- EXPORTACIÓN TEMPORAL ---
 @app.post("/export")
 def registrar_export(req: ExportRequest):
-    data = read_data()
-
     nueva = {
         "fecha": datetime.now().strftime("%d-%m-%Y %H:%M:%S"),
         "formatoImport": req.formatoImport,
@@ -135,22 +127,13 @@ def registrar_export(req: ExportRequest):
         "proyecto": req.proyecto,
         "cuenta": req.cuenta,
         "ficheroNombre": req.ficheroNombre,
-        "usuario": req.usuario
+        "usuario": req.usuario,
     }
+    # ⚠️ No se guarda en disco (solo respuesta temporal)
+    return {"message": "Exportación registrada (solo sesión actual)", "export": nueva}
 
-    data.setdefault("exportaciones", []).append(nueva)
-    write_data(data)
-
-    return {
-        "message": "Exportación registrada correctamente",
-        "total": len(data["exportaciones"])
-    }
-
-## --- HISTORIAL DE EXPORTACIONES ---
-@app.get("/export/historial")
-def obtener_exportaciones():
-    data = read_data()
-    return {
-        "total": len(data.get("exportaciones", [])),
-        "historial": data.get("exportaciones", [])
-    }
+## --- LIMPIAR EXPORTACIONES (dummy) ---
+@app.post("/export/clear")
+def limpiar_exportaciones():
+    # No hay persistencia, pero se mantiene endpoint por compatibilidad
+    return {"message": "Exportaciones limpiadas (no persistentes)"}
