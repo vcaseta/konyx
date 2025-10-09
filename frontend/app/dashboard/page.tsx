@@ -48,7 +48,7 @@ export default function DashboardPage() {
   if (loading || !token) return null;
 
   // ---------------------------
-  // ESTADOS
+  // ESTADOS DEL DASHBOARD
   // ---------------------------
   const [menu, setMenu] = useState<MenuKey>("formatoImport");
   const [formatoImport, setFormatoImport] = useState<typeof FORMATO_IMPORT_OPTS[number] | null>(null);
@@ -69,23 +69,25 @@ export default function DashboardPage() {
   const [passwordGlobal, setPasswordGlobal] = useState(() => sessionStorage.getItem("konyx_password") || "1234");
 
   // APIs
-  const [apiKissoroVigente, setApiKissoroVigente] = useState("");
+  const [apiKissoroVigente, setApiKissoroVigente] = useState(() => localStorage.getItem("apiKissoro") || "");
   const [apiKissoroNuevo, setApiKissoroNuevo] = useState("");
-  const [apiEnPluralVigente, setApiEnPluralVigente] = useState("");
+  const [apiEnPluralVigente, setApiEnPluralVigente] = useState(() => localStorage.getItem("apiEnPlural") || "");
   const [apiEnPluralNuevo, setApiEnPluralNuevo] = useState("");
 
-  // Exportaciones persistentes
+  // Exportaciones (persistentes)
   const [ultimoExport, setUltimoExport] = useState("-");
   const [totalExportaciones, setTotalExportaciones] = useState(0);
 
   // ---------------------------
   // FUNCIONES
   // ---------------------------
+
   const onPickFileClick = () => fileInputRef.current?.click();
   const onPickFile = (e: React.ChangeEvent<HTMLInputElement>) => setFicheroNombre(e.target.files?.[0]?.name || "");
 
   const cuentaOk = cuenta === "Otra (introducir)" ? cuentaOtra.trim().length > 0 : !!cuenta;
-  const exportReady = !!formatoImport && !!formatoExport && !!empresa && !!fechaFactura && !!proyecto && cuentaOk && !!ficheroNombre;
+  const exportReady =
+    !!formatoImport && !!formatoExport && !!empresa && !!fechaFactura && !!proyecto && cuentaOk && !!ficheroNombre;
 
   // 🔄 Sincronizar datos iniciales desde backend
   useEffect(() => {
@@ -99,7 +101,11 @@ export default function DashboardPage() {
         sessionStorage.setItem("konyx_password", data.password || "1234");
 
         setApiKissoroVigente(data.apiKissoro || "");
+        localStorage.setItem("apiKissoro", data.apiKissoro || "");
+
         setApiEnPluralVigente(data.apiEnPlural || "");
+        localStorage.setItem("apiEnPlural", data.apiEnPlural || "");
+
         setUltimoExport(data.ultimoExport || "-");
         setTotalExportaciones(data.totalExportaciones || 0);
       } catch (err) {
@@ -118,6 +124,7 @@ export default function DashboardPage() {
 
     try {
       const usuario = sessionStorage.getItem("konyx_user") || "desconocido";
+
       const body = {
         formatoImport,
         formatoExport,
@@ -136,12 +143,14 @@ export default function DashboardPage() {
       });
 
       if (!res.ok) throw new Error("Error al registrar exportación");
+
       const data = await res.json();
+      console.log("✅ Exportación enviada al backend:", data);
 
       setUltimoExport(data.ultimoExport || "-");
       setTotalExportaciones(data.totalExportaciones || 0);
 
-      alert(`✅ Exportación registrada.
+      alert(`Exportación enviada correctamente ✅
 Última exportación: ${data.ultimoExport}
 Total: ${data.totalExportaciones}`);
     } catch (err) {
@@ -152,6 +161,7 @@ Total: ${data.totalExportaciones}`);
     setMenu("formatoImport");
   };
 
+  // 🔐 Cerrar sesión (sin borrar contraseña ni APIs)
   const logout = () => {
     sessionStorage.removeItem("konyx_token");
     router.replace("/");
@@ -173,25 +183,52 @@ Total: ${data.totalExportaciones}`);
               <img src="/logo.png" alt="Konyx" className="h-48 w-auto drop-shadow-md" />
             </div>
             <nav className="space-y-2">
-              {["formatoImport","formatoExport","empresa","fecha","proyecto","cuenta","fichero","config","about","cerrar"].map(mk => (
-                <Item key={mk} active={menu === mk as MenuKey} onClick={() => setMenu(mk as MenuKey)}>
-                  {mk === "formatoImport" ? "Formato Importación" :
-                   mk === "formatoExport" ? "Formato Exportación" :
-                   mk === "empresa" ? "Empresa" :
-                   mk === "fecha" ? "Fecha factura" :
-                   mk === "proyecto" ? "Proyecto" :
-                   mk === "cuenta" ? "Cuenta contable" :
-                   mk === "fichero" ? "Fichero de datos" :
-                   mk === "config" ? "Configuración" :
-                   mk === "about" ? "Acerca de Konyx" :
-                   "Cerrar Sesión"}
+              {[
+                "formatoImport",
+                "formatoExport",
+                "empresa",
+                "fecha",
+                "proyecto",
+                "cuenta",
+                "fichero",
+                "config",
+                "about",
+                "cerrar",
+              ].map((mk) => (
+                <Item
+                  key={mk}
+                  active={menu === (mk as MenuKey)}
+                  onClick={() => setMenu(mk as MenuKey)}
+                  className="hover:bg-indigo-200 hover:text-indigo-800 transition"
+                >
+                  {mk === "formatoImport"
+                    ? "Formato Importación"
+                    : mk === "formatoExport"
+                    ? "Formato Exportación"
+                    : mk === "empresa"
+                    ? "Empresa"
+                    : mk === "fecha"
+                    ? "Fecha factura"
+                    : mk === "proyecto"
+                    ? "Proyecto"
+                    : mk === "cuenta"
+                    ? "Cuenta contable"
+                    : mk === "fichero"
+                    ? "Fichero de datos"
+                    : mk === "config"
+                    ? "Configuración"
+                    : mk === "about"
+                    ? "Acerca de Konyx"
+                    : "Cerrar Sesión"}
                 </Item>
               ))}
               <button
                 className={`w-full text-left px-3 py-2 rounded-lg font-semibold border transition
-                  ${exportReady
-                    ? "border-indigo-600 text-indigo-700 bg-white/90 shadow hover:bg-indigo-200 hover:text-indigo-800"
-                    : "border-gray-300 text-gray-200 cursor-not-allowed"}`}
+                  ${
+                    exportReady
+                      ? "border-indigo-600 text-indigo-700 bg-white/90 shadow hover:bg-indigo-200 hover:text-indigo-800"
+                      : "border-gray-300 text-gray-200 cursor-not-allowed"
+                  }`}
                 onClick={() => exportReady && setMenu("exportar")}
               >
                 Exportar
@@ -202,14 +239,17 @@ Total: ${data.totalExportaciones}`);
 
         {/* Contenido */}
         <section className="flex flex-col space-y-6">
-          {/* Paneles principales */}
-          {menu === "formatoImport" && <PanelOption title="Formato Importación" options={FORMATO_IMPORT_OPTS} value={formatoImport} onChange={setFormatoImport} />}
-          {menu === "formatoExport" && <PanelOption title="Formato Exportación" options={FORMATO_EXPORT_OPTS} value={formatoExport} onChange={setFormatoExport} />}
+          {menu === "formatoImport" && (
+            <PanelOption title="Formato Importación" options={FORMATO_IMPORT_OPTS} value={formatoImport} onChange={setFormatoImport} />
+          )}
+          {menu === "formatoExport" && (
+            <PanelOption title="Formato Exportación" options={FORMATO_EXPORT_OPTS} value={formatoExport} onChange={setFormatoExport} />
+          )}
           {menu === "empresa" && <PanelOption title="Empresa" options={EMPRESAS} value={empresa} onChange={setEmpresa} />}
           {menu === "proyecto" && <PanelOption title="Proyecto" options={PROYECTOS} value={proyecto} onChange={setProyecto} />}
-          {menu === "cuenta" &&
+          {menu === "cuenta" && (
             <PanelOption title="Cuenta contable" options={CUENTAS} value={cuenta} onChange={setCuenta}>
-              {cuenta === "Otra (introducir)" &&
+              {cuenta === "Otra (introducir)" && (
                 <input
                   type="text"
                   value={cuentaOtra}
@@ -217,23 +257,37 @@ Total: ${data.totalExportaciones}`);
                   placeholder="Introduce tu cuenta"
                   className="w-full rounded-lg border border-indigo-300 px-3 py-2 mt-4 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
-              }
+              )}
             </PanelOption>
-          }
+          )}
           {menu === "fecha" && <PanelDate title="Fecha factura" value={fechaFactura} onChange={setFechaFactura} />}
-          {menu === "fichero" && <PanelFile value={ficheroNombre} onPickFile={onPickFile} onPickFileClick={onPickFileClick} fileInputRef={fileInputRef} />}
+          {menu === "fichero" && (
+            <PanelFile value={ficheroNombre} onPickFile={onPickFile} onPickFileClick={onPickFileClick} fileInputRef={fileInputRef} />
+          )}
 
           {menu === "config" && (
             <div className="space-y-6">
               <PanelConfig
-                passActual={passActual} passNueva={passNueva} passConfirma={passConfirma}
-                setPassActual={setPassActual} setPassNueva={setPassNueva} setPassConfirma={setPassConfirma}
-                passMsg={passMsg} setPassMsg={setPassMsg}
-                passwordGlobal={passwordGlobal} setPasswordGlobal={setPasswordGlobal}
-                apiKissoroVigente={apiKissoroVigente} apiKissoroNuevo={apiKissoroNuevo} setApiKissoroNuevo={setApiKissoroNuevo}
-                apiKissoroMsg={null} setApiKissoroVigente={setApiKissoroVigente}
-                apiEnPluralVigente={apiEnPluralVigente} apiEnPluralNuevo={apiEnPluralNuevo} setApiEnPluralNuevo={setApiEnPluralNuevo}
-                apiEnPluralMsg={null} setApiEnPluralVigente={setApiEnPluralVigente}
+                passActual={passActual}
+                passNueva={passNueva}
+                passConfirma={passConfirma}
+                setPassActual={setPassActual}
+                setPassNueva={setPassNueva}
+                setPassConfirma={setPassConfirma}
+                passMsg={passMsg}
+                setPassMsg={setPassMsg}
+                passwordGlobal={passwordGlobal}
+                setPasswordGlobal={setPasswordGlobal}
+                apiKissoroVigente={apiKissoroVigente}
+                apiKissoroNuevo={apiKissoroNuevo}
+                setApiKissoroNuevo={setApiKissoroNuevo}
+                apiKissoroMsg={null}
+                setApiKissoroVigente={setApiKissoroVigente}
+                apiEnPluralVigente={apiEnPluralVigente}
+                apiEnPluralNuevo={apiEnPluralNuevo}
+                setApiEnPluralNuevo={setApiEnPluralNuevo}
+                apiEnPluralMsg={null}
+                setApiEnPluralVigente={setApiEnPluralVigente}
               />
               <PanelDebug
                 passwordGlobal={passwordGlobal}
@@ -253,44 +307,54 @@ Total: ${data.totalExportaciones}`);
           {/* Panel de Resumen */}
           {!["config", "cerrar", "about"].includes(menu) && (
             <div className="bg-blue-100/80 backdrop-blur-md rounded-2xl shadow-lg p-6 mt-4">
-              <h4 className="font-bold text-xl mb-6 text-indigo-800">Panel de Resumen</h4>
+              <h4 className="font-bold text-xl mb-6 text-indigo-800 text-center">
+                Panel de Resumen
+              </h4>
 
-              {/* Línea 1 */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                <div className="bg-white rounded-xl p-4 shadow">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Fila 1 */}
+                <div className="bg-white rounded-xl p-4 shadow flex flex-col items-center justify-center text-center">
                   <span className="text-gray-500 font-semibold">📥 Importación</span>
                   <span className="text-2xl font-bold text-indigo-700">{formatoImport || "-"}</span>
                 </div>
-                <div className="bg-white rounded-xl p-4 shadow">
+
+                <div className="bg-white rounded-xl p-4 shadow flex flex-col items-center justify-center text-center">
                   <span className="text-gray-500 font-semibold">📤 Exportación</span>
                   <span className="text-2xl font-bold text-indigo-700">{formatoExport || "-"}</span>
                 </div>
-                <div className="bg-white rounded-xl p-4 shadow">
+
+                <div className="bg-white rounded-xl p-4 shadow flex flex-col items-center justify-center text-center">
                   <span className="text-gray-500 font-semibold">🏢 Empresa</span>
                   <span className="text-2xl font-bold text-indigo-700">{empresa || "-"}</span>
                 </div>
-              </div>
 
-              {/* Línea 2 */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                <div className="bg-white/90 rounded-xl p-3 shadow">
-                  <span className="font-semibold text-gray-500">📅 Fecha factura</span>
-                  <span>{fechaFactura ? new Date(fechaFactura).toLocaleDateString("es-ES") : "-"}</span>
+                {/* Fila 2 */}
+                <div className="bg-white rounded-xl p-4 shadow flex flex-col items-center justify-center text-center">
+                  <span className="text-gray-500 font-semibold">📅 Fecha factura</span>
+                  <span className="text-2xl font-bold text-indigo-700">
+                    {fechaFactura ? new Date(fechaFactura).toLocaleDateString("es-ES") : "-"}
+                  </span>
                 </div>
-                <div className="bg-white/90 rounded-xl p-3 shadow">
-                  <span className="font-semibold text-gray-500">💳 Cuenta</span>
-                  <span>{cuenta === "Otra (introducir)" ? cuentaOtra : cuenta || "-"}</span>
-                </div>
-                <div className="bg-white/90 rounded-xl p-3 shadow">
-                  <span className="font-semibold text-gray-500">🗂 Proyecto</span>
-                  <span>{proyecto || "-"}</span>
-                </div>
-              </div>
 
-              {/* Línea 3 */}
-              <div className="bg-white/90 rounded-xl p-4 shadow">
-                <span className="font-semibold text-gray-500">📁 Fichero</span>
-                <span className="truncate text-indigo-700">{ficheroNombre || "-"}</span>
+                <div className="bg-white rounded-xl p-4 shadow flex flex-col items-center justify-center text-center">
+                  <span className="text-gray-500 font-semibold">💳 Cuenta</span>
+                  <span className="text-2xl font-bold text-indigo-700">
+                    {cuenta === "Otra (introducir)" ? cuentaOtra : cuenta || "-"}
+                  </span>
+                </div>
+
+                <div className="bg-white rounded-xl p-4 shadow flex flex-col items-center justify-center text-center">
+                  <span className="text-gray-500 font-semibold">🗂 Proyecto</span>
+                  <span className="text-2xl font-bold text-indigo-700">{proyecto || "-"}</span>
+                </div>
+
+                {/* Fila 3 */}
+                <div className="bg-white rounded-xl p-4 shadow flex flex-col items-center justify-center text-center md:col-span-3">
+                  <span className="text-gray-500 font-semibold">📁 Fichero</span>
+                  <span className="text-indigo-700 text-lg truncate max-w-[80%]">
+                    {ficheroNombre || "-"}
+                  </span>
+                </div>
               </div>
             </div>
           )}
@@ -299,4 +363,3 @@ Total: ${data.totalExportaciones}`);
     </main>
   );
 }
-
