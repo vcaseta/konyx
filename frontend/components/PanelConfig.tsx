@@ -92,65 +92,67 @@ export function PanelConfig({
     }
   };
 
-  // 🌐 ACTUALIZAR APIS
+  // 🌐 ACTUALIZAR APIS (con mensajes individuales)
   const handleActualizarApi = async (tipo: "kissoro" | "enplural") => {
     if (tipo === "kissoro") {
-      if (!apiKissoroNuevo) {
-        setApiKissoroVigente(apiKissoroVigente);
-        return;
-      }
+      if (!apiKissoroNuevo) return;
+
       try {
         const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/update_apis`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            kissoro: apiKissoroNuevo,
-            enplural: apiEnPluralVigente,
+            apiKissoro: apiKissoroNuevo,
+            apiEnPlural: apiEnPluralVigente,
           }),
         });
+
         if (!res.ok) throw new Error("Error al actualizar API Kissoro");
 
         localStorage.setItem("apiKissoro", apiKissoroNuevo);
         setApiKissoroVigente(apiKissoroNuevo);
         setApiKissoroNuevo("");
-        setPassMsg({ type: "ok", text: "API Kissoro actualizada correctamente ✅" });
-        setTimeout(() => setPassMsg(null), 3000);
+        setTimeout(() => setApiKissoroVigente(apiKissoroNuevo), 200);
+        (window as any).setApiKissoroMsg?.({ type: "ok", text: "API Kissoro actualizada correctamente ✅" });
+
         if (onCambioApis) onCambioApis();
       } catch (err) {
         console.error(err);
-        setPassMsg({ type: "err", text: "Error al actualizar API Kissoro ❌" });
+        (window as any).setApiKissoroMsg?.({ type: "err", text: "Error al actualizar API Kissoro ❌" });
       }
     }
 
     if (tipo === "enplural") {
-      if (!apiEnPluralNuevo) {
-        setApiEnPluralVigente(apiEnPluralVigente);
-        return;
-      }
+      if (!apiEnPluralNuevo) return;
+
       try {
         const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/update_apis`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            kissoro: apiKissoroVigente,
-            enplural: apiEnPluralNuevo,
+            apiKissoro: apiKissoroVigente,
+            apiEnPlural: apiEnPluralNuevo,
           }),
         });
+
         if (!res.ok) throw new Error("Error al actualizar API En Plural");
 
         localStorage.setItem("apiEnPlural", apiEnPluralNuevo);
         setApiEnPluralVigente(apiEnPluralNuevo);
         setApiEnPluralNuevo("");
-        setPassMsg({ type: "ok", text: "API En Plural actualizada correctamente ✅" });
-        setTimeout(() => setPassMsg(null), 3000);
+        (window as any).setApiEnPluralMsg?.({ type: "ok", text: "API En Plural actualizada correctamente ✅" });
+
         if (onCambioApis) onCambioApis();
       } catch (err) {
         console.error(err);
-        setPassMsg({ type: "err", text: "Error al actualizar API En Plural ❌" });
+        (window as any).setApiEnPluralMsg?.({ type: "err", text: "Error al actualizar API En Plural ❌" });
       }
     }
   };
 
+  // -------------------------------
+  // RENDER
+  // -------------------------------
   return (
     <div className="bg-white/70 backdrop-blur-md rounded-2xl p-6 shadow-lg space-y-6">
       {/* Contraseña */}
@@ -219,7 +221,7 @@ export function PanelConfig({
             </button>
           </div>
           {apiKissoroMsg && (
-            <p className={`mt-2 text-sm ${apiKissoroMsg.type === "ok" ? "text-green-600" : "text-red-600"}`}>
+            <p className={`mt-3 text-sm ${apiKissoroMsg.type === "ok" ? "text-green-600" : "text-red-600"}`}>
               {apiKissoroMsg.text}
             </p>
           )}
@@ -250,7 +252,7 @@ export function PanelConfig({
             </button>
           </div>
           {apiEnPluralMsg && (
-            <p className={`mt-2 text-sm ${apiEnPluralMsg.type === "ok" ? "text-green-600" : "text-red-600"}`}>
+            <p className={`mt-3 text-sm ${apiEnPluralMsg.type === "ok" ? "text-green-600" : "text-red-600"}`}>
               {apiEnPluralMsg.text}
             </p>
           )}
