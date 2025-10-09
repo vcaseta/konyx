@@ -1,56 +1,65 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-import json, os, secrets
 from datetime import datetime
+import json, os
 
-app = FastAPI(title="Konyx Backend", version="2.1")
+app = FastAPI(title="Konyx Backend", version="1.0.0")
 
-# -------------------------
-# CORS (permite conexión desde el frontend)
-# -------------------------
+# -----------------------------
+# 🌍 CORS
+# -----------------------------
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # puedes restringirlo a ["http://192.168.1.50:3000"]
+    allow_origins=["*"],  # puedes restringir a ["http://192.168.1.50"] si deseas
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# -------------------------
-# Archivo persistente
-# -------------------------
-DATA_FILE = os.path.join(os.path.dirname(__file__), "data.json")
+# -----------------------------
+# 📁 Archivo de datos persistente
+# -----------------------------
+DATA_FILE = "data.json"
 
-if not os.path.exists(DATA_FILE):
-    with open(DATA_FILE, "w") as f:
-        json.dump({
-            "password": "1234",
+
+def load_data():
+    """Carga datos persistentes desde data.json"""
+    if not os.path.exists(DATA_FILE):
+        default_data = {
+            "password": "admin123",
             "apiKissoro": "",
             "apiEnPlural": ""
-        }, f, indent=2)
-
-def read_data():
-    with open(DATA_FILE, "r") as f:
+        }
+        with open(DATA_FILE, "w", encoding="utf-8") as f:
+            json.dump(default_data, f, indent=2, ensure_ascii=False)
+        return default_data
+    with open(DATA_FILE, "r", encoding="utf-8") as f:
         return json.load(f)
 
-def write_data(data):
-    with open(DATA_FILE, "w") as f:
-        json.dump(data, f, indent=2)
 
-# -------------------------
-# Modelos de datos
-# -------------------------
+def save_data(data):
+    """Guarda los datos persistentes"""
+    with open(DATA_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+
+
+# -----------------------------
+# 📘 Modelos
+# -----------------------------
 class LoginRequest(BaseModel):
     username: str
     password: str
 
-class PasswordChange(BaseModel):
-    old_password: str
-    new_password: str
 
-class ApiConfig(BaseModel):
+class PasswordUpdate(BaseModel):
+    password: str
+
+
+class ApiUpdate(BaseModel):
     apiKissoro: str | None = None
     apiEnPlural: str | None = None
+
 
 class ExportRequest(BaseModel):
     formatoImport: str
@@ -62,60 +71,67 @@ class ExportRequest(BaseModel):
     ficheroNombre: str
     usuario: str
 
-# -------------------------
-# ENDPOINTS
-# -------------------------
 
-## --- LOGIN ---
+# -----------------------------
+# 🔑 LOGIN
+# -----------------------------
 @app.post("/auth/login")
 def login(req: LoginRequest):
-    data = read_data()
-    if req.password != data["password"]:
-        raise HTTPException(status_code=401, detail="Contraseña incorrecta")
-    token = secrets.token_hex(16)
-    return {"token": token}
+    data = load_data()
 
-## --- CAMBIO DE CONTRASEÑA ---
-@app.post("/auth/change_password")
-def change_password(req: PasswordChange):
-    data = read_data()
-    if req.old_password != data["password"]:
-        raise HTTPException(status_code=403, detail="Contraseña actual incorrecta")
-    data["password"] = req.new_password
-    write_data(data)
-    return {"message": "Contraseña actualizada correctamente"}
+    # Validar la contraseña con la almacenada en data.json
+    if req.password != data.get("password"):
+        raise HTTPException(status_code=401, detail="Usuario o contraseña incorrectos")
 
-## --- OBTENER ESTADO GENERAL ---
+    # Usuario validado (token ficticio)
+    return {"token": "konyx_token_demo"}
+
+
+# -----------------------------
+# 📡 STATUS (para sincronizar frontend)
+# -----------------------------
 @app.get("/auth/status")
-def get_status():
-    data = read_data()
+def status():
+    data = load_data()
     return {
-        "password": data.get("password", "1234"),
+        "password": data.get("password", "admin123"),
         "apiKissoro": data.get("apiKissoro", ""),
         "apiEnPlural": data.get("apiEnPlural", "")
     }
 
-## --- ACTUALIZAR APIS ---
-@app.post("/config/apis")
-def update_apis(req: ApiConfig):
-    data = read_data()
+
+# -----------------------------
+# 🧩 ACTUALIZAR CONTRASEÑA
+# -----------------------------
+@app.post("/auth/update_password")
+def update_password(req: PasswordUpdate):
+    data = load_data()
+    data["password"] = req.password
+    save_data(data)
+    return {"message": "Contraseña actualizada correctamente", "password": req.password}
+
+
+# -----------------------------
+# 🌐 ACTUALIZAR APIS
+# -----------------------------
+@app.post("/auth/update_apis")
+def update_apis(req: ApiUpdate):
+    data = load_data()
     if req.apiKissoro is not None:
         data["apiKissoro"] = req.apiKissoro
     if req.apiEnPlural is not None:
         data["apiEnPlural"] = req.apiEnPlural
-    write_data(data)
-    return {"message": "APIs actualizadas correctamente"}
-
-## --- OBTENER APIS ---
-@app.get("/config/apis")
-def get_apis():
-    data = read_data()
+    save_data(data)
     return {
-        "apiKissoro": data.get("apiKissoro", ""),
-        "apiEnPlural": data.get("apiEnPlural", "")
+        "message": "APIs actualizadas correctamente",
+        "apiKissoro": data["apiKissoro"],
+        "apiEnPlural": data["apiEnPlural"]
     }
 
-## --- EXPORTACIÓN TEMPORAL ---
+
+# -----------------------------
+# 🧾 EXPORT (no persistente)
+# -----------------------------
 @app.post("/export")
 def registrar_export(req: ExportRequest):
     nueva = {
@@ -127,13 +143,18 @@ def registrar_export(req: ExportRequest):
         "proyecto": req.proyecto,
         "cuenta": req.cuenta,
         "ficheroNombre": req.ficheroNombre,
-        "usuario": req.usuario,
+        "usuario": req.usuario
     }
-    # ⚠️ No se guarda en disco (solo respuesta temporal)
+
+    # Solo se imprime en consola (no se guarda en disco)
+    print("🧾 Nueva exportación recibida:", nueva)
     return {"message": "Exportación registrada (solo sesión actual)", "export": nueva}
 
-## --- LIMPIAR EXPORTACIONES (dummy) ---
+
+# -----------------------------
+# 🧹 LIMPIAR EXPORTACIONES (opcional)
+# -----------------------------
 @app.post("/export/clear")
 def limpiar_exportaciones():
-    # No hay persistencia, pero se mantiene endpoint por compatibilidad
+    # Endpoint de placeholder (por compatibilidad futura)
     return {"message": "Exportaciones limpiadas (no persistentes)"}
