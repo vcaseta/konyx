@@ -1,6 +1,6 @@
 "use client";
 
-export function PanelAbout({ onBack }: { onBack?: () => void }) {
+export function PanelAbout() {
   return (
     <div className="bg-white/70 backdrop-blur-md rounded-2xl p-6 shadow-lg text-gray-800">
       <div className="flex flex-col items-center text-center space-y-4">
@@ -23,10 +23,10 @@ export function PanelAbout({ onBack }: { onBack?: () => void }) {
           <p>
             <strong>Contacto:</strong>{" "}
             <a
-              href="mailto:victorbiaudio@gmail.com"
+              href="mailto:vcaseta75@gmail.com"
               className="text-indigo-600 hover:underline"
             >
-              victorbiaudio@gmail.com
+              vcaseta75@gmail.com
             </a>
           </p>
           <p>
@@ -40,13 +40,6 @@ export function PanelAbout({ onBack }: { onBack?: () => void }) {
         <p className="mt-6 text-xs text-gray-500">
           © 2025 Víctor Mut Vallvey. Todos los derechos reservados.
         </p>
-
-        <button
-          onClick={onBack}
-          className="mt-6 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 shadow transition"
-        >
-          ← Volver
-        </button>
       </div>
     </div>
   );
