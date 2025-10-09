@@ -8,18 +8,56 @@ interface PanelDebugProps {
   totalExportaciones: number;
 }
 
-export function PanelDebug({ passwordGlobal, apiKissoroVigente, apiEnPluralVigente, ultimoExport, totalExportaciones }: PanelDebugProps) {
+export function PanelDebug({
+  passwordGlobal,
+  apiKissoroVigente,
+  apiEnPluralVigente,
+  ultimoExport,
+  totalExportaciones,
+}: PanelDebugProps) {
+
+  // Recuperamos también el token actual (sin mostrarlo completo)
+  const token = typeof window !== "undefined" ? sessionStorage.getItem("konyx_token") : null;
+  const tokenPreview = token ? `${token.slice(0, 10)}...${token.slice(-5)}` : "—";
+
   return (
-    <div className="bg-blue-100/90 rounded-2xl p-4 shadow-lg space-y-2">
-      <h4 className="font-semibold text-lg mb-2">Debug Panel</h4>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-        <div><span className="font-semibold">Contraseña:</span> {passwordGlobal}</div>
-        <div><span className="font-semibold">API Kissoro:</span> {apiKissoroVigente}</div>
-        <div><span className="font-semibold">API En Plural:</span> {apiEnPluralVigente}</div>
-        <div><span className="font-semibold">Última exportación:</span> {ultimoExport}</div>
-        <div><span className="font-semibold">Total exportaciones:</span> {totalExportaciones}</div>
+    <div className="bg-white/60 backdrop-blur-md rounded-2xl shadow-md p-6 space-y-3 text-sm">
+      <h3 className="text-lg font-bold mb-2 text-indigo-800">Panel Debug (diagnóstico)</h3>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
+        <div>
+          <span className="font-semibold text-gray-600">🔑 Token actual:</span>{" "}
+          <span className="font-mono">{tokenPreview}</span>
+        </div>
+        <div>
+          <span className="font-semibold text-gray-600">🔐 Contraseña global:</span>{" "}
+          <span className="font-mono">{passwordGlobal || "—"}</span>
+        </div>
+
+        <div>
+          <span className="font-semibold text-gray-600">🌐 API Kissoro:</span>{" "}
+          <span className="font-mono break-all text-indigo-700">
+            {apiKissoroVigente || "—"}
+          </span>
+        </div>
+
+        <div>
+          <span className="font-semibold text-gray-600">🌐 API En Plural:</span>{" "}
+          <span className="font-mono break-all text-indigo-700">
+            {apiEnPluralVigente || "—"}
+          </span>
+        </div>
+
+        <div>
+          <span className="font-semibold text-gray-600">🕒 Última exportación:</span>{" "}
+          <span>{ultimoExport || "—"}</span>
+        </div>
+
+        <div>
+          <span className="font-semibold text-gray-600">📊 Total exportaciones:</span>{" "}
+          <span>{totalExportaciones}</span>
+        </div>
       </div>
     </div>
   );
 }
-
