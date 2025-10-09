@@ -45,6 +45,9 @@ export default function DashboardPage() {
 
   if (loading || !token) return null;
 
+  // ---------------------------
+  // ESTADOS
+  // ---------------------------
   const [menu, setMenu] = useState<MenuKey>("formatoImport");
   const [formatoImport, setFormatoImport] = useState<typeof FORMATO_IMPORT_OPTS[number] | null>(null);
   const [formatoExport, setFormatoExport] = useState<typeof FORMATO_EXPORT_OPTS[number] | null>(null);
@@ -56,18 +59,20 @@ export default function DashboardPage() {
   const [ficheroNombre, setFicheroNombre] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Contraseña global
   const [passActual, setPassActual] = useState("");
   const [passNueva, setPassNueva] = useState("");
   const [passConfirma, setPassConfirma] = useState("");
   const [passMsg, setPassMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
   const [passwordGlobal, setPasswordGlobal] = useState(() => sessionStorage.getItem("konyx_password") || "1234");
 
+  // APIs
   const [apiKissoroVigente, setApiKissoroVigente] = useState("");
   const [apiKissoroNuevo, setApiKissoroNuevo] = useState("");
   const [apiEnPluralVigente, setApiEnPluralVigente] = useState("");
   const [apiEnPluralNuevo, setApiEnPluralNuevo] = useState("");
 
-  // 🔄 Exportaciones persistentes
+  // Exportaciones persistentes
   const [ultimoExport, setUltimoExport] = useState("-");
   const [totalExportaciones, setTotalExportaciones] = useState(0);
 
@@ -93,7 +98,6 @@ export default function DashboardPage() {
 
         setApiKissoroVigente(data.apiKissoro || "");
         setApiEnPluralVigente(data.apiEnPlural || "");
-
         setUltimoExport(data.ultimoExport || "-");
         setTotalExportaciones(data.totalExportaciones || 0);
       } catch (err) {
@@ -146,6 +150,7 @@ Total: ${data.totalExportaciones}`);
     setMenu("formatoImport");
   };
 
+  // 🔐 Cerrar sesión
   const logout = () => {
     sessionStorage.removeItem("konyx_token");
     router.replace("/");
@@ -160,6 +165,7 @@ Total: ${data.totalExportaciones}`);
       style={{ backgroundImage: "url(/fondo.png)", backgroundSize: "100% 100%" }}
     >
       <div className="mx-auto max-w-7xl grid grid-cols-1 md:grid-cols-[260px_1fr] gap-6">
+        {/* Sidebar */}
         <aside className="md:sticky md:top-6">
           <div className="bg-white/70 backdrop-blur-md rounded-2xl shadow-lg p-4">
             <div className="flex justify-center mb-4">
@@ -192,6 +198,7 @@ Total: ${data.totalExportaciones}`);
           </div>
         </aside>
 
+        {/* Contenido */}
         <section className="flex flex-col space-y-6">
           {menu === "config" && (
             <div className="space-y-6">
@@ -200,8 +207,18 @@ Total: ${data.totalExportaciones}`);
                 setPassActual={setPassActual} setPassNueva={setPassNueva} setPassConfirma={setPassConfirma}
                 passMsg={passMsg} setPassMsg={setPassMsg}
                 passwordGlobal={passwordGlobal} setPasswordGlobal={setPasswordGlobal}
-                apiKissoroVigente={apiKissoroVigente} apiKissoroNuevo={apiKissoroNuevo} setApiKissoroNuevo={setApiKissoroNuevo}
-                apiEnPluralVigente={apiEnPluralVigente} apiEnPluralNuevo={apiEnPluralNuevo} setApiEnPluralNuevo={setApiEnPluralNuevo}
+
+                apiKissoroVigente={apiKissoroVigente}
+                apiKissoroNuevo={apiKissoroNuevo}
+                setApiKissoroNuevo={setApiKissoroNuevo}
+                apiKissoroMsg={null}
+                setApiKissoroVigente={setApiKissoroVigente}
+
+                apiEnPluralVigente={apiEnPluralVigente}
+                apiEnPluralNuevo={apiEnPluralNuevo}
+                setApiEnPluralNuevo={setApiEnPluralNuevo}
+                apiEnPluralMsg={null}
+                setApiEnPluralVigente={setApiEnPluralVigente}
               />
               <PanelDebug
                 passwordGlobal={passwordGlobal}
