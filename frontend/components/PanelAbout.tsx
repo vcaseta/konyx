@@ -4,11 +4,11 @@ export function PanelAbout() {
   return (
     <div className="bg-white/70 backdrop-blur-md rounded-2xl p-6 shadow-lg text-gray-800">
       <div className="flex flex-col items-center text-center space-y-6">
-        {/* Logo personal (4x más grande) */}
+        {/* Logo personal (PNG transparente, sin bordes ni sombras) */}
         <img
-          src="/logo-victor.jpg"
+          src="/logo-victor.png"
           alt="VM Audiovisual Project Manager"
-          className="h-96 w-auto drop-shadow-lg rounded-lg"
+          className="h-96 w-auto"
         />
 
         <h2 className="text-3xl font-bold text-indigo-700 mt-4">
@@ -43,4 +43,3 @@ export function PanelAbout() {
     </div>
   );
 }
-
