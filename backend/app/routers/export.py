@@ -1,97 +1,50 @@
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from fastapi.responses import FileResponse, StreamingResponse
-from pydantic import BaseModel
 from app.core.persistence import load_data, save_data
 from datetime import datetime
 import pandas as pd
 import io, os, json, time, re
-from typing import List, Dict, Any
 
-# --- GPT / OpenAI ---
+# --- GPT ---
 import openai
 from dotenv import load_dotenv
-
 load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 router = APIRouter(prefix="/export", tags=["export"])
 
-# -----------------------------------------------------------
-# 🧾 (Se mantiene para compatibilidad) Registro simple /export
-# -----------------------------------------------------------
-class ExportRequest(BaseModel):
-    formatoImport: str
-    formatoExport: str
-    empresa: str
-    fechaFactura: str
-    proyecto: str
-    cuenta: str
-    ficheroNombre: str
-    usuario: str
-
-@router.post("")
-def registrar_export(req: ExportRequest):
-    data = load_data()
-    try:
-        nueva = {
-            "fecha": datetime.now().strftime("%d-%m-%Y %H:%M:%S"),
-            **req.dict(),
-        }
-        data["ultimoExport"] = datetime.now().strftime("%d/%m/%Y")
-        data["totalExportaciones"] = data.get("totalExportaciones", 0) + 1
-        save_data(data)
-        print("🧾 Nueva exportación:", nueva)
-        return {
-            "message": "Exportación registrada correctamente",
-            "export": nueva,
-            "ultimoExport": data["ultimoExport"],
-            "totalExportaciones": data["totalExportaciones"],
-        }
-    except Exception as e:
-        data["totalExportacionesFallidas"] = data.get("totalExportacionesFallidas", 0) + 1
-        save_data(data)
-        raise HTTPException(status_code=400, detail=f"Error registrando exportación: {e}")
-
-# -----------------------------------------------------------
-# 📡 PROGRESO EN TIEMPO REAL (SSE)
-# -----------------------------------------------------------
-progress_log: List[str] = []
-progress_done: bool = False
+# ============================================================
+# 📡 STREAM DE PROGRESO (SSE)
+# ============================================================
+progress_log: list[str] = []
 
 def log_step(text: str):
+    """Añade un mensaje al stream de progreso (y al log de servidor)."""
     progress_log.append(text)
     print("📡", text)
 
 def progress_stream():
-    """
-    Emite los mensajes a medida que se agregan a progress_log.
-    Mantiene la conexión hasta que progress_done sea True.
-    """
-    idx = 0
-    # Espera activa simple; suficiente para un proceso por usuario
-    while True:
-        while idx < len(progress_log):
-            step = progress_log[idx]
-            yield f"data: {json.dumps({'step': step})}\n\n"
-            idx += 1
-        if progress_done:
-            break
-        time.sleep(0.4)
+    """Genera eventos SSE con los pasos acumulados."""
+    for step in progress_log:
+        yield f"data: {json.dumps({'step': step})}\n\n"
+        time.sleep(0.6)  # ritmo agradable de lectura
     yield "event: end\ndata: {}\n\n"
 
 @router.get("/progress")
 async def export_progress():
+    """Endpoint SSE: el frontend se conecta aquí para leer el progreso en vivo."""
     return StreamingResponse(progress_stream(), media_type="text/event-stream")
 
-# -----------------------------------------------------------
-# 🧮 VALIDACIONES Y DETECCIÓN DE FORMATO
-# -----------------------------------------------------------
+
+# ============================================================
+# 🔎 VALIDACIÓN DE FORMATOS
+# ============================================================
 def detectar_formato_sesiones(df: pd.DataFrame) -> str:
     cols = [c.strip().lower() for c in df.columns]
-    # Eholo: presencia de "fecha", "iva", "total"
+    # “Eholo” genérico: presencia de campos clave
     if all(any(ec in c for c in cols) for ec in ["fecha", "iva", "total"]):
         return "Eholo"
-    # Gestoría: coincidencia de la mayoría de estos
+    # “Gestoría” aproximado: bastantes coincidencias de cabeceras típicas
     gestor_cols = [
         "fecha factura", "numero factura", "nombre", "nif",
         "concepto", "importe base", "iva", "irpf", "total"
@@ -103,167 +56,180 @@ def detectar_formato_sesiones(df: pd.DataFrame) -> str:
 
 def validar_contactos(df: pd.DataFrame):
     cols = [c.strip().lower() for c in df.columns]
-    # Debe tener al menos uno de identificadores fuertes
-    if not any(k in cols for k in ["nif", "cif", "email", "correo", "nombre"]):
+    # Basta con que exista al menos un identificador razonable
+    if not any(x in cols for x in ["nombre", "nif", "cif", "email"]):
         raise HTTPException(
             status_code=400,
             detail="El archivo de contactos no tiene columnas válidas (nombre, NIF/CIF o email)."
         )
 
-# -----------------------------------------------------------
-# 🧠 MÓDULO GPT: ANÁLISIS DE ESTRUCTURA
-# -----------------------------------------------------------
-def analizar_tablas_gpt(df_ses: pd.DataFrame, df_con: pd.DataFrame) -> Dict[str, Any] | None:
+def normalizar_columnas(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy()
+    df.columns = [re.sub(r"\s+", " ", c.strip().lower()) for c in df.columns]
+    # Normalizaciones frecuentes
+    if "cif" in df.columns and "nif" not in df.columns:
+        df.rename(columns={"cif": "nif"}, inplace=True)
+    if "razon social" in df.columns and "nombre" not in df.columns:
+        df.rename(columns={"razon social": "nombre"}, inplace=True)
+    return df
+
+
+# ============================================================
+# 🤖 GPT: ANÁLISIS Y CORRECCIÓN
+# ============================================================
+def _extract_json(text: str) -> dict | None:
+    try:
+        start = text.find("{")
+        end = text.rfind("}") + 1
+        if start == -1 or end == 0:
+            return None
+        return json.loads(text[start:end])
+    except Exception:
+        return None
+
+def analizar_tablas_gpt(df_ses: pd.DataFrame, df_con: pd.DataFrame) -> dict | None:
     """
-    Solicita a GPT un mapeo de columnas y clave de unión.
-    Envía solo muestras (primeras filas) para privacidad.
+    Pide a GPT un mapeo de columnas y clave de unión.
+    Devuelve dict con: {"join_key": "...", "fields": {...}, "csv_columns": [...]}
     """
     try:
         muestras_ses = df_ses.head(10).fillna("").to_dict(orient="records")
         muestras_con = df_con.head(10).fillna("").to_dict(orient="records")
 
-        system_msg = "Eres un experto en conciliación contable y análisis tabular."
-        user_msg = f"""
-Analiza estas dos tablas: sesiones (facturas emitidas) y contactos (clientes).
-Devuelve SOLO un JSON con esta estructura exacta (sin texto adicional):
+        prompt = f"""
+Analiza estas dos tablas (muestras):
+
+[Sesiones]
+{muestras_ses}
+
+[Contactos]
+{muestras_con}
+
+Devuelve SOLO JSON con esta forma:
 {{
-  "join_key": "nif|nombre|email",
+  "join_key": "nif | nombre | email",
   "fields": {{
-    "nombre": ["posibles encabezados en ambas tablas"],
+    "nombre": ["posibles encabezados en sesiones o contactos"],
     "nif": ["..."],
-    "email": ["..."],
+    "importe": ["total", "importe base", "..."],
     "fecha": ["fecha", "fecha factura", "..."],
-    "importe": ["importe base", "total", "..."],
+    "concepto": ["concepto", "descripcion", "..."],
     "iva": ["iva", "..."],
     "irpf": ["irpf", "..."],
-    "concepto": ["concepto", "descripcion", "..."],
-    "numero factura": ["numero factura", "num", "factura", "..."]
+    "total": ["total", "..."]
   }},
-  "csv_columns": ["fecha", "numero factura", "nombre", "nif", "concepto", "importe", "iva", "irpf", "empresa", "proyecto", "cuenta contable", "usuario export"]
+  "csv_columns": ["fecha", "nombre", "nif", "concepto", "importe base", "iva", "irpf", "total", "empresa", "proyecto", "cuenta contable", "usuario export"]
 }}
-
-Sesiones:
-{muestras_ses}
-
-Contactos:
-{muestras_con}
+No añadas explicaciones fuera del JSON.
 """
 
         completion = openai.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": system_msg},
-                {"role": "user", "content": user_msg}
+                {"role": "system", "content": "Eres un experto en conciliación contable y análisis tabular."},
+                {"role": "user", "content": prompt}
             ],
-            temperature=0.2
+            temperature=0.2,
         )
-
-        resp = completion.choices[0].message.content
-        json_text = resp[resp.find("{"):resp.rfind("}") + 1]
-        data = json.loads(json_text)
+        raw = completion.choices[0].message.content
+        data = _extract_json(raw)
         return data
     except Exception as e:
-        print("⚠️ Error en analizar_tablas_gpt:", e)
+        print("❌ Error en analizar_tablas_gpt:", e)
         return None
 
-# -----------------------------------------------------------
-# ✏️ MÓDULO GPT: CORRECCIÓN / RELLENO DE DATOS
-# -----------------------------------------------------------
-def detectar_cambios(df_original: pd.DataFrame, df_corregido: pd.DataFrame, prefix: str = "") -> List[str]:
-    """Compara dos DataFrames y retorna lista de diferencias legibles."""
-    cambios = []
-    # Asegurar mismas columnas para comparación básica
-    comunes = [c for c in df_original.columns if c in df_corregido.columns]
-    for col in comunes:
-        orig_col = df_original[col].fillna("")
-        corr_col = df_corregido[col].fillna("")
-        lim = min(len(orig_col), len(corr_col))
-        for i in range(lim):
-            o = str(orig_col.iloc[i]).strip()
-            c = str(corr_col.iloc[i]).strip()
-            if o == "" and c != "":
-                cambios.append(f"🧾 {prefix}Campo '{col}' rellenado con '{c}' (fila {i+1})")
-            elif o != c:
-                cambios.append(f"✏️ {prefix}'{col}' corregido de '{o}' → '{c}' (fila {i+1})")
+def detectar_cambios(df_original: pd.DataFrame, df_corregido: pd.DataFrame, prefix: str = "") -> list[str]:
+    """Compara dos DataFrames y devuelve una lista textual de diferencias."""
+    cambios: list[str] = []
+    # Igualamos columnas si fuera necesario
+    inter_cols = [c for c in df_original.columns if c in df_corregido.columns]
+    ori = df_original[inter_cols].reset_index(drop=True)
+    cor = df_corregido[inter_cols].reset_index(drop=True)
+
+    # Garantizamos mismo length para comparar (hasta el mínimo)
+    length = min(len(ori), len(cor))
+    for i in range(length):
+        for col in inter_cols:
+            o = "" if pd.isna(ori.at[i, col]) else str(ori.at[i, col])
+            c = "" if pd.isna(cor.at[i, col]) else str(cor.at[i, col])
+            if o.strip() != c.strip():
+                # Algunos mensajes bonitos según columna
+                emoji = "✏️"
+                if col in ("fecha", "fecha factura"): emoji = "📅"
+                if col in ("nif", "cif"): emoji = "🧾"
+                if col in ("importe", "total", "importe base", "iva", "irpf"): emoji = "💶"
+                cambios.append(f"{emoji} {prefix}{col}: '{o}' → '{c}' (fila {i+1})")
     return cambios
 
-def corregir_datos_con_gpt(df_ses: pd.DataFrame, df_con: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+def corregir_datos_con_gpt(df_ses: pd.DataFrame, df_con: pd.DataFrame):
     """
-    Envía muestras a GPT para normalizar:
-    - fechas, NIF/CIF, emails
-    - nombres, acentos, espacios
-    - importes numéricos
-    - completado de campos deducibles
-    Devuelve los DataFrames corregidos. Loguea correcciones en progress_log.
+    Envía muestras a GPT para que proponga correcciones/normalizaciones.
+    Devuelve (df_ses_corregido, df_con_corregido) y emite logs de cambios.
     """
     try:
-        # (Opcional) anonimización rápida: comentar si no quieres ocultar nada
-        df_ses_samp = df_ses.head(15).copy()
-        df_con_samp = df_con.head(15).copy()
+        muestras_ses = df_ses.head(15).fillna("").to_dict(orient="records")
+        muestras_con = df_con.head(15).fillna("").to_dict(orient="records")
 
-        muestras_ses = df_ses_samp.fillna("").to_dict(orient="records")
-        muestras_con = df_con_samp.fillna("").to_dict(orient="records")
-
-        system_msg = "Eres un experto en limpieza y conciliación de datos contables."
-        user_msg = f"""
-Corrige y completa datos de facturas (sesiones) y contactos.
-- Normaliza fechas (dd/mm/yyyy), NIF/CIF (mayúsculas, sin espacios), emails (minúsculas).
-- Corrige nombres mal escritos cuando sea obvio.
-- Convierte importes a números (puntos decimales).
-- Si falta un campo y puede deducirse (por NIF o nombre), complétalo.
-Devuelve SOLO un JSON con:
+        prompt = f"""
+Corrige y completa los datos de estas tablas. Reglas:
+- Normaliza fechas a formato dd/mm/yyyy.
+- Normaliza NIF/CIF (quitar espacios/guiones, mayúsculas).
+- Arregla nombres si hay coincidencias evidentes.
+- Convierte importes a número decimal (punto como separador).
+- Rellena valores vacíos cuando se puedan inferir.
+- Mantén los nombres de campos originales cuando sea razonable.
+- Devuelve SOLO JSON con:
 {{
- "sesiones": [registros corregidos de sesiones, con mismas claves que la muestra],
- "contactos": [registros corregidos de contactos, con mismas claves que la muestra],
- "correcciones": ["lista opcional de descripciones de cambios aplicados"]
+  "sesiones": [ {{... filas corregidas ...}} ],
+  "contactos": [ {{... filas corregidas ...}} ],
+  "correcciones": ["texto humano breve por cambio detectado (opcional)"]
 }}
-
-Sesiones:
-{muestras_ses}
-
-Contactos:
-{muestras_con}
+No incluyas explicaciones fuera del JSON.
+Facturas (sesiones): {muestras_ses}
+Contactos: {muestras_con}
 """
+
         completion = openai.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": system_msg},
-                {"role": "user", "content": user_msg}
+                {"role": "system", "content": "Eres un experto en limpieza y conciliación de datos contables."},
+                {"role": "user", "content": prompt}
             ],
-            temperature=0.2
+            temperature=0.2,
         )
-        resp = completion.choices[0].message.content
-        json_text = resp[resp.find("{"):resp.rfind("}") + 1]
-        data = json.loads(json_text)
 
-        df_ses_corr = pd.DataFrame(data.get("sesiones", muestras_ses))
-        df_con_corr = pd.DataFrame(data.get("contactos", muestras_con))
+        raw = completion.choices[0].message.content
+        data = _extract_json(raw)
+        if not data or "sesiones" not in data or "contactos" not in data:
+            log_step("⚠️ GPT no devolvió un JSON válido de correcciones. Se mantienen datos originales.")
+            return df_ses, df_con
 
-        # Detectar cambios (en la muestra) y loguear
-        cambios = detectar_cambios(pd.DataFrame(muestras_ses), df_ses_corr, prefix="Sesión: ")
-        cambios += detectar_cambios(pd.DataFrame(muestras_con), df_con_corr, prefix="Contacto: ")
-        if "correcciones" in data:
+        df_ses_corr = pd.DataFrame(data["sesiones"])
+        df_con_corr = pd.DataFrame(data["contactos"])
+
+        # Emisión de cambios detectados (comparativa local)
+        cambios = detectar_cambios(df_ses, df_ses_corr, prefix="Sesión ")
+        cambios += detectar_cambios(df_con, df_con_corr, prefix="Contacto ")
+
+        # Añadimos correcciones textuales opcionales del propio GPT
+        if "correcciones" in data and isinstance(data["correcciones"], list):
             cambios += [f"🤖 {c}" for c in data["correcciones"]]
 
-        # Limitar para no saturar la UI
-        for c in cambios[:60]:
-            log_step(c)
-        log_step(f"✅ GPT completó {len(cambios)} correcciones automáticas en la muestra.")
+        # Publicamos (limitamos para no saturar)
+        for msg in cambios[:120]:
+            log_step(msg)
 
-        # Mezclar correcciones de la muestra en los DF completos (por índice)
-        # Si prefieres aplicar las correcciones solo como guía, omite esta mezcla.
-        df_ses.update(df_ses_corr)  # aplica por coincidencia de columnas/índices
-        df_con.update(df_con_corr)
-
-        return df_ses, df_con
+        log_step(f"✅ GPT completó {len(cambios)} correcciones/normalizaciones.")
+        return df_ses_corr, df_con_corr
 
     except Exception as e:
-        log_step(f"⚠️ Error al corregir datos con GPT: {e}")
+        log_step(f"⚠️ Error corrigiendo datos con GPT: {e}")
         return df_ses, df_con
 
-# -----------------------------------------------------------
-# 🚀 EXPORTACIÓN REAL: SUBIDA 2 FICHEROS + GPT + CSV
-# -----------------------------------------------------------
+
+# ============================================================
+# 🚀 ENDPOINT PRINCIPAL
+# ============================================================
 @router.post("/start")
 async def start_export(
     formatoImport: str = Form(...),
@@ -276,138 +242,114 @@ async def start_export(
     ficheroSesiones: UploadFile = File(...),
     ficheroContactos: UploadFile = File(...),
 ):
-    global progress_done
+    """
+    Flujo real:
+    1) Lee Excel
+    2) Valida formatos
+    3) Corrige/normaliza con GPT (y emite cambios)
+    4) Analiza mapeo con GPT para renombrar/ligar columnas
+    5) Merge por join_key
+    6) Añade campos extra (empresa, proyecto, cuenta, fecha)
+    7) Genera CSV y actualiza métricas
+    """
+    # reset del stream
     progress_log.clear()
-    progress_done = False
-    log_step("🔄 Iniciando proceso de exportación...")
 
     try:
+        log_step("🔄 Iniciando exportación...")
+        log_step("📥 Leyendo ficheros Excel...")
+
         # 1) Leer ficheros
-        sesiones_bytes = await ficheroSesiones.read()
-        contactos_bytes = await ficheroContactos.read()
-        df_ses = pd.read_excel(io.BytesIO(sesiones_bytes))
-        df_con = pd.read_excel(io.BytesIO(contactos_bytes))
-        log_step("📁 Archivos leídos correctamente.")
+        ses_bytes = await ficheroSesiones.read()
+        con_bytes = await ficheroContactos.read()
+        df_ses = pd.read_excel(io.BytesIO(ses_bytes))
+        df_con = pd.read_excel(io.BytesIO(con_bytes))
+        log_step("✅ Ficheros cargados.")
 
         # 2) Validar formatos
+        log_step("🔎 Validando formato de sesiones...")
         tipo_detectado = detectar_formato_sesiones(df_ses)
         if tipo_detectado == "Desconocido":
-            progress_done = True
-            raise HTTPException(status_code=400, detail="El archivo de sesiones no cumple formatos Eholo/Gestoría.")
+            raise HTTPException(status_code=400, detail="El archivo de sesiones no es Eholo ni Gestoría.")
+        log_step(f"🧩 Sesiones → formato detectado: {tipo_detectado}")
+
+        log_step("🔎 Validando formato de contactos...")
         validar_contactos(df_con)
-        log_step(f"🔎 Formato de sesiones detectado: {tipo_detectado}")
-        log_step("✅ Formato de contactos válido.")
+        log_step("✅ Contactos válidos.")
 
-        # 3) Normalización básica
-        df_ses.columns = [re.sub(r"\s+", " ", c.strip().lower()) for c in df_ses.columns]
-        df_con.columns = [re.sub(r"\s+", " ", c.strip().lower()) for c in df_con.columns]
+        # Normalizar cabeceras frecuentes
+        df_ses = normalizar_columnas(df_ses)
+        df_con = normalizar_columnas(df_con)
 
-        for col in ["nif", "cif"]:
-            if col in df_ses.columns:
-                df_ses[col] = df_ses[col].astype(str).str.upper().str.replace(r"\s+", "", regex=True)
-            if col in df_con.columns:
-                df_con[col] = df_con[col].astype(str).str.upper().str.replace(r"\s+", "", regex=True)
-
-        for col in ["email", "correo"]:
-            if col in df_ses.columns:
-                df_ses[col] = df_ses[col].astype(str).str.strip().str.lower()
-            if col in df_con.columns:
-                df_con[col] = df_con[col].astype(str).str.strip().str.lower()
-
-        if "nombre" in df_ses.columns:
-            df_ses["nombre"] = df_ses["nombre"].astype(str).str.strip().str.lower()
-        if "nombre" in df_con.columns:
-            df_con["nombre"] = df_con["nombre"].astype(str).str.strip().str.lower()
-
-        log_step("🧹 Normalización inicial aplicada.")
-
-        # 4) Corrección/relleno con GPT (muestra) + log de cambios
-        log_step("🧠 Analizando y corrigiendo datos con GPT...")
+        # 3) Corrección / normalización semántica con GPT
+        log_step("🤖 Analizando y corrigiendo datos con GPT...")
         df_ses, df_con = corregir_datos_con_gpt(df_ses, df_con)
-        log_step("✅ Datos corregidos/normalizados por GPT.")
+        log_step("✅ Datos corregidos por GPT (si fue posible).")
 
-        # 5) Análisis de mapeo con GPT (renombrado y join sugerido)
-        log_step("📐 Solicitando a GPT mapeo de columnas y clave de unión...")
+        # 4) Análisis de mapeo con GPT
+        log_step("🧠 Obteniendo mapeo de columnas y clave de unión (GPT)...")
         mapeo = analizar_tablas_gpt(df_ses, df_con)
-        if mapeo:
-            fields = mapeo.get("fields", {})
-            # renombrar según sugerencias
-            for campo, posibles in fields.items():
-                for nombre in posibles:
-                    nl = str(nombre).strip().lower()
-                    if nl in df_ses.columns:
-                        df_ses.rename(columns={nl: campo}, inplace=True)
-                    if nl in df_con.columns:
-                        df_con.rename(columns={nl: campo}, inplace=True)
-            join_key = mapeo.get("join_key", "nif")
-            csv_cols_sugeridas = mapeo.get("csv_columns", [])
-            log_step(f"🧭 GPT sugiere unir por '{join_key}'.")
+        if not mapeo:
+            log_step("⚠️ GPT no devolvió mapeo válido. Intentando unión local por NIF o nombre.")
+            join_key = "nif" if ("nif" in df_ses.columns and "nif" in df_con.columns) else "nombre"
+            fields = {}
+            csv_cols = []
         else:
-            join_key = "nif" if "nif" in df_ses.columns and "nif" in df_con.columns else "nombre"
-            csv_cols_sugeridas = []
-            log_step("⚠️ No se obtuvo mapeo de GPT. Usando unión estándar.")
+            join_key = mapeo.get("join_key", "nif")
+            fields = mapeo.get("fields", {})
+            csv_cols = mapeo.get("csv_columns", [])
+            # Renombrado de columnas según mapeo
+            for campo, posibles in fields.items():
+                if not isinstance(posibles, list): 
+                    continue
+                for cand in posibles:
+                    c = cand.strip().lower()
+                    if c in df_ses.columns and campo not in df_ses.columns:
+                        df_ses.rename(columns={c: campo}, inplace=True)
+                    if c in df_con.columns and campo not in df_con.columns:
+                        df_con.rename(columns={c: campo}, inplace=True)
+            log_step(f"🗂️ Columnas renombradas según GPT. Unión por '{join_key}'.")
 
-        # 6) Unión de datos
+        # Asegurar normalización clave para join
+        if "nif" in df_ses.columns: df_ses["nif"] = df_ses["nif"].astype(str).str.strip().str.upper()
+        if "nif" in df_con.columns: df_con["nif"] = df_con["nif"].astype(str).str.strip().str.upper()
+        if "nombre" in df_ses.columns: df_ses["nombre"] = df_ses["nombre"].astype(str).str.strip().str.lower()
+        if "nombre" in df_con.columns: df_con["nombre"] = df_con["nombre"].astype(str).str.strip().str.lower()
+
+        # 5) Merge
         if join_key not in df_ses.columns or join_key not in df_con.columns:
-            # Fallback si falta join_key
-            join_key = "nif" if "nif" in df_ses.columns and "nif" in df_con.columns else "nombre"
-            log_step(f"♻️ Ajustando clave de unión a '{join_key}' por disponibilidad de columnas.")
+            log_step(f"⚠️ La clave '{join_key}' no existe en ambas tablas. Usando fallback.")
+            join_key = "nif" if ("nif" in df_ses.columns and "nif" in df_con.columns) else "nombre"
 
+        log_step(f"🔗 Conciliando por '{join_key}'...")
         merged = pd.merge(df_ses, df_con, how="left", on=join_key)
-        log_step(f"🔗 Datos conciliados por '{join_key}'.")
+        log_step("✅ Conciliación realizada.")
 
-        # 7) Campos extra del usuario
-        merged["fecha"] = merged.get("fecha", merged.get("fecha factura", ""))
-        merged["fecha"] = merged["fecha"].fillna("")
-        if isinstance(fechaFactura, str) and fechaFactura.strip():
-            # Si el usuario quiere forzar fecha de factura, la aplicamos
-            merged["fecha"] = fechaFactura
-
+        # 6) Campos extra de interfaz
+        merged["fecha factura"] = fechaFactura
         merged["empresa"] = empresa
         merged["proyecto"] = proyecto
         merged["cuenta contable"] = cuenta
         merged["usuario export"] = usuario
-        log_step("🧾 Campos de contexto aplicados (empresa, proyecto, cuenta, fecha, usuario).")
+        log_step("🧾 Campos de contexto aplicados (empresa, proyecto, cuenta, fecha).")
 
-        # 8) Selección de columnas para CSV
-        columnas_objetivo = [
-            "fecha", "numero factura", "nombre", "nif", "concepto",
-            "importe", "iva", "irpf", "empresa", "proyecto", "cuenta contable", "usuario export"
-        ]
-
-        # Compatibilidad con esquemas comunes
-        # Intentar mapear importes si vienen con nombres diferentes
-        if "importe" not in merged.columns:
-            if "importe base" in merged.columns:
-                merged["importe"] = merged["importe base"]
-            elif "total" in merged.columns:
-                merged["importe"] = merged["total"]
-
-        if "numero factura" not in merged.columns:
-            for alt in ["numero", "num", "factura", "nº factura", "n factura", "número factura"]:
-                if alt in merged.columns:
-                    merged.rename(columns={alt: "numero factura"}, inplace=True)
-                    break
-
-        # Si GPT sugirió columnas específicas, las priorizamos
-        if csv_cols_sugeridas:
-            columnas_csv = [c for c in csv_cols_sugeridas if c in merged.columns]
-            # Asegurar que los extras también entren
-            for extra in ["empresa", "proyecto", "cuenta contable", "usuario export"]:
-                if extra not in columnas_csv and extra in merged.columns:
-                    columnas_csv.append(extra)
-        else:
-            columnas_csv = [c for c in columnas_objetivo if c in merged.columns]
-
-        # 9) Generar CSV
+        # 7) CSV
         os.makedirs("./app/exports", exist_ok=True)
         filename = f"export_{empresa.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
         filepath = f"./app/exports/{filename}"
 
+        # columnas finales — si GPT propuso, usar; si no, best-effort
+        columnas_csv = csv_cols or [
+            c for c in [
+                "fecha factura", "numero factura", "nombre", "nif", "concepto",
+                "importe base", "iva", "irpf", "total", "empresa",
+                "proyecto", "cuenta contable", "usuario export"
+            ] if c in merged.columns
+        ]
         merged.to_csv(filepath, index=False, encoding="utf-8-sig", columns=columnas_csv)
         log_step("💾 CSV generado correctamente.")
 
-        # 10) Métricas
+        # 8) Métricas
         data = load_data()
         data["ultimoExport"] = datetime.now().strftime("%d/%m/%Y")
         data["totalExportaciones"] = data.get("totalExportaciones", 0) + 1
@@ -415,7 +357,6 @@ async def start_export(
         log_step("📈 Estadísticas actualizadas.")
         log_step("✅ Exportación finalizada.")
 
-        progress_done = True
         return {
             "message": "Exportación completada correctamente",
             "archivo_generado": filename,
@@ -424,19 +365,19 @@ async def start_export(
         }
 
     except HTTPException:
-        progress_done = True
+        # ya formateado
         raise
     except Exception as e:
         data = load_data()
         data["totalExportacionesFallidas"] = data.get("totalExportacionesFallidas", 0) + 1
         save_data(data)
-        progress_done = True
-        log_step(f"❌ Error: {e}")
+        log_step(f"❌ Error en exportación: {e}")
         raise HTTPException(status_code=400, detail=f"Error procesando exportación: {e}")
 
-# -----------------------------------------------------------
-# 📥 DESCARGAR CSV FINAL
-# -----------------------------------------------------------
+
+# ============================================================
+# 📥 DESCARGA DEL CSV
+# ============================================================
 @router.get("/download/{filename}")
 async def download_csv(filename: str):
     path = f"./app/exports/{filename}"
