@@ -1,36 +1,53 @@
-# --------------------------------------------
-# 🧱 Imagen base
-# --------------------------------------------
+# --------------------------------------------------------
+# 🐍 BASE: Python 3.11 slim
+# --------------------------------------------------------
 FROM python:3.11-slim
 
-# --------------------------------------------
-# ⚙️ Configuración del entorno
-# --------------------------------------------
-WORKDIR /app
+# Evitar prompts interactivos
+ENV DEBIAN_FRONTEND=noninteractive
 
-# Instalar dependencias del sistema (para pandas y Excel)
+# --------------------------------------------------------
+# 📦 ACTUALIZAR Y INSTALAR DEPENDENCIAS DEL SISTEMA
+# --------------------------------------------------------
 RUN apt-get update && apt-get install -y \
     build-essential \
-    libpq-dev \
     python3-dev \
+    libffi-dev \
+    libssl-dev \
+    curl \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Copiar dependencias
-COPY requirements.txt .
+# --------------------------------------------------------
+# 📂 CREAR DIRECTORIO DE TRABAJO
+# --------------------------------------------------------
+WORKDIR /app
 
-# Instalar dependencias de Python
-RUN pip install --no-cache-dir -r requirements.txt
+# --------------------------------------------------------
+# 📜 COPIAR ARCHIVOS DEL PROYECTO
+# --------------------------------------------------------
+COPY . /app
 
-# Copiar el código de la aplicación
-COPY app ./app
+# --------------------------------------------------------
+# ⚙️ INSTALAR DEPENDENCIAS PYTHON
+# --------------------------------------------------------
+RUN pip install --upgrade pip \
+ && pip install fastapi uvicorn pandas openpyxl python-dotenv requests
 
-# Crear carpeta de datos persistentes
-RUN mkdir -p app/data
-
-# Puerto expuesto
+# --------------------------------------------------------
+# 🌍 EXPONER PUERTO
+# --------------------------------------------------------
 EXPOSE 8000
 
-# --------------------------------------------
-# 🚀 Comando de ejecución
-# --------------------------------------------
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# --------------------------------------------------------
+# 🧠 VARIABLES DE ENTORNO (puedes sobreescribirlas en runtime)
+# --------------------------------------------------------
+ENV PYTHONUNBUFFERED=1
+ENV GROQ_API_KEY=""
+ENV APP_ENV=production
+
+# --------------------------------------------------------
+# 🚀 COMANDO DE EJECUCIÓN
+# --------------------------------------------------------
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
