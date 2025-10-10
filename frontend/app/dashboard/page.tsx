@@ -69,6 +69,18 @@ export default function DashboardPage() {
   const fileSesionesRef = useRef<HTMLInputElement>(null);
   const fileContactosRef = useRef<HTMLInputElement>(null);
 
+  // Contraseñas y APIs
+  const [passActual, setPassActual] = useState("");
+  const [passNueva, setPassNueva] = useState("");
+  const [passConfirma, setPassConfirma] = useState("");
+  const [passMsg, setPassMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+  const [passwordGlobal, setPasswordGlobal] = useState(() => sessionStorage.getItem("konyx_password") || "1234");
+
+  const [apiKissoroVigente, setApiKissoroVigente] = useState(() => localStorage.getItem("apiKissoro") || "");
+  const [apiKissoroNuevo, setApiKissoroNuevo] = useState("");
+  const [apiEnPluralVigente, setApiEnPluralVigente] = useState(() => localStorage.getItem("apiEnPlural") || "");
+  const [apiEnPluralNuevo, setApiEnPluralNuevo] = useState("");
+
   // Debug y backend info
   const [ultimoExport, setUltimoExport] = useState("-");
   const [totalExportaciones, setTotalExportaciones] = useState(0);
@@ -282,10 +294,38 @@ export default function DashboardPage() {
           {menu === "about" && <PanelAbout />}
           {menu === "exportar" && <PanelExport onConfirm={onConfirmExport} />}
           {menu === "cerrar" && <PanelCerrar onConfirm={logout} onCancel={() => setMenu("formatoImport")} />}
+
           {menu === "config" && (
             <div className="space-y-6">
-              <PanelConfig /* ...mantiene tu lógica actual */ />
-              <PanelDebug ultimoExport={ultimoExport} totalExportaciones={totalExportaciones} totalExportacionesFallidas={totalExportacionesFallidas} intentosLoginFallidos={intentosLoginFallidos} />
+              <PanelConfig
+                passActual={passActual}
+                passNueva={passNueva}
+                passConfirma={passConfirma}
+                setPassActual={setPassActual}
+                setPassNueva={setPassNueva}
+                setPassConfirma={setPassConfirma}
+                passMsg={passMsg}
+                setPassMsg={setPassMsg}
+                passwordGlobal={passwordGlobal}
+                setPasswordGlobal={setPasswordGlobal}
+                apiKissoroVigente={apiKissoroVigente}
+                apiKissoroNuevo={apiKissoroNuevo}
+                setApiKissoroNuevo={setApiKissoroNuevo}
+                apiKissoroMsg={null}
+                setApiKissoroVigente={setApiKissoroVigente}
+                apiEnPluralVigente={apiEnPluralVigente}
+                apiEnPluralNuevo={apiEnPluralNuevo}
+                setApiEnPluralNuevo={setApiEnPluralNuevo}
+                apiEnPluralMsg={null}
+                setApiEnPluralVigente={setApiEnPluralVigente}
+              />
+
+              <PanelDebug
+                ultimoExport={ultimoExport}
+                totalExportaciones={totalExportaciones}
+                totalExportacionesFallidas={totalExportacionesFallidas}
+                intentosLoginFallidos={intentosLoginFallidos}
+              />
             </div>
           )}
         </section>
@@ -305,7 +345,10 @@ export default function DashboardPage() {
 
             {/* Barra de progreso */}
             <div className="w-full bg-gray-200 rounded-full h-2 mb-3">
-              <div className="bg-indigo-600 h-2 rounded-full transition-all" style={{ width: `${exportStatus.progress}%` }}></div>
+              <div
+                className="bg-indigo-600 h-2 rounded-full transition-all"
+                style={{ width: `${exportStatus.progress}%` }}
+              ></div>
             </div>
 
             {exportStatus.finished && !exportStatus.error ? (
