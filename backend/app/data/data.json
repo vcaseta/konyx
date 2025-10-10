@@ -4,6 +4,6 @@
   "apiEnPlural": "",
   "ultimoExport": "-",
   "totalExportaciones": 0,
-  "totalExportacionesFallidas": 0,
-  "intentosLoginFallidos": 0
+  "exportacionesFallidas": 0,
+  "loginFallidos": 0
 }
