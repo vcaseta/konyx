@@ -1,7 +1,5 @@
-# app/routers/auth.py
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from datetime import datetime
 from app.core.persistence import load_data, save_data
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -13,15 +11,12 @@ class LoginRequest(BaseModel):
     username: str
     password: str
 
-
 class PasswordUpdate(BaseModel):
     password: str
-
 
 class ApiUpdate(BaseModel):
     apiKissoro: str | None = None
     apiEnPlural: str | None = None
-
 
 # -----------------------------
 # 🔑 LOGIN
@@ -29,14 +24,12 @@ class ApiUpdate(BaseModel):
 @router.post("/login")
 def login(req: LoginRequest):
     data = load_data()
-
     if req.password != data.get("password"):
         data["intentosLoginFallidos"] = data.get("intentosLoginFallidos", 0) + 1
         save_data(data)
         raise HTTPException(status_code=401, detail="Usuario o contraseña incorrectos")
 
     return {"token": "konyx_token_demo"}
-
 
 # -----------------------------
 # 📡 STATUS
@@ -54,7 +47,6 @@ def status():
         "intentosLoginFallidos": data.get("intentosLoginFallidos", 0),
     }
 
-
 # -----------------------------
 # 🧩 ACTUALIZAR CONTRASEÑA
 # -----------------------------
@@ -64,7 +56,6 @@ def update_password(req: PasswordUpdate):
     data["password"] = req.password
     save_data(data)
     return {"message": "Contraseña actualizada correctamente", "password": req.password}
-
 
 # -----------------------------
 # 🌐 ACTUALIZAR APIS
