@@ -7,7 +7,6 @@ import { useAuth } from "../context/authContext";
 import PanelOption from "../../components/PanelOption";
 import { PanelDate } from "../../components/PanelDate";
 import { PanelFile } from "../../components/PanelFile";
-import { PanelConfig } from "../../components/PanelConfig";
 import { PanelExport } from "../../components/PanelExport";
 import { PanelCerrar } from "../../components/PanelCerrar";
 import { PanelDebug } from "../../components/PanelDebug";
@@ -33,7 +32,7 @@ type MenuKey =
   | "cuenta"
   | "ficheroSesiones"
   | "ficheroContactos"
-  | "config"
+  | "debug"
   | "about"
   | "exportar"
   | "cerrar";
@@ -48,6 +47,9 @@ export default function DashboardPage() {
   }, [token, loading, router]);
   if (loading || !token) return null;
 
+  // -----------------------
+  // Estados principales
+  // -----------------------
   const [menu, setMenu] = useState<MenuKey>("formatoImport");
   const [formatoImport, setFormatoImport] = useState<typeof FORMATO_IMPORT_OPTS[number] | null>(null);
   const [formatoExport, setFormatoExport] = useState<typeof FORMATO_EXPORT_OPTS[number] | null>(null);
@@ -56,6 +58,7 @@ export default function DashboardPage() {
   const [proyecto, setProyecto] = useState<typeof PROYECTOS[number] | null>(null);
   const [cuenta, setCuenta] = useState<typeof CUENTAS[number] | null>(null);
   const [cuentaOtra, setCuentaOtra] = useState("");
+
   const [ficheroSesiones, setFicheroSesiones] = useState("");
   const [ficheroContactos, setFicheroContactos] = useState("");
   const fileSesionesRef = useRef<HTMLInputElement>(null);
@@ -75,22 +78,25 @@ export default function DashboardPage() {
   } | null>(null);
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchStats = async () => {
       try {
         const res = await fetch(`${BACKEND}/auth/status`);
-        if (!res.ok) throw new Error("Error al sincronizar datos");
+        if (!res.ok) throw new Error("Error al sincronizar estado");
         const data = await res.json();
-        setUltimoExport(data.ultimoExport || "-");
-        setTotalExportaciones(data.totalExportaciones || 0);
-        setTotalExportacionesFallidas(data.totalExportacionesFallidas || 0);
-        setIntentosLoginFallidos(data.intentosLoginFallidos || 0);
+        setUltimoExport(data.ultimoExport);
+        setTotalExportaciones(data.totalExportaciones);
+        setTotalExportacionesFallidas(data.totalExportacionesFallidas);
+        setIntentosLoginFallidos(data.intentosLoginFallidos);
       } catch (e) {
         console.error(e);
       }
     };
-    fetchData();
+    fetchStats();
   }, []);
 
+  // -----------------------
+  // Condiciones de exportar
+  // -----------------------
   const cuentaOk = cuenta === "Otra (introducir)" ? cuentaOtra.trim().length > 0 : !!cuenta;
   const exportReady =
     !!formatoImport &&
@@ -102,6 +108,9 @@ export default function DashboardPage() {
     !!ficheroSesiones &&
     !!ficheroContactos;
 
+  // -----------------------
+  // Manejo de ficheros
+  // -----------------------
   const onPickSesionesClick = () => fileSesionesRef.current?.click();
   const onPickContactosClick = () => fileContactosRef.current?.click();
   const onPickSesiones = (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -109,11 +118,12 @@ export default function DashboardPage() {
   const onPickContactos = (e: React.ChangeEvent<HTMLInputElement>) =>
     setFicheroContactos(e.target.files?.[0]?.name || "");
 
-  // 🚀 EXPORTAR
+  // -----------------------
+  // Exportar
+  // -----------------------
   const onConfirmExport = async (ok: boolean) => {
     if (!ok) return setMenu("formatoImport");
-
-    setExportStatus({ visible: true, logs: ["Iniciando exportación..."] });
+    setExportStatus({ visible: true, logs: ["🔄 Iniciando exportación..."] });
 
     try {
       const formData = new FormData();
@@ -127,18 +137,27 @@ export default function DashboardPage() {
 
       const fileSes = fileSesionesRef.current?.files?.[0];
       const fileCon = fileContactosRef.current?.files?.[0];
-      if (!fileSes || !fileCon) throw new Error("Debes seleccionar los dos ficheros");
+      if (!fileSes || !fileCon) throw new Error("Debes seleccionar ambos ficheros");
 
       formData.append("ficheroSesiones", fileSes);
       formData.append("ficheroContactos", fileCon);
 
-      const res = await fetch(`${BACKEND}/export/start`, { method: "POST", body: formData });
-      if (!res.ok) throw new Error(await res.text());
-      const data = await res.json();
+      const res = await fetch(`${BACKEND}/export/start`, {
+        method: "POST",
+        body: formData,
+      });
 
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(errText);
+      }
+
+      const data = await res.json();
       const csvUrl = `${BACKEND}/export/download/${data.archivo_generado}`;
 
-      // 🔄 Escuchar progreso
+      // -------------------
+      // Escuchar progreso SSE
+      // -------------------
       const eventSource = new EventSource(`${BACKEND}/export/progress`);
       eventSource.onmessage = (event) => {
         const msg = JSON.parse(event.data);
@@ -148,23 +167,37 @@ export default function DashboardPage() {
       };
       eventSource.addEventListener("end", () => {
         eventSource.close();
-        setExportStatus((prev) => prev && { ...prev, finished: true, downloadUrl: csvUrl });
+        setExportStatus((prev) =>
+          prev && { ...prev, finished: true, downloadUrl: csvUrl }
+        );
       });
 
+      // Actualizar métricas locales
       setUltimoExport(data.ultimoExport);
       setTotalExportaciones(data.totalExportaciones);
     } catch (err: any) {
-      setExportStatus({ visible: true, logs: ["❌ Error"], error: err.message });
+      console.error(err);
+      setExportStatus({
+        visible: true,
+        logs: ["❌ Error en la exportación"],
+        error: err.message,
+      });
     } finally {
       setMenu("formatoImport");
     }
   };
 
+  // -----------------------
+  // Logout
+  // -----------------------
   const logout = () => {
     sessionStorage.removeItem("konyx_token");
     router.replace("/");
   };
 
+  // -----------------------
+  // Render principal
+  // -----------------------
   return (
     <main
       className="min-h-screen bg-no-repeat bg-center bg-cover p-4"
@@ -187,7 +220,7 @@ export default function DashboardPage() {
                 "cuenta",
                 "ficheroSesiones",
                 "ficheroContactos",
-                "config",
+                "debug",
                 "about",
                 "cerrar",
               ].map((mk) => (
@@ -221,14 +254,30 @@ export default function DashboardPage() {
         {/* Contenido */}
         <section className="flex flex-col space-y-6">
           {menu === "formatoImport" && (
-            <PanelOption title="Formato Importación" options={FORMATO_IMPORT_OPTS} value={formatoImport} onChange={setFormatoImport} />
+            <PanelOption
+              title="Formato Importación"
+              options={FORMATO_IMPORT_OPTS}
+              value={formatoImport}
+              onChange={setFormatoImport}
+            />
           )}
           {menu === "formatoExport" && (
-            <PanelOption title="Formato Exportación" options={FORMATO_EXPORT_OPTS} value={formatoExport} onChange={setFormatoExport} />
+            <PanelOption
+              title="Formato Exportación"
+              options={FORMATO_EXPORT_OPTS}
+              value={formatoExport}
+              onChange={setFormatoExport}
+            />
           )}
-          {menu === "empresa" && <PanelOption title="Empresa" options={EMPRESAS} value={empresa} onChange={setEmpresa} />}
-          {menu === "fecha" && <PanelDate title="Fecha factura" value={fechaFactura} onChange={setFechaFactura} />}
-          {menu === "proyecto" && <PanelOption title="Proyecto" options={PROYECTOS} value={proyecto} onChange={setProyecto} />}
+          {menu === "empresa" && (
+            <PanelOption title="Empresa" options={EMPRESAS} value={empresa} onChange={setEmpresa} />
+          )}
+          {menu === "fecha" && (
+            <PanelDate title="Fecha factura" value={fechaFactura} onChange={setFechaFactura} />
+          )}
+          {menu === "proyecto" && (
+            <PanelOption title="Proyecto" options={PROYECTOS} value={proyecto} onChange={setProyecto} />
+          )}
           {menu === "cuenta" && (
             <PanelOption title="Cuenta contable" options={CUENTAS} value={cuenta} onChange={setCuenta}>
               {cuenta === "Otra (introducir)" && (
@@ -243,12 +292,22 @@ export default function DashboardPage() {
             </PanelOption>
           )}
           {menu === "ficheroSesiones" && (
-            <PanelFile value={ficheroSesiones} onPickFileClick={onPickSesionesClick} onPickFile={onPickSesiones} fileInputRef={fileSesionesRef} />
+            <PanelFile
+              value={ficheroSesiones}
+              onPickFileClick={onPickSesionesClick}
+              onPickFile={onPickSesiones}
+              fileInputRef={fileSesionesRef}
+            />
           )}
           {menu === "ficheroContactos" && (
-            <PanelFile value={ficheroContactos} onPickFileClick={onPickContactosClick} onPickFile={onPickContactos} fileInputRef={fileContactosRef} />
+            <PanelFile
+              value={ficheroContactos}
+              onPickFileClick={onPickContactosClick}
+              onPickFile={onPickContactos}
+              fileInputRef={fileContactosRef}
+            />
           )}
-          {menu === "config" && (
+          {menu === "debug" && (
             <PanelDebug
               ultimoExport={ultimoExport}
               totalExportaciones={totalExportaciones}
@@ -262,7 +321,9 @@ export default function DashboardPage() {
         </section>
       </div>
 
-      {/* 🪄 Modal progreso */}
+      {/* ---------------------- */}
+      {/* 🪄 MODAL DE PROGRESO */}
+      {/* ---------------------- */}
       {exportStatus?.visible && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl shadow-xl p-6 w-[90%] max-w-md text-center">
@@ -274,6 +335,7 @@ export default function DashboardPage() {
                 : "⚙️ Procesando exportación..."}
             </h3>
 
+            {/* Logs */}
             <div className="bg-gray-100 rounded-lg p-3 text-left max-h-60 overflow-y-auto mb-4">
               {exportStatus.logs.map((log, i) => (
                 <div key={i} className="text-sm text-gray-700 mb-1">
@@ -282,6 +344,7 @@ export default function DashboardPage() {
               ))}
             </div>
 
+            {/* Spinner y barra */}
             {!exportStatus.finished && !exportStatus.error && (
               <div className="flex flex-col items-center space-y-3 mb-4">
                 <div className="w-10 h-10 border-4 border-indigo-300 border-t-indigo-600 rounded-full animate-spin" />
@@ -297,6 +360,20 @@ export default function DashboardPage() {
               </div>
             )}
 
+            {/* Error */}
+            {exportStatus.error && (
+              <>
+                <div className="text-red-600 font-semibold mb-3">{exportStatus.error}</div>
+                <button
+                  onClick={() => setExportStatus(null)}
+                  className="bg-gray-400 text-white px-4 py-2 rounded-lg hover:bg-gray-500"
+                >
+                  Cerrar
+                </button>
+              </>
+            )}
+
+            {/* Finalizado */}
             {exportStatus.finished && exportStatus.downloadUrl && (
               <div className="flex flex-col space-y-3">
                 <a
