@@ -3,5 +3,6 @@
   "apiKissoro": "",
   "apiEnPlural": "",
   "ultimoExport": "-",
-  "totalExportaciones": 0
+  "totalExportaciones": 0,
+  "totalExportacionesFallidas": 0   
 }
