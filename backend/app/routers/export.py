@@ -15,16 +15,11 @@ class ExportRequest(BaseModel):
     ficheroNombre: str
     usuario: str
 
-
-@router.post("/")
+@router.post("")
 def registrar_export(req: ExportRequest):
     data = load_data()
-    try:
-        # Validación básica de los campos
-        if not all([req.formatoImport, req.formatoExport, req.empresa, req.ficheroNombre]):
-            raise ValueError("Datos de exportación incompletos")
 
-        # Simulación de procesamiento correcto
+    try:
         nueva = {
             "fecha": datetime.now().strftime("%d-%m-%Y %H:%M:%S"),
             "formatoImport": req.formatoImport,
@@ -34,25 +29,24 @@ def registrar_export(req: ExportRequest):
             "proyecto": req.proyecto,
             "cuenta": req.cuenta,
             "ficheroNombre": req.ficheroNombre,
-            "usuario": req.usuario,
+            "usuario": req.usuario
         }
 
+        # Actualiza datos persistentes
         data["ultimoExport"] = datetime.now().strftime("%d/%m/%Y")
         data["totalExportaciones"] = data.get("totalExportaciones", 0) + 1
         save_data(data)
 
-        print("🧾 Nueva exportación correcta:", nueva)
+        print("🧾 Nueva exportación:", nueva)
         return {
             "message": "Exportación registrada correctamente",
             "export": nueva,
             "ultimoExport": data["ultimoExport"],
-            "totalExportaciones": data["totalExportaciones"],
-            "exportacionesFallidas": data["exportacionesFallidas"],
+            "totalExportaciones": data["totalExportaciones"]
         }
 
     except Exception as e:
-        print("❌ Error en exportación:", e)
-        data["exportacionesFallidas"] = data.get("exportacionesFallidas", 0) + 1
+        data["totalExportacionesFallidas"] = data.get("totalExportacionesFallidas", 0) + 1
         save_data(data)
-        raise HTTPException(status_code=400, detail=f"Error al procesar exportación: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Error registrando exportación: {e}")
 
