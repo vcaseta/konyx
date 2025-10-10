@@ -13,13 +13,15 @@ def login(req: LoginRequest):
 
 @router.get("/status")
 def status():
+    """Devuelve el estado completo sincronizable con el frontend."""
     data = load_data()
     return {
         "password": data.get("password", "admin123"),
         "apiKissoro": data.get("apiKissoro", ""),
         "apiEnPlural": data.get("apiEnPlural", ""),
         "ultimoExport": data.get("ultimoExport", "-"),
-        "totalExportaciones": data.get("totalExportaciones", 0)
+        "totalExportaciones": data.get("totalExportaciones", 0),
+        "totalExportacionesFallidas": data.get("totalExportacionesFallidas", 0)  # ✅ Nuevo campo expuesto
     }
 
 @router.post("/update_password")
