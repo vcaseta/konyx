@@ -83,10 +83,10 @@ export default function DashboardPage() {
         const res = await fetch(`${BACKEND}/auth/status`);
         if (!res.ok) throw new Error("Error al sincronizar estado");
         const data = await res.json();
-        setUltimoExport(data.ultimoExport);
-        setTotalExportaciones(data.totalExportaciones);
-        setTotalExportacionesFallidas(data.totalExportacionesFallidas);
-        setIntentosLoginFallidos(data.intentosLoginFallidos);
+        setUltimoExport(data.ultimoExport || "-");
+        setTotalExportaciones(data.totalExportaciones || 0);
+        setTotalExportacionesFallidas(data.totalExportacionesFallidas || 0);
+        setIntentosLoginFallidos(data.intentosLoginFallidos || 0);
       } catch (e) {
         console.error(e);
       }
@@ -109,7 +109,7 @@ export default function DashboardPage() {
     !!ficheroContactos;
 
   // -----------------------
-  // Manejo de ficheros
+  // Ficheros
   // -----------------------
   const onPickSesionesClick = () => fileSesionesRef.current?.click();
   const onPickContactosClick = () => fileContactosRef.current?.click();
@@ -142,37 +142,27 @@ export default function DashboardPage() {
       formData.append("ficheroSesiones", fileSes);
       formData.append("ficheroContactos", fileCon);
 
+      // Disparo el proceso en el backend
       const res = await fetch(`${BACKEND}/export/start`, {
         method: "POST",
         body: formData,
       });
-
-      if (!res.ok) {
-        const errText = await res.text();
-        throw new Error(errText);
-      }
-
+      if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
       const csvUrl = `${BACKEND}/export/download/${data.archivo_generado}`;
 
-      // -------------------
-      // Escuchar progreso SSE
-      // -------------------
-      const eventSource = new EventSource(`${BACKEND}/export/progress`);
-      eventSource.onmessage = (event) => {
+      // Conectar SSE (progreso + correcciones GPT)
+      const es = new EventSource(`${BACKEND}/export/progress`);
+      es.onmessage = (event) => {
         const msg = JSON.parse(event.data);
-        setExportStatus((prev) =>
-          prev ? { ...prev, logs: [...prev.logs, msg.step] } : prev
-        );
+        setExportStatus((prev) => (prev ? { ...prev, logs: [...prev.logs, msg.step] } : prev));
       };
-      eventSource.addEventListener("end", () => {
-        eventSource.close();
-        setExportStatus((prev) =>
-          prev && { ...prev, finished: true, downloadUrl: csvUrl }
-        );
+      es.addEventListener("end", () => {
+        es.close();
+        setExportStatus((prev) => prev && { ...prev, finished: true, downloadUrl: csvUrl });
       });
 
-      // Actualizar métricas locales
+      // Actualizo métricas del panel
       setUltimoExport(data.ultimoExport);
       setTotalExportaciones(data.totalExportaciones);
     } catch (err: any) {
@@ -180,7 +170,7 @@ export default function DashboardPage() {
       setExportStatus({
         visible: true,
         logs: ["❌ Error en la exportación"],
-        error: err.message,
+        error: err.message || "Error desconocido",
       });
     } finally {
       setMenu("formatoImport");
@@ -196,7 +186,7 @@ export default function DashboardPage() {
   };
 
   // -----------------------
-  // Render principal
+  // Render
   // -----------------------
   return (
     <main
@@ -335,7 +325,7 @@ export default function DashboardPage() {
                 : "⚙️ Procesando exportación..."}
             </h3>
 
-            {/* Logs */}
+            {/* Logs (incluye cambios de GPT) */}
             <div className="bg-gray-100 rounded-lg p-3 text-left max-h-60 overflow-y-auto mb-4">
               {exportStatus.logs.map((log, i) => (
                 <div key={i} className="text-sm text-gray-700 mb-1">
@@ -351,7 +341,7 @@ export default function DashboardPage() {
                 <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
                   <div
                     className="bg-indigo-600 h-2 transition-all duration-500"
-                    style={{ width: `${Math.min(exportStatus.logs.length * 15, 100)}%` }}
+                    style={{ width: `${Math.min(exportStatus.logs.length * 10 + 10, 100)}%` }}
                   />
                 </div>
                 <div className="text-indigo-600 font-semibold animate-pulse">
