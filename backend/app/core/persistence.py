@@ -11,7 +11,8 @@ def load_data():
             "apiEnPlural": "",
             "ultimoExport": "-",
             "totalExportaciones": 0,
-            "totalExportacionesFallidas": 0,  # ✅ Nuevo campo persistente
+            "totalExportacionesFallidas": 0,
+            "intentosLoginFallidos": 0,  # ✅ Nuevo campo
         }
         save_data(default_data)
         return default_data
