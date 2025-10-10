@@ -7,6 +7,7 @@ import { useAuth } from "../context/authContext";
 import PanelOption from "../../components/PanelOption";
 import { PanelDate } from "../../components/PanelDate";
 import { PanelFile } from "../../components/PanelFile";
+import { PanelConfig } from "../../components/PanelConfig";
 import { PanelExport } from "../../components/PanelExport";
 import { PanelCerrar } from "../../components/PanelCerrar";
 import { PanelDebug } from "../../components/PanelDebug";
@@ -30,26 +31,25 @@ type MenuKey =
   | "fecha"
   | "proyecto"
   | "cuenta"
-  | "ficheroSesiones"
-  | "ficheroContactos"
-  | "debug"
+  | "ficheros"
+  | "config"
   | "about"
   | "exportar"
   | "cerrar";
 
-const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || "http://192.168.1.51:8000";
-
 export default function DashboardPage() {
   const { token, loading } = useAuth();
   const router = useRouter();
+
   useEffect(() => {
     if (!loading && !token) router.replace("/");
   }, [token, loading, router]);
+
   if (loading || !token) return null;
 
-  // -----------------------
-  // Estados principales
-  // -----------------------
+  // ---------------------------
+  // ESTADOS PRINCIPALES
+  // ---------------------------
   const [menu, setMenu] = useState<MenuKey>("formatoImport");
   const [formatoImport, setFormatoImport] = useState<typeof FORMATO_IMPORT_OPTS[number] | null>(null);
   const [formatoExport, setFormatoExport] = useState<typeof FORMATO_EXPORT_OPTS[number] | null>(null);
@@ -59,44 +59,18 @@ export default function DashboardPage() {
   const [cuenta, setCuenta] = useState<typeof CUENTAS[number] | null>(null);
   const [cuentaOtra, setCuentaOtra] = useState("");
 
-  const [ficheroSesiones, setFicheroSesiones] = useState("");
-  const [ficheroContactos, setFicheroContactos] = useState("");
+  // Subida de archivos
   const fileSesionesRef = useRef<HTMLInputElement>(null);
   const fileContactosRef = useRef<HTMLInputElement>(null);
+  const [fileSesionesName, setFileSesionesName] = useState("");
+  const [fileContactosName, setFileContactosName] = useState("");
 
-  const [ultimoExport, setUltimoExport] = useState("-");
-  const [totalExportaciones, setTotalExportaciones] = useState(0);
-  const [totalExportacionesFallidas, setTotalExportacionesFallidas] = useState(0);
-  const [intentosLoginFallidos, setIntentosLoginFallidos] = useState(0);
+  // Exportación y progreso
+  const [exporting, setExporting] = useState(false);
+  const [progress, setProgress] = useState<string[]>([]);
+  const [exportDone, setExportDone] = useState(false);
+  const [archivoGenerado, setArchivoGenerado] = useState<string | null>(null);
 
-  const [exportStatus, setExportStatus] = useState<{
-    visible: boolean;
-    logs: string[];
-    finished?: boolean;
-    error?: string;
-    downloadUrl?: string;
-  } | null>(null);
-
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const res = await fetch(`${BACKEND}/auth/status`);
-        if (!res.ok) throw new Error("Error al sincronizar estado");
-        const data = await res.json();
-        setUltimoExport(data.ultimoExport || "-");
-        setTotalExportaciones(data.totalExportaciones || 0);
-        setTotalExportacionesFallidas(data.totalExportacionesFallidas || 0);
-        setIntentosLoginFallidos(data.intentosLoginFallidos || 0);
-      } catch (e) {
-        console.error(e);
-      }
-    };
-    fetchStats();
-  }, []);
-
-  // -----------------------
-  // Condiciones de exportar
-  // -----------------------
   const cuentaOk = cuenta === "Otra (introducir)" ? cuentaOtra.trim().length > 0 : !!cuenta;
   const exportReady =
     !!formatoImport &&
@@ -105,89 +79,81 @@ export default function DashboardPage() {
     !!fechaFactura &&
     !!proyecto &&
     cuentaOk &&
-    !!ficheroSesiones &&
-    !!ficheroContactos;
+    !!fileSesionesName &&
+    !!fileContactosName;
 
-  // -----------------------
-  // Ficheros
-  // -----------------------
-  const onPickSesionesClick = () => fileSesionesRef.current?.click();
-  const onPickContactosClick = () => fileContactosRef.current?.click();
-  const onPickSesiones = (e: React.ChangeEvent<HTMLInputElement>) =>
-    setFicheroSesiones(e.target.files?.[0]?.name || "");
-  const onPickContactos = (e: React.ChangeEvent<HTMLInputElement>) =>
-    setFicheroContactos(e.target.files?.[0]?.name || "");
+  // ---------------------------
+  // FUNCIONES DE FICHEROS
+  // ---------------------------
+  const pickSesiones = () => fileSesionesRef.current?.click();
+  const pickContactos = () => fileContactosRef.current?.click();
 
-  // -----------------------
-  // Exportar
-  // -----------------------
+  const onSesionesPicked = (e: React.ChangeEvent<HTMLInputElement>) =>
+    setFileSesionesName(e.target.files?.[0]?.name || "");
+  const onContactosPicked = (e: React.ChangeEvent<HTMLInputElement>) =>
+    setFileContactosName(e.target.files?.[0]?.name || "");
+
+  // ---------------------------
+  // 🚀 EXPORTAR DATOS
+  // ---------------------------
   const onConfirmExport = async (ok: boolean) => {
-    if (!ok) return setMenu("formatoImport");
-    setExportStatus({ visible: true, logs: ["🔄 Iniciando exportación..."] });
+    if (!ok) {
+      setMenu("formatoImport");
+      return;
+    }
+
+    setExporting(true);
+    setProgress([]);
+    setExportDone(false);
+    setArchivoGenerado(null);
 
     try {
+      const fileSesiones = fileSesionesRef.current?.files?.[0];
+      const fileContactos = fileContactosRef.current?.files?.[0];
+      if (!fileSesiones || !fileContactos) throw new Error("Faltan archivos para exportar.");
+
+      // Construir FormData
       const formData = new FormData();
-      formData.append("formatoImport", formatoImport!);
-      formData.append("formatoExport", formatoExport!);
-      formData.append("empresa", empresa!);
+      formData.append("formatoImport", formatoImport || "");
+      formData.append("formatoExport", formatoExport || "");
+      formData.append("empresa", empresa || "");
       formData.append("fechaFactura", fechaFactura);
-      formData.append("proyecto", proyecto!);
-      formData.append("cuenta", cuenta === "Otra (introducir)" ? cuentaOtra : cuenta!);
+      formData.append("proyecto", proyecto || "");
+      formData.append("cuenta", cuenta === "Otra (introducir)" ? cuentaOtra : cuenta || "");
       formData.append("usuario", sessionStorage.getItem("konyx_user") || "desconocido");
+      formData.append("ficheroSesiones", fileSesiones);
+      formData.append("ficheroContactos", fileContactos);
 
-      const fileSes = fileSesionesRef.current?.files?.[0];
-      const fileCon = fileContactosRef.current?.files?.[0];
-      if (!fileSes || !fileCon) throw new Error("Debes seleccionar ambos ficheros");
-
-      formData.append("ficheroSesiones", fileSes);
-      formData.append("ficheroContactos", fileCon);
-
-      // Disparo el proceso en el backend
-      const res = await fetch(`${BACKEND}/export/start`, {
+      // Iniciar el proceso de exportación
+      const res = await fetch("http://192.168.1.51:8000/export/start", {
         method: "POST",
         body: formData,
       });
-      if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) throw new Error("Error iniciando exportación");
       const data = await res.json();
-      const csvUrl = `${BACKEND}/export/download/${data.archivo_generado}`;
+      setArchivoGenerado(data.archivo_generado);
 
-      // Conectar SSE (progreso + correcciones GPT)
-      const es = new EventSource(`${BACKEND}/export/progress`);
-      es.onmessage = (event) => {
-        const msg = JSON.parse(event.data);
-        setExportStatus((prev) => (prev ? { ...prev, logs: [...prev.logs, msg.step] } : prev));
+      // 🔄 Escuchar el progreso en tiempo real (SSE)
+      const evtSource = new EventSource("http://192.168.1.51:8000/export/progress");
+      evtSource.onmessage = (event) => {
+        const parsed = JSON.parse(event.data);
+        if (parsed.step) setProgress((prev) => [...prev, parsed.step]);
       };
-      es.addEventListener("end", () => {
-        es.close();
-        setExportStatus((prev) => prev && { ...prev, finished: true, downloadUrl: csvUrl });
+      evtSource.addEventListener("end", () => {
+        evtSource.close();
+        setExportDone(true);
+        setExporting(false);
       });
-
-      // Actualizo métricas del panel
-      setUltimoExport(data.ultimoExport);
-      setTotalExportaciones(data.totalExportaciones);
-    } catch (err: any) {
-      console.error(err);
-      setExportStatus({
-        visible: true,
-        logs: ["❌ Error en la exportación"],
-        error: err.message || "Error desconocido",
-      });
-    } finally {
-      setMenu("formatoImport");
+    } catch (err) {
+      console.error("❌ Error en exportación:", err);
+      alert("Error al iniciar exportación.");
+      setExporting(false);
     }
   };
 
-  // -----------------------
-  // Logout
-  // -----------------------
-  const logout = () => {
-    sessionStorage.removeItem("konyx_token");
-    router.replace("/");
-  };
-
-  // -----------------------
-  // Render
-  // -----------------------
+  // ---------------------------
+  // RENDER
+  // ---------------------------
   return (
     <main
       className="min-h-screen bg-no-repeat bg-center bg-cover p-4"
@@ -208,30 +174,44 @@ export default function DashboardPage() {
                 "fecha",
                 "proyecto",
                 "cuenta",
-                "ficheroSesiones",
-                "ficheroContactos",
-                "debug",
+                "ficheros",
+                "config",
                 "about",
                 "cerrar",
               ].map((mk) => (
                 <Item
                   key={mk}
-                  active={menu === (mk as MenuKey)}
+                  active={menu === mk}
                   onClick={() => setMenu(mk as MenuKey)}
                   className="hover:bg-indigo-200 hover:text-indigo-800 transition"
                 >
-                  {mk === "ficheroSesiones"
-                    ? "Fichero sesiones"
-                    : mk === "ficheroContactos"
-                    ? "Fichero contactos"
-                    : mk.charAt(0).toUpperCase() + mk.slice(1)}
+                  {mk === "formatoImport"
+                    ? "Formato Importación"
+                    : mk === "formatoExport"
+                    ? "Formato Exportación"
+                    : mk === "empresa"
+                    ? "Empresa"
+                    : mk === "fecha"
+                    ? "Fecha Factura"
+                    : mk === "proyecto"
+                    ? "Proyecto"
+                    : mk === "cuenta"
+                    ? "Cuenta Contable"
+                    : mk === "ficheros"
+                    ? "Ficheros de Datos"
+                    : mk === "config"
+                    ? "Configuración"
+                    : mk === "about"
+                    ? "Acerca de"
+                    : "Cerrar Sesión"}
                 </Item>
               ))}
+
               <button
                 className={`w-full text-left px-3 py-2 rounded-lg font-semibold border transition ${
                   exportReady
                     ? "border-indigo-600 text-indigo-700 bg-white/90 shadow hover:bg-indigo-200 hover:text-indigo-800"
-                    : "border-gray-300 text-gray-200 cursor-not-allowed"
+                    : "border-gray-300 text-gray-300 cursor-not-allowed"
                 }`}
                 onClick={() => exportReady && setMenu("exportar")}
               >
@@ -241,149 +221,75 @@ export default function DashboardPage() {
           </div>
         </aside>
 
-        {/* Contenido */}
+        {/* Panel de contenido */}
         <section className="flex flex-col space-y-6">
           {menu === "formatoImport" && (
-            <PanelOption
-              title="Formato Importación"
-              options={FORMATO_IMPORT_OPTS}
-              value={formatoImport}
-              onChange={setFormatoImport}
-            />
+            <PanelOption title="Formato Importación" options={FORMATO_IMPORT_OPTS} value={formatoImport} onChange={setFormatoImport} />
           )}
           {menu === "formatoExport" && (
-            <PanelOption
-              title="Formato Exportación"
-              options={FORMATO_EXPORT_OPTS}
-              value={formatoExport}
-              onChange={setFormatoExport}
-            />
+            <PanelOption title="Formato Exportación" options={FORMATO_EXPORT_OPTS} value={formatoExport} onChange={setFormatoExport} />
           )}
-          {menu === "empresa" && (
-            <PanelOption title="Empresa" options={EMPRESAS} value={empresa} onChange={setEmpresa} />
-          )}
-          {menu === "fecha" && (
-            <PanelDate title="Fecha factura" value={fechaFactura} onChange={setFechaFactura} />
-          )}
-          {menu === "proyecto" && (
-            <PanelOption title="Proyecto" options={PROYECTOS} value={proyecto} onChange={setProyecto} />
-          )}
+          {menu === "empresa" && <PanelOption title="Empresa" options={EMPRESAS} value={empresa} onChange={setEmpresa} />}
+          {menu === "proyecto" && <PanelOption title="Proyecto" options={PROYECTOS} value={proyecto} onChange={setProyecto} />}
           {menu === "cuenta" && (
-            <PanelOption title="Cuenta contable" options={CUENTAS} value={cuenta} onChange={setCuenta}>
+            <PanelOption title="Cuenta Contable" options={CUENTAS} value={cuenta} onChange={setCuenta}>
               {cuenta === "Otra (introducir)" && (
                 <input
                   type="text"
                   value={cuentaOtra}
                   onChange={(e) => setCuentaOtra(e.target.value)}
-                  placeholder="Introduce tu cuenta"
+                  placeholder="Introduce tu cuenta contable"
                   className="w-full rounded-lg border border-indigo-300 px-3 py-2 mt-4 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               )}
             </PanelOption>
           )}
-          {menu === "ficheroSesiones" && (
-            <PanelFile
-              value={ficheroSesiones}
-              onPickFileClick={onPickSesionesClick}
-              onPickFile={onPickSesiones}
-              fileInputRef={fileSesionesRef}
-            />
-          )}
-          {menu === "ficheroContactos" && (
-            <PanelFile
-              value={ficheroContactos}
-              onPickFileClick={onPickContactosClick}
-              onPickFile={onPickContactos}
-              fileInputRef={fileContactosRef}
-            />
-          )}
-          {menu === "debug" && (
-            <PanelDebug
-              ultimoExport={ultimoExport}
-              totalExportaciones={totalExportaciones}
-              totalExportacionesFallidas={totalExportacionesFallidas}
-              intentosLoginFallidos={intentosLoginFallidos}
-            />
-          )}
-          {menu === "about" && <PanelAbout />}
-          {menu === "exportar" && <PanelExport onConfirm={onConfirmExport} />}
-          {menu === "cerrar" && <PanelCerrar onConfirm={logout} onCancel={() => setMenu("formatoImport")} />}
-        </section>
-      </div>
+          {menu === "fecha" && <PanelDate title="Fecha Factura" value={fechaFactura} onChange={setFechaFactura} />}
 
-      {/* ---------------------- */}
-      {/* 🪄 MODAL DE PROGRESO */}
-      {/* ---------------------- */}
-      {exportStatus?.visible && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl shadow-xl p-6 w-[90%] max-w-md text-center">
-            <h3 className="text-xl font-bold text-indigo-700 mb-4">
-              {exportStatus.error
-                ? "❌ Error en la exportación"
-                : exportStatus.finished
-                ? "✅ Exportación completada"
-                : "⚙️ Procesando exportación..."}
-            </h3>
-
-            {/* Logs (incluye cambios de GPT) */}
-            <div className="bg-gray-100 rounded-lg p-3 text-left max-h-60 overflow-y-auto mb-4">
-              {exportStatus.logs.map((log, i) => (
-                <div key={i} className="text-sm text-gray-700 mb-1">
-                  {log}
-                </div>
-              ))}
+          {menu === "ficheros" && (
+            <div className="space-y-6">
+              <PanelFile value={fileSesionesName} onPickFileClick={pickSesiones} onPickFile={onSesionesPicked} fileInputRef={fileSesionesRef} />
+              <PanelFile value={fileContactosName} onPickFileClick={pickContactos} onPickFile={onContactosPicked} fileInputRef={fileContactosRef} />
             </div>
+          )}
 
-            {/* Spinner y barra */}
-            {!exportStatus.finished && !exportStatus.error && (
-              <div className="flex flex-col items-center space-y-3 mb-4">
-                <div className="w-10 h-10 border-4 border-indigo-300 border-t-indigo-600 rounded-full animate-spin" />
-                <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                  <div
-                    className="bg-indigo-600 h-2 transition-all duration-500"
-                    style={{ width: `${Math.min(exportStatus.logs.length * 10 + 10, 100)}%` }}
-                  />
-                </div>
-                <div className="text-indigo-600 font-semibold animate-pulse">
-                  {exportStatus.logs[exportStatus.logs.length - 1] || "Procesando..."}
+          {menu === "exportar" && <PanelExport onConfirm={onConfirmExport} />}
+          {menu === "config" && <PanelConfig /* ... igual que antes */ />}
+          {menu === "about" && <PanelAbout />}
+          {menu === "cerrar" && <PanelCerrar onConfirm={() => router.replace("/")} onCancel={() => setMenu("formatoImport")} />}
+
+          {/* 🧩 Panel de resumen y progreso */}
+          <div className="bg-blue-100/80 backdrop-blur-md rounded-2xl shadow-lg p-6 mt-4">
+            <h4 className="font-bold text-xl mb-6 text-indigo-800 text-center">Panel de Resumen</h4>
+
+            {exporting ? (
+              <div className="space-y-3 text-center">
+                <p className="font-semibold text-indigo-700">Procesando exportación...</p>
+                <div className="bg-white rounded-xl p-4 shadow text-left max-h-60 overflow-y-auto">
+                  {progress.map((p, i) => (
+                    <p key={i} className="text-sm text-gray-800">• {p}</p>
+                  ))}
                 </div>
               </div>
-            )}
-
-            {/* Error */}
-            {exportStatus.error && (
-              <>
-                <div className="text-red-600 font-semibold mb-3">{exportStatus.error}</div>
-                <button
-                  onClick={() => setExportStatus(null)}
-                  className="bg-gray-400 text-white px-4 py-2 rounded-lg hover:bg-gray-500"
-                >
-                  Cerrar
-                </button>
-              </>
-            )}
-
-            {/* Finalizado */}
-            {exportStatus.finished && exportStatus.downloadUrl && (
-              <div className="flex flex-col space-y-3">
+            ) : exportDone && archivoGenerado ? (
+              <div className="text-center space-y-3">
+                <p className="text-green-700 font-semibold">✅ Exportación completada</p>
                 <a
-                  href={exportStatus.downloadUrl}
+                  href={`http://192.168.1.51:8000/export/download/${archivoGenerado}`}
                   target="_blank"
-                  className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition"
+                  rel="noopener noreferrer"
+                  className="text-indigo-600 underline"
                 >
-                  ⬇️ Descargar CSV generado
+                  Descargar CSV generado
                 </a>
-                <button
-                  onClick={() => setExportStatus(null)}
-                  className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition"
-                >
-                  Cerrar
-                </button>
               </div>
+            ) : (
+              <p className="text-gray-500 text-center">Aún no se ha realizado ninguna exportación.</p>
             )}
           </div>
-        </div>
-      )}
+        </section>
+      </div>
     </main>
   );
 }
+
