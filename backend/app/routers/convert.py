@@ -1,43 +1,35 @@
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from app.routers import auth, export, validate, convert
+# app/routers/convert.py
+from fastapi import APIRouter, HTTPException, UploadFile, File
+import pandas as pd
+import io
 
-# ---------------------------------------
-# 🚀 Inicialización del backend Konyx
-# ---------------------------------------
-app = FastAPI(
-    title="Konyx Backend",
-    version="2.0.0",
-    description="Backend modular de Konyx: autenticación, validación, conversión y exportación."
-)
+router = APIRouter(prefix="/convert", tags=["convert"])
 
-# ---------------------------------------
-# 🌍 CORS
-# ---------------------------------------
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Puedes restringir a ["http://192.168.1.50"] en producción
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+@router.post("/procesar")
+async def procesar_archivo(file: UploadFile = File(...)):
+    """
+    Recibe un archivo Excel, verifica si tiene el formato esperado (Eholo o Gestoría)
+    antes de intentar convertirlo.
+    """
+    try:
+        contents = await file.read()
+        df = pd.read_excel(io.BytesIO(contents))
+        columnas = [c.strip().lower() for c in df.columns.tolist()]
 
-# ---------------------------------------
-# 🧩 Registro de routers
-# ---------------------------------------
-app.include_router(auth.router, prefix="/auth")
-app.include_router(export.router, prefix="/export")
-app.include_router(validate.router, prefix="/validate")
-app.include_router(convert.router, prefix="/convert")
+        # Verificar formato Eholo
+        if all(any(ec in c for c in columnas) for ec in ["fecha", "iva", "total"]):
+            tipo = "Eholo"
+        # Verificar formato Gestoría
+        elif sum(any(gc in c for c in columnas)
+                 for gc in ["fecha factura", "numero factura", "nif", "importe base", "total"]) >= 4:
+            tipo = "Gestoría"
+        else:
+            raise HTTPException(status_code=400, detail="Formato desconocido o columnas no válidas.")
 
-# ---------------------------------------
-# 🏠 Ruta base
-# ---------------------------------------
-@app.get("/")
-def root():
-    return {
-        "status": "ok",
-        "message": "Backend Konyx en ejecución 🚀",
-        "version": "2.0.0",
-        "routes": ["/auth", "/export", "/validate", "/convert"]
-    }
+        return {
+            "message": f"Archivo '{file.filename}' validado correctamente.",
+            "formato_detectado": tipo
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Error procesando el archivo: {e}")
