@@ -74,18 +74,17 @@ export default function DashboardPage() {
   const [apiEnPluralVigente, setApiEnPluralVigente] = useState(() => localStorage.getItem("apiEnPlural") || "");
   const [apiEnPluralNuevo, setApiEnPluralNuevo] = useState("");
 
-  // Exportaciones persistentes
+  // Exportaciones (persistentes)
   const [ultimoExport, setUltimoExport] = useState("-");
   const [totalExportaciones, setTotalExportaciones] = useState(0);
-  const [totalExportacionesFallidas, setTotalExportacionesFallidas] = useState(0); // ✅ nuevo
-  const [intentosLoginFallidos, setIntentosLoginFallidos] = useState(0); // ✅ nuevo
+  const [totalExportacionesFallidas, setTotalExportacionesFallidas] = useState(0);
+  const [intentosLoginFallidos, setIntentosLoginFallidos] = useState(0);
 
   // ---------------------------
   // FUNCIONES
   // ---------------------------
   const onPickFileClick = () => fileInputRef.current?.click();
-  const onPickFile = (e: React.ChangeEvent<HTMLInputElement>) =>
-    setFicheroNombre(e.target.files?.[0]?.name || "");
+  const onPickFile = (e: React.ChangeEvent<HTMLInputElement>) => setFicheroNombre(e.target.files?.[0]?.name || "");
 
   const cuentaOk = cuenta === "Otra (introducir)" ? cuentaOtra.trim().length > 0 : !!cuenta;
   const exportReady =
@@ -110,8 +109,8 @@ export default function DashboardPage() {
 
         setUltimoExport(data.ultimoExport || "-");
         setTotalExportaciones(data.totalExportaciones || 0);
-        setTotalExportacionesFallidas(data.totalExportacionesFallidas || 0); // ✅ nuevo
-        setIntentosLoginFallidos(data.intentosLoginFallidos || 0); // ✅ nuevo
+        setTotalExportacionesFallidas(data.totalExportacionesFallidas || 0);
+        setIntentosLoginFallidos(data.intentosLoginFallidos || 0);
       } catch (err) {
         console.error("Error sincronizando con backend:", err);
       }
@@ -128,6 +127,7 @@ export default function DashboardPage() {
 
     try {
       const usuario = sessionStorage.getItem("konyx_user") || "desconocido";
+
       const body = {
         formatoImport,
         formatoExport,
@@ -146,12 +146,16 @@ export default function DashboardPage() {
       });
 
       if (!res.ok) throw new Error("Error al registrar exportación");
+
       const data = await res.json();
+      console.log("✅ Exportación enviada al backend:", data);
 
       setUltimoExport(data.ultimoExport || "-");
       setTotalExportaciones(data.totalExportaciones || 0);
-      setTotalExportacionesFallidas(data.totalExportacionesFallidas || 0); // ✅ sincroniza
-      alert("Exportación enviada correctamente ✅");
+
+      alert(`Exportación enviada correctamente ✅
+Última exportación: ${data.ultimoExport}
+Total: ${data.totalExportaciones}`);
     } catch (err) {
       console.error("❌ Error al exportar:", err);
       alert("Error al registrar la exportación.");
@@ -160,7 +164,7 @@ export default function DashboardPage() {
     setMenu("formatoImport");
   };
 
-  // 🔐 Cerrar sesión
+  // 🔐 Cerrar sesión (sin borrar contraseña ni APIs)
   const logout = () => {
     sessionStorage.removeItem("konyx_token");
     router.replace("/");
@@ -238,6 +242,33 @@ export default function DashboardPage() {
 
         {/* Contenido */}
         <section className="flex flex-col space-y-6">
+          {/* Paneles principales */}
+          {menu === "formatoImport" && (
+            <PanelOption title="Formato Importación" options={FORMATO_IMPORT_OPTS} value={formatoImport} onChange={setFormatoImport} />
+          )}
+          {menu === "formatoExport" && (
+            <PanelOption title="Formato Exportación" options={FORMATO_EXPORT_OPTS} value={formatoExport} onChange={setFormatoExport} />
+          )}
+          {menu === "empresa" && <PanelOption title="Empresa" options={EMPRESAS} value={empresa} onChange={setEmpresa} />}
+          {menu === "proyecto" && <PanelOption title="Proyecto" options={PROYECTOS} value={proyecto} onChange={setProyecto} />}
+          {menu === "cuenta" && (
+            <PanelOption title="Cuenta contable" options={CUENTAS} value={cuenta} onChange={setCuenta}>
+              {cuenta === "Otra (introducir)" && (
+                <input
+                  type="text"
+                  value={cuentaOtra}
+                  onChange={(e) => setCuentaOtra(e.target.value)}
+                  placeholder="Introduce tu cuenta"
+                  className="w-full rounded-lg border border-indigo-300 px-3 py-2 mt-4 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              )}
+            </PanelOption>
+          )}
+          {menu === "fecha" && <PanelDate title="Fecha factura" value={fechaFactura} onChange={setFechaFactura} />}
+          {menu === "fichero" && (
+            <PanelFile value={ficheroNombre} onPickFile={onPickFile} onPickFileClick={onPickFileClick} fileInputRef={fileInputRef} />
+          )}
+
           {menu === "config" && (
             <div className="space-y-6">
               <PanelConfig
@@ -262,14 +293,12 @@ export default function DashboardPage() {
                 apiEnPluralMsg={null}
                 setApiEnPluralVigente={setApiEnPluralVigente}
               />
+
               <PanelDebug
-                passwordGlobal={passwordGlobal}
-                apiKissoroVigente={apiKissoroVigente}
-                apiEnPluralVigente={apiEnPluralVigente}
                 ultimoExport={ultimoExport}
                 totalExportaciones={totalExportaciones}
-                totalExportacionesFallidas={totalExportacionesFallidas} // ✅ nuevo
-                intentosLoginFallidos={intentosLoginFallidos} // ✅ nuevo
+                totalExportacionesFallidas={totalExportacionesFallidas}
+                intentosLoginFallidos={intentosLoginFallidos}
               />
             </div>
           )}
@@ -278,7 +307,7 @@ export default function DashboardPage() {
           {menu === "exportar" && <PanelExport onConfirm={onConfirmExport} />}
           {menu === "cerrar" && <PanelCerrar onConfirm={logout} onCancel={() => setMenu("formatoImport")} />}
 
-          {/* Panel de Resumen */}
+          {/* Panel de resumen */}
           {!["config", "cerrar", "about"].includes(menu) && (
             <div className="bg-blue-100/80 backdrop-blur-md rounded-2xl shadow-lg p-6 mt-4">
               <h4 className="font-bold text-xl mb-6 text-indigo-800 text-center">
@@ -286,6 +315,7 @@ export default function DashboardPage() {
               </h4>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Fila 1 */}
                 <div className="bg-white rounded-xl p-4 shadow flex flex-col items-center justify-center text-center">
                   <span className="text-gray-500 font-semibold">📥 Importación</span>
                   <span className="text-2xl font-bold text-indigo-700">{formatoImport || "-"}</span>
@@ -301,6 +331,7 @@ export default function DashboardPage() {
                   <span className="text-2xl font-bold text-indigo-700">{empresa || "-"}</span>
                 </div>
 
+                {/* Fila 2 */}
                 <div className="bg-white rounded-xl p-4 shadow flex flex-col items-center justify-center text-center">
                   <span className="text-gray-500 font-semibold">📅 Fecha factura</span>
                   <span className="text-2xl font-bold text-indigo-700">
@@ -320,6 +351,7 @@ export default function DashboardPage() {
                   <span className="text-2xl font-bold text-indigo-700">{proyecto || "-"}</span>
                 </div>
 
+                {/* Fila 3 */}
                 <div className="bg-white rounded-xl p-4 shadow flex flex-col items-center justify-center text-center md:col-span-3">
                   <span className="text-gray-500 font-semibold">📁 Fichero</span>
                   <span className="text-indigo-700 text-lg truncate max-w-[80%]">
