@@ -10,7 +10,8 @@ def load_data():
             "apiKissoro": "",
             "apiEnPlural": "",
             "ultimoExport": "-",
-            "totalExportaciones": 0
+            "totalExportaciones": 0,
+            "totalExportacionesFallidas": 0,  # ✅ Nuevo campo persistente
         }
         save_data(default_data)
         return default_data
@@ -22,6 +23,7 @@ def save_data(data):
         json.dump(data, f, indent=2, ensure_ascii=False)
 
 def registrar_export(data, req):
+    """Registra una exportación exitosa y actualiza contadores persistentes."""
     nueva = {
         "fecha": datetime.now().strftime("%d-%m-%Y %H:%M:%S"),
         "formatoImport": req.formatoImport,
@@ -34,6 +36,7 @@ def registrar_export(data, req):
         "usuario": req.usuario
     }
 
+    # Actualizar contadores persistentes
     data["ultimoExport"] = datetime.now().strftime("%d/%m/%Y")
     data["totalExportaciones"] = data.get("totalExportaciones", 0) + 1
     save_data(data)
