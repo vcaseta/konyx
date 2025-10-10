@@ -1,28 +1,48 @@
 from fastapi import APIRouter, HTTPException
-from app.core.persistence import load_data, save_data, registrar_export
-from app.models.models import ExportRequest
+from pydantic import BaseModel
 from datetime import datetime
+from app.core.persistence import load_data, save_data
 
-router = APIRouter()
+router = APIRouter(tags=["export"])
 
-@router.post("")
-def exportar(req: ExportRequest):
-    """Registra exportaciones exitosas y contabiliza errores en caso de fallo."""
+class ExportRequest(BaseModel):
+    formatoImport: str
+    formatoExport: str
+    empresa: str
+    fechaFactura: str
+    proyecto: str
+    cuenta: str
+    ficheroNombre: str
+    usuario: str
+
+@router.post("/")
+def registrar_export(req: ExportRequest):
     data = load_data()
+    nueva = {
+        "fecha": datetime.now().strftime("%d-%m-%Y %H:%M:%S"),
+        "formatoImport": req.formatoImport,
+        "formatoExport": req.formatoExport,
+        "empresa": req.empresa,
+        "fechaFactura": req.fechaFactura,
+        "proyecto": req.proyecto,
+        "cuenta": req.cuenta,
+        "ficheroNombre": req.ficheroNombre,
+        "usuario": req.usuario
+    }
+
     try:
-        nueva = registrar_export(data, req)
-        print("🧾 Nueva exportación recibida:", nueva)
+        # Simulación de registro
+        data["ultimoExport"] = datetime.now().strftime("%d/%m/%Y")
+        data["totalExportaciones"] = data.get("totalExportaciones", 0) + 1
+        save_data(data)
+        print("🧾 Exportación registrada:", nueva)
         return {
             "message": "Exportación registrada correctamente",
-            "export": nueva,
             "ultimoExport": data["ultimoExport"],
-            "totalExportaciones": data["totalExportaciones"],
-            "totalExportacionesFallidas": data.get("totalExportacionesFallidas", 0)
+            "totalExportaciones": data["totalExportaciones"]
         }
-
     except Exception as e:
-        print("❌ Error en exportación:", e)
-        # Contabilizar exportación fallida
-        data["totalExportacionesFallidas"] = data.get("totalExportacionesFallidas", 0) + 1
+        print("❌ Error al registrar exportación:", e)
+        data["exportacionesFallidas"] = data.get("exportacionesFallidas", 0) + 1
         save_data(data)
-        raise HTTPException(status_code=500, detail="Error al registrar exportación.")
+        raise HTTPException(status_code=500, detail="Error al registrar exportación")
