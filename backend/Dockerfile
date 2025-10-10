@@ -3,11 +3,10 @@
 # --------------------------------------------------------
 FROM python:3.11-slim
 
-# Evitar prompts interactivos
 ENV DEBIAN_FRONTEND=noninteractive
 
 # --------------------------------------------------------
-# 📦 ACTUALIZAR Y INSTALAR DEPENDENCIAS DEL SISTEMA
+# 📦 DEPENDENCIAS DEL SISTEMA
 # --------------------------------------------------------
 RUN apt-get update && apt-get install -y \
     build-essential \
@@ -19,12 +18,12 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # --------------------------------------------------------
-# 📂 CREAR DIRECTORIO DE TRABAJO
+# 📂 DIRECTORIO DE TRABAJO
 # --------------------------------------------------------
 WORKDIR /app
 
 # --------------------------------------------------------
-# 📜 COPIAR ARCHIVOS DEL PROYECTO
+# 📜 COPIAR PROYECTO
 # --------------------------------------------------------
 COPY . /app
 
@@ -32,7 +31,14 @@ COPY . /app
 # ⚙️ INSTALAR DEPENDENCIAS PYTHON
 # --------------------------------------------------------
 RUN pip install --upgrade pip \
- && pip install fastapi uvicorn pandas openpyxl python-dotenv requests
+ && pip install \
+    fastapi \
+    uvicorn \
+    pandas \
+    openpyxl \
+    python-dotenv \
+    requests \
+    python-multipart
 
 # --------------------------------------------------------
 # 🌍 EXPONER PUERTO
@@ -40,14 +46,15 @@ RUN pip install --upgrade pip \
 EXPOSE 8000
 
 # --------------------------------------------------------
-# 🧠 VARIABLES DE ENTORNO (puedes sobreescribirlas en runtime)
+# 🧠 VARIABLES DE ENTORNO
 # --------------------------------------------------------
 ENV PYTHONUNBUFFERED=1
 ENV GROQ_API_KEY=""
 ENV APP_ENV=production
 
 # --------------------------------------------------------
-# 🚀 COMANDO DE EJECUCIÓN
+# 🚀 COMANDO DE ARRANQUE
 # --------------------------------------------------------
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
 
