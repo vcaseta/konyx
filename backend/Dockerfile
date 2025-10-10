@@ -1,23 +1,22 @@
-# 1️⃣ Imagen base
+# Imagen base ligera
 FROM python:3.11-slim
 
-# 2️⃣ Crear directorio de trabajo
+# Variables de entorno
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+# Crear directorio de trabajo
 WORKDIR /app
 
-# 3️⃣ Copiar requirements
+# Copiar dependencias e instalarlas
 COPY requirements.txt .
-
-# 4️⃣ Instalar dependencias
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 5️⃣ Copiar la aplicación
-COPY app/ ./app
+# Copiar el contenido del backend
+COPY . .
 
-# 6️⃣ Crear archivo data.json si no existe (evita errores en arranque)
-RUN mkdir -p /app/app && touch /app/app/data.json
-
-# 7️⃣ Exponer puerto
+# Exponer el puerto de FastAPI
 EXPOSE 8000
 
-# 8️⃣ Comando de arranque
+# Comando de inicio (uvicorn en modo producción)
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
