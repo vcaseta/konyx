@@ -7,8 +7,17 @@ router = APIRouter()
 @router.post("/login")
 def login(req: LoginRequest):
     data = load_data()
+
     if req.password != data.get("password"):
+        # 🔒 Incrementar contador de login fallido
+        data["intentosLoginFallidos"] = data.get("intentosLoginFallidos", 0) + 1
+        save_data(data)
         raise HTTPException(status_code=401, detail="Usuario o contraseña incorrectos")
+
+    # ✅ Si el login es correcto, reiniciar contador
+    data["intentosLoginFallidos"] = 0
+    save_data(data)
+
     return {"token": "konyx_token_demo"}
 
 @router.get("/status")
@@ -21,7 +30,8 @@ def status():
         "apiEnPlural": data.get("apiEnPlural", ""),
         "ultimoExport": data.get("ultimoExport", "-"),
         "totalExportaciones": data.get("totalExportaciones", 0),
-        "totalExportacionesFallidas": data.get("totalExportacionesFallidas", 0)  # ✅ Nuevo campo expuesto
+        "totalExportacionesFallidas": data.get("totalExportacionesFallidas", 0),
+        "intentosLoginFallidos": data.get("intentosLoginFallidos", 0),  # ✅ nuevo
     }
 
 @router.post("/update_password")
