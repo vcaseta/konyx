@@ -3,20 +3,19 @@
 export function PanelAbout() {
   return (
     <div className="bg-white/70 backdrop-blur-md rounded-2xl p-6 shadow-lg text-gray-800">
-      <div className="flex flex-col items-center text-center space-y-4">
-        {/* Logo personal */}
+      <div className="flex flex-col items-center text-center space-y-6">
+        {/* Logo personal (4x más grande) */}
         <img
-          src="/logo-victor.png"
-          alt="Víctor Mut Vallvey"
-          className="h-24 w-auto drop-shadow-md rounded-md"
+          src="/logo-victor.jpg"
+          alt="VM Audiovisual Project Manager"
+          className="h-96 w-auto drop-shadow-lg rounded-lg"
         />
 
-        <h2 className="text-2xl font-bold text-indigo-700">Víctor Mut Vallvey</h2>
-        <p className="text-sm font-medium text-gray-600 tracking-wide">
-          Audiovisual Project Manager
-        </p>
+        <h2 className="text-3xl font-bold text-indigo-700 mt-4">
+          VM Audiovisual Project Manager
+        </h2>
 
-        <div className="mt-4 space-y-1 text-sm">
+        <div className="mt-2 space-y-1 text-sm">
           <p>
             <strong>Autor:</strong> Víctor Mut Vallvey
           </p>
@@ -44,3 +43,4 @@ export function PanelAbout() {
     </div>
   );
 }
+
