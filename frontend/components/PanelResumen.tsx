@@ -27,7 +27,7 @@ export const PanelResumen: React.FC<PanelResumenProps> = ({
   return (
     <div className="bg-white/80 rounded-2xl shadow-lg p-6 backdrop-blur-sm space-y-4">
       <h3 className="text-xl font-bold text-indigo-700 text-center mb-2">
-        📋 Resumen de configuración actual
+      ⚙️ Configuración actual
       </h3>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
