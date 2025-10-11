@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React from "react";
 
 interface PanelConfigProps {
   passActual: string;
@@ -26,8 +26,6 @@ interface PanelConfigProps {
   setApiGroqVigente: (v: string) => void;
 }
 
-const BACKEND = "http://192.168.1.51:8000";
-
 export const PanelConfig: React.FC<PanelConfigProps> = ({
   passActual,
   passNueva,
@@ -52,201 +50,154 @@ export const PanelConfig: React.FC<PanelConfigProps> = ({
   setApiGroqNuevo,
   setApiGroqVigente,
 }) => {
-  const [saving, setSaving] = useState(false);
-
-  // Cambiar contraseña global
-  const handlePasswordChange = async () => {
-    setPassMsg(null);
-    if (!passActual || !passNueva || !passConfirma)
-      return setPassMsg({ type: "err", text: "Completa todos los campos." });
-
-    if (passActual !== passwordGlobal)
-      return setPassMsg({ type: "err", text: "Contraseña actual incorrecta." });
-
-    if (passNueva !== passConfirma)
-      return setPassMsg({ type: "err", text: "Las contraseñas no coinciden." });
-
-    setSaving(true);
-    try {
-      const res = await fetch(`${BACKEND}/auth/update_password`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password: passNueva }),
-      });
-
-      if (!res.ok) throw new Error("Error al actualizar contraseña");
-
-      const data = await res.json();
-      setPasswordGlobal(data.password);
-      sessionStorage.setItem("konyx_password", data.password);
-      setPassMsg({ type: "ok", text: "Contraseña actualizada correctamente." });
-      setPassActual("");
-      setPassNueva("");
-      setPassConfirma("");
-    } catch {
-      setPassMsg({ type: "err", text: "Error al actualizar la contraseña." });
-    } finally {
-      setSaving(false);
+  const handlePasswordChange = () => {
+    if (passNueva !== passConfirma) {
+      setPassMsg({ type: "err", text: "Las contraseñas no coinciden" });
+      return;
     }
+    setPasswordGlobal(passNueva);
+    setPassMsg({ type: "ok", text: "Contraseña cambiada correctamente" });
   };
 
-  // Cambiar una API específica
-  const handleApiUpdate = async (field: "apiKissoro" | "apiEnPlural" | "apiGroq", value: string) => {
-    if (!value.trim()) return alert("Introduce un valor válido antes de guardar.");
-    try {
-      const res = await fetch(`${BACKEND}/auth/update_apis`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ [field]: value }),
-      });
-      if (!res.ok) throw new Error("Error al actualizar API");
-      const data = await res.json();
-
-      if (field === "apiKissoro") {
-        setApiKissoroVigente(data.apiKissoro);
-        setApiKissoroNuevo("");
-      }
-      if (field === "apiEnPlural") {
-        setApiEnPluralVigente(data.apiEnPlural);
-        setApiEnPluralNuevo("");
-      }
-      if (field === "apiGroq") {
-        setApiGroqVigente(data.apiGroq);
-        setApiGroqNuevo("");
-      }
-
-      alert(`✅ ${field} actualizada correctamente.`);
-    } catch {
-      alert("❌ Error al actualizar API.");
-    }
+  const handleApiChange = (
+    tipo: "kissoro" | "enplural" | "groq",
+    nueva: string
+  ) => {
+    if (tipo === "kissoro") setApiKissoroVigente(nueva);
+    if (tipo === "enplural") setApiEnPluralVigente(nueva);
+    if (tipo === "groq") setApiGroqVigente(nueva);
   };
 
   return (
-    <div className="bg-white/80 rounded-2xl shadow-lg p-6 space-y-6 backdrop-blur-sm">
-      <h3 className="text-xl font-bold text-indigo-700 text-center mb-2">⚙️ Configuración del sistema</h3>
+    <div className="bg-white/80 rounded-2xl shadow-lg p-6 backdrop-blur-sm space-y-6">
+      <h3 className="text-xl font-bold text-indigo-700 text-center mb-2">
+        Configuración del sistema
+      </h3>
 
-      {/* Cambiar contraseña */}
-      <div className="space-y-3">
-        <h4 className="text-md font-semibold text-indigo-700 mb-2">🔐 Cambiar contraseña</h4>
+      {/* Mensaje de estado */}
+      {passMsg && (
+        <p
+          className={`text-center font-semibold ${
+            passMsg.type === "ok" ? "text-green-600" : "text-red-600"
+          }`}
+        >
+          {passMsg.text}
+        </p>
+      )}
+
+      {/* ---- CONTRASEÑA ---- */}
+      <div className="flex flex-col sm:flex-row items-center gap-2 border-b border-indigo-100 pb-4">
+        <label className="text-gray-700 font-medium w-32">Contraseña:</label>
         <input
           type="password"
-          placeholder="Contraseña actual"
+          placeholder="Actual"
           value={passActual}
           onChange={(e) => setPassActual(e.target.value)}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+          className="flex-1 rounded-lg border border-gray-300 px-3 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-500"
         />
         <input
           type="password"
-          placeholder="Nueva contraseña"
+          placeholder="Nueva"
           value={passNueva}
           onChange={(e) => setPassNueva(e.target.value)}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+          className="flex-1 rounded-lg border border-gray-300 px-3 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-500"
         />
         <input
           type="password"
-          placeholder="Confirmar nueva contraseña"
+          placeholder="Confirmar"
           value={passConfirma}
           onChange={(e) => setPassConfirma(e.target.value)}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+          className="flex-1 rounded-lg border border-gray-300 px-3 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-500"
         />
         <button
           onClick={handlePasswordChange}
-          disabled={saving}
-          className={`w-full py-2 rounded-lg text-white font-semibold transition ${
-            saving ? "bg-gray-400" : "bg-indigo-600 hover:bg-indigo-700"
-          }`}
+          className="text-sm bg-indigo-700 text-white font-semibold px-4 py-1 rounded-lg 
+                     hover:bg-indigo-800 hover:scale-105 hover:shadow-md 
+                     transition-all duration-200 ease-in-out whitespace-nowrap"
         >
-          {saving ? "Guardando..." : "Guardar contraseña"}
+          Cambiar
         </button>
-        {passMsg && (
-          <p
-            className={`text-center text-sm ${
-              passMsg.type === "ok" ? "text-green-600" : "text-red-600"
-            }`}
-          >
-            {passMsg.text}
-          </p>
-        )}
       </div>
 
-      {/* APIs compactas */}
-      <div className="space-y-4">
-        <h4 className="text-md font-semibold text-indigo-700 mb-2">🔑 APIs externas</h4>
+      {/* ---- API KISSORO ---- */}
+      <div className="flex flex-col sm:flex-row items-center gap-2 border-b border-indigo-100 pb-4">
+        <label className="text-gray-700 font-medium w-32">API Kissoro:</label>
+        <input
+          type="text"
+          placeholder="Actual"
+          value={apiKissoroVigente}
+          readOnly
+          className="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-1 text-gray-500"
+        />
+        <input
+          type="text"
+          placeholder="Nueva API"
+          value={apiKissoroNuevo}
+          onChange={(e) => setApiKissoroNuevo(e.target.value)}
+          className="flex-1 rounded-lg border border-gray-300 px-3 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        />
+        <button
+          onClick={() => handleApiChange("kissoro", apiKissoroNuevo)}
+          className="text-sm bg-indigo-700 text-white font-semibold px-4 py-1 rounded-lg 
+                     hover:bg-indigo-800 hover:scale-105 hover:shadow-md 
+                     transition-all duration-200 ease-in-out whitespace-nowrap"
+        >
+          Cambiar
+        </button>
+      </div>
 
-        {/* Kissoro */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 items-center">
-          <input
-            type="text"
-            value={apiKissoroVigente}
-            readOnly
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-100 text-gray-600 text-sm"
-            placeholder="API actual Kissoro"
-          />
-          <input
-            type="text"
-            value={apiKissoroNuevo}
-            onChange={(e) => setApiKissoroNuevo(e.target.value)}
-            placeholder="Nueva API Kissoro"
-            className="w-full border border-indigo-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
-          />
-          <button
-            onClick={() => handleApiUpdate("apiKissoro", apiKissoroNuevo)}
-            className="px-3 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700"
-          >
-            Cambiar
-          </button>
-        </div>
+      {/* ---- API EN PLURAL ---- */}
+      <div className="flex flex-col sm:flex-row items-center gap-2 border-b border-indigo-100 pb-4">
+        <label className="text-gray-700 font-medium w-32">API En Plural:</label>
+        <input
+          type="text"
+          placeholder="Actual"
+          value={apiEnPluralVigente}
+          readOnly
+          className="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-1 text-gray-500"
+        />
+        <input
+          type="text"
+          placeholder="Nueva API"
+          value={apiEnPluralNuevo}
+          onChange={(e) => setApiEnPluralNuevo(e.target.value)}
+          className="flex-1 rounded-lg border border-gray-300 px-3 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        />
+        <button
+          onClick={() => handleApiChange("enplural", apiEnPluralNuevo)}
+          className="text-sm bg-indigo-700 text-white font-semibold px-4 py-1 rounded-lg 
+                     hover:bg-indigo-800 hover:scale-105 hover:shadow-md 
+                     transition-all duration-200 ease-in-out whitespace-nowrap"
+        >
+          Cambiar
+        </button>
+      </div>
 
-        {/* En Plural */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 items-center">
-          <input
-            type="text"
-            value={apiEnPluralVigente}
-            readOnly
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-100 text-gray-600 text-sm"
-            placeholder="API actual En Plural"
-          />
-          <input
-            type="text"
-            value={apiEnPluralNuevo}
-            onChange={(e) => setApiEnPluralNuevo(e.target.value)}
-            placeholder="Nueva API En Plural"
-            className="w-full border border-indigo-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
-          />
-          <button
-            onClick={() => handleApiUpdate("apiEnPlural", apiEnPluralNuevo)}
-            className="px-3 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700"
-          >
-            Cambiar
-          </button>
-        </div>
-
-        {/* Groq (más larga) */}
-        <div className="mt-4">
-          <label className="block text-sm font-medium text-gray-600 mb-1">
-            🧠 API Groq (procesamiento IA)
-          </label>
-          <input
-            type="text"
-            value={apiGroqVigente}
-            readOnly
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-100 text-gray-600 text-sm mb-2"
-            placeholder="API actual Groq"
-          />
-          <input
-            type="text"
-            value={apiGroqNuevo}
-            onChange={(e) => setApiGroqNuevo(e.target.value)}
-            placeholder="Nueva API Groq"
-            className="w-full border border-indigo-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 mb-2"
-          />
-          <button
-            onClick={() => handleApiUpdate("apiGroq", apiGroqNuevo)}
-            className="px-3 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700"
-          >
-            Cambiar
-          </button>
-        </div>
+      {/* ---- API GROQ ---- */}
+      <div className="flex flex-col sm:flex-row items-center gap-2">
+        <label className="text-gray-700 font-medium w-32">API Groq:</label>
+        <input
+          type="text"
+          placeholder="Actual"
+          value={apiGroqVigente}
+          readOnly
+          className="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-1 text-gray-500"
+        />
+        <input
+          type="text"
+          placeholder="Nueva API"
+          value={apiGroqNuevo}
+          onChange={(e) => setApiGroqNuevo(e.target.value)}
+          className="flex-1 rounded-lg border border-gray-300 px-3 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        />
+        <button
+          onClick={() => handleApiChange("groq", apiGroqNuevo)}
+          className="text-sm bg-indigo-700 text-white font-semibold px-4 py-1 rounded-lg 
+                     hover:bg-indigo-800 hover:scale-105 hover:shadow-md 
+                     transition-all duration-200 ease-in-out whitespace-nowrap"
+        >
+          Cambiar
+        </button>
       </div>
     </div>
   );
