@@ -2,8 +2,8 @@
 import React, { useEffect, useState } from "react";
 
 interface PanelExportProps {
-  onConfirm: (ok: boolean) => void;
-  onReset: () => void; // 🔄 Nuevo: limpiar datos y volver al inicio
+  onConfirm: (ok: boolean) => Promise<void> | void; // ← acepta async
+  onReset: () => void; // 🔄 limpiar datos y volver al inicio
 }
 
 interface Change {
@@ -27,12 +27,15 @@ export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) 
 
     source.onmessage = (event) => {
       if (!event.data) return;
-      const data = JSON.parse(event.data);
-
-      if (data.type === "log") {
-        setLogs((prev) => [...prev, data.step]);
-      } else if (data.type === "changes") {
-        setChanges(data.changes || []);
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === "log") {
+          setLogs((prev) => [...prev, data.step]);
+        } else if (data.type === "changes") {
+          setChanges(data.changes || []);
+        }
+      } catch {
+        /* Ignorar parseos vacíos */
       }
     };
 
@@ -100,9 +103,7 @@ export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) 
 
   return (
     <div className="bg-white/80 rounded-2xl shadow-lg p-6 space-y-5">
-      <h3 className="text-xl font-bold text-indigo-700 text-center">
-        🚀 Exportación en curso
-      </h3>
+      <h3 className="text-xl font-bold text-indigo-700 text-center">🚀 Exportación en curso</h3>
 
       {/* Logs */}
       <div className="bg-gray-100 rounded-lg p-3 max-h-56 overflow-y-auto text-sm border border-gray-200">
@@ -120,9 +121,7 @@ export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) 
       {/* Cambios IA */}
       {changes.length > 0 && (
         <div className="mt-4">
-          <h4 className="text-md font-bold text-indigo-700 mb-2 text-center">
-            🧠 Cambios aplicados por Groq
-          </h4>
+          <h4 className="text-md font-bold text-indigo-700 mb-2 text-center">🧠 Cambios aplicados por Groq</h4>
           <div className="overflow-x-auto border rounded-lg">
             <table className="w-full border-collapse text-sm">
               <thead className="bg-indigo-100 text-indigo-800">
@@ -165,9 +164,7 @@ export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) 
           </>
         )}
         {!finished && (
-          <div className="text-indigo-600 font-semibold animate-pulse text-center">
-            Procesando...
-          </div>
+          <div className="text-indigo-600 font-semibold animate-pulse text-center">Procesando...</div>
         )}
       </div>
 
