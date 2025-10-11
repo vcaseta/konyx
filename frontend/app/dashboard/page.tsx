@@ -69,14 +69,12 @@ export default function DashboardPage() {
   const fileSesionesRef = useRef<HTMLInputElement>(null);
   const fileContactosRef = useRef<HTMLInputElement>(null);
 
-  // Contraseña (para PanelConfig con validación)
+  // Contraseña y APIs (solo en config)
   const [passActual, setPassActual] = useState("");
   const [passNueva, setPassNueva] = useState("");
   const [passConfirma, setPassConfirma] = useState("");
   const [passMsg, setPassMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
   const [passwordGlobal, setPasswordGlobal] = useState(() => sessionStorage.getItem("konyx_password") || "1234");
-
-  // APIs (Kissoro, EnPlural, Groq)
   const [apiKissoroVigente, setApiKissoroVigente] = useState(() => localStorage.getItem("apiKissoro") || "");
   const [apiKissoroNuevo, setApiKissoroNuevo] = useState("");
   const [apiEnPluralVigente, setApiEnPluralVigente] = useState(() => localStorage.getItem("apiEnPlural") || "");
@@ -89,8 +87,8 @@ export default function DashboardPage() {
   const [totalExportaciones, setTotalExportaciones] = useState(0);
   const [totalExportacionesFallidas, setTotalExportacionesFallidas] = useState(0);
   const [intentosLoginFallidos, setIntentosLoginFallidos] = useState(0);
+  const [totalLogins, setTotalLogins] = useState(0);
 
-  // Token en Debug
   const [tokenActual, setTokenActual] = useState(token || "konyx_token_demo");
 
   // ---------------------------
@@ -116,6 +114,24 @@ export default function DashboardPage() {
     setFicheroContactos(e.target.files?.[0]?.name || "");
 
   // ---------------------------
+  // REFRESCAR ESTADÍSTICAS
+  // ---------------------------
+  const refreshStats = async () => {
+    try {
+      const res = await fetch(`${BACKEND}/auth/status`);
+      if (!res.ok) return;
+      const s = await res.json();
+      setUltimoExport(s.ultimoExport || "-");
+      setTotalExportaciones(s.totalExportaciones || 0);
+      setTotalExportacionesFallidas(s.totalExportacionesFallidas || 0);
+      setIntentosLoginFallidos(s.intentosLoginFallidos || 0);
+      setTotalLogins(s.totalLogins || 0);
+    } catch {
+      // ignore
+    }
+  };
+
+  // ---------------------------
   // CARGA INICIAL DESDE BACKEND
   // ---------------------------
   useEffect(() => {
@@ -129,18 +145,14 @@ export default function DashboardPage() {
         sessionStorage.setItem("konyx_password", data.password || "1234");
 
         setApiKissoroVigente(data.apiKissoro || "");
-        localStorage.setItem("apiKissoro", data.apiKissoro || "");
-
         setApiEnPluralVigente(data.apiEnPlural || "");
-        localStorage.setItem("apiEnPlural", data.apiEnPlural || "");
-
         setApiGroqVigente(data.apiGroq || "");
-        localStorage.setItem("apiGroq", data.apiGroq || "");
 
         setUltimoExport(data.ultimoExport || "-");
         setTotalExportaciones(data.totalExportaciones || 0);
         setTotalExportacionesFallidas(data.totalExportacionesFallidas || 0);
         setIntentosLoginFallidos(data.intentosLoginFallidos || 0);
+        setTotalLogins(data.totalLogins || 0);
       } catch (err) {
         console.error("Error sincronizando con backend:", err);
       }
@@ -149,7 +161,7 @@ export default function DashboardPage() {
   }, []);
 
   // ---------------------------
-  // EXPORTAR (envía y cambia a vista PanelExport)
+  // EXPORTAR
   // ---------------------------
   const onConfirmExport = async (ok: boolean) => {
     if (!ok) return setMenu("formatoImport");
@@ -173,17 +185,14 @@ export default function DashboardPage() {
       formData.append("ficheroSesiones", fileSes);
       formData.append("ficheroContactos", fileCon);
 
-      const res = await fetch(`${BACKEND}/export/start`, {
-        method: "POST",
-        body: formData,
-      });
+      const res = await fetch(`${BACKEND}/export/start`, { method: "POST", body: formData });
+      setMenu("exportar");
+      await refreshStats();
+
       if (!res.ok) {
         const msg = await res.text().catch(() => "");
         throw new Error(msg || "Error iniciando exportación");
       }
-
-      // Cambia a vista de progreso
-      setMenu("exportar");
     } catch (e: any) {
       alert("Error iniciando exportación: " + (e?.message || e));
     }
@@ -271,29 +280,15 @@ export default function DashboardPage() {
 
         {/* Contenido */}
         <section className="flex flex-col space-y-6">
-          {/* Paneles principales */}
+          {/* Paneles */}
           {menu === "formatoImport" && (
-            <PanelOption
-              title="Formato Importación"
-              options={FORMATO_IMPORT_OPTS}
-              value={formatoImport}
-              onChange={setFormatoImport}
-            />
+            <PanelOption title="Formato Importación" options={FORMATO_IMPORT_OPTS} value={formatoImport} onChange={setFormatoImport} />
           )}
           {menu === "formatoExport" && (
-            <PanelOption
-              title="Formato Exportación"
-              options={FORMATO_EXPORT_OPTS}
-              value={formatoExport}
-              onChange={setFormatoExport}
-            />
+            <PanelOption title="Formato Exportación" options={FORMATO_EXPORT_OPTS} value={formatoExport} onChange={setFormatoExport} />
           )}
-          {menu === "empresa" && (
-            <PanelOption title="Empresa" options={EMPRESAS} value={empresa} onChange={setEmpresa} />
-          )}
-          {menu === "proyecto" && (
-            <PanelOption title="Proyecto" options={PROYECTOS} value={proyecto} onChange={setProyecto} />
-          )}
+          {menu === "empresa" && <PanelOption title="Empresa" options={EMPRESAS} value={empresa} onChange={setEmpresa} />}
+          {menu === "proyecto" && <PanelOption title="Proyecto" options={PROYECTOS} value={proyecto} onChange={setProyecto} />}
           {menu === "cuenta" && (
             <PanelOption title="Cuenta contable" options={CUENTAS} value={cuenta} onChange={setCuenta}>
               {cuenta === "Otra (introducir)" && (
@@ -308,16 +303,9 @@ export default function DashboardPage() {
             </PanelOption>
           )}
           {menu === "fecha" && <PanelDate title="Fecha factura" value={fechaFactura} onChange={setFechaFactura} />}
-
           {menu === "ficheroSesiones" && (
-            <PanelFile
-              value={ficheroSesiones}
-              onPickFileClick={onPickSesionesClick}
-              onPickFile={onPickSesiones}
-              fileInputRef={fileSesionesRef}
-            />
+            <PanelFile value={ficheroSesiones} onPickFileClick={onPickSesionesClick} onPickFile={onPickSesiones} fileInputRef={fileSesionesRef} />
           )}
-
           {menu === "ficheroContactos" && (
             <PanelFileContactos
               value={ficheroContactos}
@@ -359,21 +347,17 @@ export default function DashboardPage() {
                 totalExportaciones={totalExportaciones}
                 totalExportacionesFallidas={totalExportacionesFallidas}
                 intentosLoginFallidos={intentosLoginFallidos}
-                apiKissoro={apiKissoroVigente}
-                apiEnPlural={apiEnPluralVigente}
-                apiGroq={apiGroqVigente}
+                totalLogins={totalLogins}
                 token={tokenActual}
               />
             </div>
           )}
 
           {menu === "about" && <PanelAbout />}
-
           {menu === "exportar" && (
             <PanelExport
               onConfirm={onConfirmExport}
               onReset={() => {
-                // Nueva exportación: limpia selección y vuelve al inicio
                 setFormatoImport(null);
                 setFormatoExport(null);
                 setEmpresa(null);
@@ -389,70 +373,10 @@ export default function DashboardPage() {
               }}
             />
           )}
-
           {menu === "cerrar" && <PanelCerrar onConfirm={logout} onCancel={() => setMenu("formatoImport")} />}
-
-          {/* Panel de resumen (visible en todas las secciones excepto config/about/cerrar/exportar) */}
-          {!["config", "cerrar", "about", "exportar"].includes(menu) && (
-            <div className="bg-blue-100/80 backdrop-blur-md rounded-2xl shadow-lg p-6 mt-4">
-              <h4 className="font-bold text-xl mb-6 text-indigo-800 text-center">Panel de Resumen</h4>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* Fila 1 */}
-                <div className="bg-white rounded-xl p-4 shadow flex flex-col items-center justify-center text-center">
-                  <span className="text-gray-500 font-semibold">📥 Importación</span>
-                  <span className="text-2xl font-bold text-indigo-700">{formatoImport || "-"}</span>
-                </div>
-
-                <div className="bg-white rounded-xl p-4 shadow flex flex-col items-center justify-center text-center">
-                  <span className="text-gray-500 font-semibold">📤 Exportación</span>
-                  <span className="text-2xl font-bold text-indigo-700">{formatoExport || "-"}</span>
-                </div>
-
-                <div className="bg-white rounded-xl p-4 shadow flex flex-col items-center justify-center text-center">
-                  <span className="text-gray-500 font-semibold">🏢 Empresa</span>
-                  <span className="text-2xl font-bold text-indigo-700">{empresa || "-"}</span>
-                </div>
-
-                {/* Fila 2 */}
-                <div className="bg-white rounded-xl p-4 shadow flex flex-col items-center justify-center text-center">
-                  <span className="text-gray-500 font-semibold">📅 Fecha factura</span>
-                  <span className="text-2xl font-bold text-indigo-700">
-                    {fechaFactura ? new Date(fechaFactura).toLocaleDateString("es-ES") : "-"}
-                  </span>
-                </div>
-
-                <div className="bg-white rounded-xl p-4 shadow flex flex-col items-center justify-center text-center">
-                  <span className="text-gray-500 font-semibold">💳 Cuenta</span>
-                  <span className="text-2xl font-bold text-indigo-700">
-                    {cuenta === "Otra (introducir)" ? cuentaOtra : cuenta || "-"}
-                  </span>
-                </div>
-
-                <div className="bg-white rounded-xl p-4 shadow flex flex-col items-center justify-center text-center">
-                  <span className="text-gray-500 font-semibold">🗂 Proyecto</span>
-                  <span className="text-2xl font-bold text-indigo-700">{proyecto || "-"}</span>
-                </div>
-
-                {/* Fila 3: Ficheros */}
-                <div className="bg-white rounded-xl p-4 shadow flex flex-col items-center justify-center text-center md:col-span-3">
-                  <span className="text-gray-500 font-semibold">📁 Fichero sesiones</span>
-                  <span className="text-indigo-700 text-lg truncate max-w-[80%]">
-                    {ficheroSesiones || "-"}
-                  </span>
-                </div>
-
-                <div className="bg-white rounded-xl p-4 shadow flex flex-col items-center justify-center text-center md:col-span-3">
-                  <span className="text-gray-500 font-semibold">👥 Fichero contactos</span>
-                  <span className="text-indigo-700 text-lg truncate max-w-[80%]">
-                    {ficheroContactos || "-"}
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
         </section>
       </div>
     </main>
   );
 }
+
