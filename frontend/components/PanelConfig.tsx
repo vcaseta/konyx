@@ -26,9 +26,6 @@ interface PanelConfigProps {
   apiGroqNuevo: string;
   setApiGroqNuevo: (v: string) => void;
   setApiGroqVigente: (v: string) => void;
-
-  token: string;
-  setToken: (v: string) => void;
 }
 
 export function PanelConfig({
@@ -54,11 +51,10 @@ export function PanelConfig({
   apiGroqNuevo,
   setApiGroqNuevo,
   setApiGroqVigente,
-  token,
-  setToken,
 }: PanelConfigProps) {
   const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || "http://192.168.1.51:8000";
 
+  // 🔐 Cambiar contraseña
   const handlePasswordUpdate = async () => {
     if (passNueva !== passConfirma) {
       setPassMsg({ type: "err", text: "Las contraseñas no coinciden." });
@@ -87,36 +83,36 @@ export function PanelConfig({
     }
   };
 
-  const handleApiUpdate = async () => {
+  // 🧩 Guardar APIs individualmente
+  const handleSaveApi = async (campo: string, valor: string) => {
     try {
       const res = await fetch(`${BACKEND}/auth/update_apis`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          apiKissoro: apiKissoroNuevo || apiKissoroVigente,
-          apiEnPlural: apiEnPluralNuevo || apiEnPluralVigente,
-          apiGroq: apiGroqNuevo || apiGroqVigente,
-        }),
+        body: JSON.stringify({ [campo]: valor }),
       });
 
-      if (!res.ok) throw new Error("Error al actualizar APIs");
+      if (!res.ok) throw new Error("Error al actualizar API");
       const data = await res.json();
 
-      setApiKissoroVigente(data.apiKissoro);
-      localStorage.setItem("apiKissoro", data.apiKissoro);
-
-      setApiEnPluralVigente(data.apiEnPlural);
-      localStorage.setItem("apiEnPlural", data.apiEnPlural);
-
-      setApiGroqVigente(data.apiGroq);
-      localStorage.setItem("apiGroq", data.apiGroq);
-
-      setApiKissoroNuevo("");
-      setApiEnPluralNuevo("");
-      setApiGroqNuevo("");
+      if (campo === "apiKissoro") {
+        setApiKissoroVigente(data.apiKissoro);
+        localStorage.setItem("apiKissoro", data.apiKissoro);
+        setApiKissoroNuevo("");
+      }
+      if (campo === "apiEnPlural") {
+        setApiEnPluralVigente(data.apiEnPlural);
+        localStorage.setItem("apiEnPlural", data.apiEnPlural);
+        setApiEnPluralNuevo("");
+      }
+      if (campo === "apiGroq") {
+        setApiGroqVigente(data.apiGroq);
+        localStorage.setItem("apiGroq", data.apiGroq);
+        setApiGroqNuevo("");
+      }
     } catch (err) {
       console.error(err);
-      alert("Error al actualizar las APIs.");
+      alert("Error al actualizar la API.");
     }
   };
 
@@ -170,66 +166,71 @@ export function PanelConfig({
       {/* Sección APIs */}
       <div>
         <h4 className="text-lg font-semibold text-gray-700 mb-3">APIs configuradas</h4>
-        <div className="grid grid-cols-1 gap-4">
-          {/* Kissoro */}
-          <div>
-            <label className="font-semibold text-gray-600">🔑 API Kissoro</label>
-            <input
-              type="text"
-              placeholder="Nueva clave API Kissoro"
-              value={apiKissoroNuevo}
-              onChange={(e) => setApiKissoroNuevo(e.target.value)}
-              className="w-full border rounded-lg px-3 py-2 mt-1 focus:ring-2 focus:ring-indigo-400"
-            />
-            <p className="text-xs text-gray-500 mt-1">Actual: {apiKissoroVigente || "—"}</p>
+        <div className="space-y-4">
+
+          {/* 🔑 API Kissoro */}
+          <div className="flex flex-col md:flex-row md:items-center md:space-x-3">
+            <div className="flex-1">
+              <label className="font-semibold text-gray-600">🔑 API Kissoro</label>
+              <input
+                type="text"
+                placeholder="Nueva clave API Kissoro"
+                value={apiKissoroNuevo}
+                onChange={(e) => setApiKissoroNuevo(e.target.value)}
+                className="w-full border rounded-lg px-3 py-2 mt-1 focus:ring-2 focus:ring-indigo-400"
+              />
+              <p className="text-xs text-gray-500 mt-1">Actual: {apiKissoroVigente || "—"}</p>
+            </div>
+            <button
+              onClick={() => handleSaveApi("apiKissoro", apiKissoroNuevo || apiKissoroVigente)}
+              className="mt-3 md:mt-6 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition"
+            >
+              Guardar
+            </button>
           </div>
 
-          {/* En Plural */}
-          <div>
-            <label className="font-semibold text-gray-600">🔑 API En Plural Psicología</label>
-            <input
-              type="text"
-              placeholder="Nueva clave API En Plural"
-              value={apiEnPluralNuevo}
-              onChange={(e) => setApiEnPluralNuevo(e.target.value)}
-              className="w-full border rounded-lg px-3 py-2 mt-1 focus:ring-2 focus:ring-indigo-400"
-            />
-            <p className="text-xs text-gray-500 mt-1">Actual: {apiEnPluralVigente || "—"}</p>
+          {/* 🔑 API En Plural */}
+          <div className="flex flex-col md:flex-row md:items-center md:space-x-3">
+            <div className="flex-1">
+              <label className="font-semibold text-gray-600">🔑 API En Plural Psicología</label>
+              <input
+                type="text"
+                placeholder="Nueva clave API En Plural"
+                value={apiEnPluralNuevo}
+                onChange={(e) => setApiEnPluralNuevo(e.target.value)}
+                className="w-full border rounded-lg px-3 py-2 mt-1 focus:ring-2 focus:ring-indigo-400"
+              />
+              <p className="text-xs text-gray-500 mt-1">Actual: {apiEnPluralVigente || "—"}</p>
+            </div>
+            <button
+              onClick={() => handleSaveApi("apiEnPlural", apiEnPluralNuevo || apiEnPluralVigente)}
+              className="mt-3 md:mt-6 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition"
+            >
+              Guardar
+            </button>
           </div>
 
-          {/* Groq */}
-          <div>
-            <label className="font-semibold text-gray-600">🧠 API Groq (ChatGPT)</label>
-            <input
-              type="text"
-              placeholder="Nueva clave API Groq"
-              value={apiGroqNuevo}
-              onChange={(e) => setApiGroqNuevo(e.target.value)}
-              className="w-full border rounded-lg px-3 py-2 mt-1 focus:ring-2 focus:ring-indigo-400"
-            />
-            <p className="text-xs text-gray-500 mt-1">Actual: {apiGroqVigente || "—"}</p>
+          {/* 🧠 API Groq */}
+          <div className="flex flex-col md:flex-row md:items-center md:space-x-3">
+            <div className="flex-1">
+              <label className="font-semibold text-gray-600">🧠 API Groq (ChatGPT)</label>
+              <input
+                type="text"
+                placeholder="Nueva clave API Groq"
+                value={apiGroqNuevo}
+                onChange={(e) => setApiGroqNuevo(e.target.value)}
+                className="w-full border rounded-lg px-3 py-2 mt-1 focus:ring-2 focus:ring-indigo-400"
+              />
+              <p className="text-xs text-gray-500 mt-1">Actual: {apiGroqVigente || "—"}</p>
+            </div>
+            <button
+              onClick={() => handleSaveApi("apiGroq", apiGroqNuevo || apiGroqVigente)}
+              className="mt-3 md:mt-6 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition"
+            >
+              Guardar
+            </button>
           </div>
         </div>
-
-        <button
-          onClick={handleApiUpdate}
-          className="mt-3 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition"
-        >
-          Guardar APIs
-        </button>
-      </div>
-
-      {/* Sección token */}
-      <div>
-        <h4 className="text-lg font-semibold text-gray-700 mb-3">Token de sesión</h4>
-        <input
-          type="text"
-          placeholder="Token actual"
-          value={token}
-          onChange={(e) => setToken(e.target.value)}
-          className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-400"
-        />
-        <p className="text-xs text-gray-500 mt-1">Este token se usa internamente para depuración o autenticación.</p>
       </div>
     </div>
   );
