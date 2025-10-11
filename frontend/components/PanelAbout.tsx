@@ -7,8 +7,8 @@ export function PanelAbout() {
         {/* Logo personal (PNG transparente, sin bordes ni sombras) */}
         <img
           src="/logo-victor.png"
-          alt="VM Audiovisual Project Manager"
-          className="h-96 w-auto"
+          alt="VM AV-TI Project Manager"
+          className="h-64 w-auto"
         />
 
         <h2 className="text-3xl font-bold text-indigo-700 mt-4">
@@ -17,7 +17,7 @@ export function PanelAbout() {
 
         <div className="mt-2 space-y-1 text-sm">
           <p>
-            <strong>Autor:</strong> Víctor Mut Vallvey
+            <strong>Autor:</strong> Víctor Mut 
           </p>
           <p>
             <strong>Contacto:</strong>{" "}
@@ -29,7 +29,7 @@ export function PanelAbout() {
             </a>
           </p>
           <p>
-            <strong>Versión:</strong> 1.0.0
+            <strong>Versión:</strong> 2.1.1
           </p>
           <p>
             <strong>Fecha de creación:</strong> Octubre 2025
@@ -37,7 +37,7 @@ export function PanelAbout() {
         </div>
 
         <p className="mt-6 text-xs text-gray-500">
-          © 2025 Víctor Mut Vallvey. Todos los derechos reservados.
+          © 2025 VM Project Manager. Todos los derechos reservados.
         </p>
       </div>
     </div>
