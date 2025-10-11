@@ -376,20 +376,21 @@ export default function DashboardPage() {
           )}
           {menu === "cerrar" && <PanelCerrar onConfirm={logout} onCancel={() => setMenu("formatoImport")} />}
 
-          {/* Panel Resumen: visible en todos los menús excepto Configuración y Exportar */}
-          {menu !== "config" && menu !== "exportar" && (
-            <PanelResumen
-              formatoImport={formatoImport}
-              formatoExport={formatoExport}
-              empresa={empresa}
-              fechaFactura={fechaFactura}
-              proyecto={proyecto}
-              cuenta={cuenta}
-              cuentaOtra={cuentaOtra}
-              ficheroSesiones={ficheroSesiones}
-              ficheroContactos={ficheroContactos}
-            />
-          )}
+        {/* Panel Resumen: visible en todos los menús excepto Configuración, Exportar, About y Cerrar */}
+{menu !== "config" && menu !== "exportar" && menu !== "about" && menu !== "cerrar" && (
+  <PanelResumen
+    formatoImport={formatoImport}
+    formatoExport={formatoExport}
+    empresa={empresa}
+    fechaFactura={fechaFactura}
+    proyecto={proyecto}
+    cuenta={cuenta}
+    cuentaOtra={cuentaOtra}
+    ficheroSesiones={ficheroSesiones}
+    ficheroContactos={ficheroContactos}
+  />
+)}
+
         </section>
       </div>
     </main>
