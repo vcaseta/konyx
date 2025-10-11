@@ -25,7 +25,7 @@ export function PanelDebug({
     <div className="bg-white/70 backdrop-blur-md rounded-2xl p-6 shadow-lg space-y-6">
       <h3 className="text-xl font-bold mb-4 text-indigo-800">🧩 Panel Debug</h3>
 
-      {/* Sección métricas principales */}
+      {/* Métricas principales */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* ✅ Total exportaciones */}
         <div className="bg-green-100 rounded-xl p-4 shadow flex flex-col items-center justify-center text-center">
@@ -60,7 +60,7 @@ export function PanelDebug({
         </span>
       </div>
 
-      {/* 🔐 APIs y Token */}
+      {/* 🔐 APIs configuradas */}
       <div className="bg-gray-100 rounded-xl p-4 shadow space-y-3 text-sm break-words">
         <h4 className="text-indigo-800 font-semibold mb-2 text-center">🔐 APIs Configuradas</h4>
 
@@ -78,11 +78,12 @@ export function PanelDebug({
           <span className="font-semibold text-gray-600">Groq (ChatGPT):</span>
           <span className="ml-2 text-gray-800">{apiGroq || "—"}</span>
         </div>
+      </div>
 
-        <div className="pt-2 border-t border-gray-300 mt-2">
-          <span className="font-semibold text-gray-600">Token de sesión:</span>
-          <span className="ml-2 text-gray-800">{token || "—"}</span>
-        </div>
+      {/* 🔑 Token de sesión */}
+      <div className="bg-indigo-50 rounded-xl p-4 shadow text-sm break-words">
+        <h4 className="text-indigo-800 font-semibold mb-2 text-center">🔑 Token de Sesión</h4>
+        <p className="text-gray-700 text-center break-all">{token || "—"}</p>
       </div>
     </div>
   );
