@@ -52,7 +52,7 @@ export const PanelConfig: React.FC<PanelConfigProps> = ({
   setApiGroqNuevo,
   setApiGroqVigente,
 }) => {
-  // 🔒 Cambiar contraseña real
+  // 🔒 Cambiar contraseña (valida con backend)
   const handlePasswordChange = async () => {
     setPassMsg(null);
 
@@ -89,11 +89,52 @@ export const PanelConfig: React.FC<PanelConfigProps> = ({
     }
   };
 
-  // ⚙️ Cambiar APIs (solo local por ahora)
-  const handleApiChange = (tipo: "kissoro" | "enplural" | "groq", nueva: string) => {
-    if (tipo === "kissoro") setApiKissoroVigente(nueva);
-    if (tipo === "enplural") setApiEnPluralVigente(nueva);
-    if (tipo === "groq") setApiGroqVigente(nueva);
+  // ⚙️ Cambiar APIs y guardar en backend
+  const handleApiChange = async (
+    tipo: "kissoro" | "enplural" | "groq",
+    nueva: string
+  ) => {
+    setPassMsg(null);
+    if (!nueva.trim()) {
+      setPassMsg({ type: "err", text: "Introduce una API válida" });
+      return;
+    }
+
+    try {
+      const body: any = {};
+      if (tipo === "kissoro") body.apiKissoro = nueva;
+      if (tipo === "enplural") body.apiEnPlural = nueva;
+      if (tipo === "groq") body.apiGroq = nueva;
+
+      const res = await fetch(`${BACKEND}/auth/update_apis`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || "Error al actualizar API");
+      }
+
+      const data = await res.json();
+      setPassMsg({ type: "ok", text: "API actualizada correctamente" });
+
+      if (tipo === "kissoro") {
+        setApiKissoroVigente(data.apiKissoro || nueva);
+        localStorage.setItem("apiKissoro", data.apiKissoro || nueva);
+      }
+      if (tipo === "enplural") {
+        setApiEnPluralVigente(data.apiEnPlural || nueva);
+        localStorage.setItem("apiEnPlural", data.apiEnPlural || nueva);
+      }
+      if (tipo === "groq") {
+        setApiGroqVigente(data.apiGroq || nueva);
+        localStorage.setItem("apiGroq", data.apiGroq || nueva);
+      }
+    } catch (err: any) {
+      setPassMsg({ type: "err", text: err.message || "Error inesperado" });
+    }
   };
 
   return (
@@ -230,4 +271,3 @@ export const PanelConfig: React.FC<PanelConfigProps> = ({
     </div>
   );
 };
-
