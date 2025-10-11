@@ -1,42 +1,90 @@
-import json
-from fastapi import APIRouter, HTTPException, Header
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+from app.core.persistence import load_data, save_data
 
-router = APIRouter()
+router = APIRouter(prefix="/auth", tags=["auth"])
 
-STORAGE_FILE = "backend/app/storage.json"
+# -----------------------------
+# 📘 Modelos
+# -----------------------------
+class LoginRequest(BaseModel):
+    username: str
+    password: str
 
-def read_storage():
-    with open(STORAGE_FILE, "r") as f:
-        return json.load(f)
 
-def write_storage(data):
-    with open(STORAGE_FILE, "w") as f:
-        json.dump(data, f, indent=2)
+class PasswordUpdate(BaseModel):
+    password: str
 
+
+class ApiUpdate(BaseModel):
+    apiKissoro: str | None = None
+    apiEnPlural: str | None = None
+    apiGroq: str | None = None
+
+
+# -----------------------------
+# 🔑 LOGIN
+# -----------------------------
 @router.post("/login")
-async def login(password: str):
-    storage = read_storage()
-    if password == storage["password"]:
-        return {"token": "fake-jwt-token"}
-    raise HTTPException(status_code=401, detail="Contraseña incorrecta")
+def login(req: LoginRequest):
+    data = load_data()
+    if req.password != data.get("password"):
+        data["intentosLoginFallidos"] = data.get("intentosLoginFallidos", 0) + 1
+        save_data(data)
+        raise HTTPException(status_code=401, detail="Usuario o contraseña incorrectos")
 
-@router.post("/change-password")
-async def change_password(old_password: str, new_password: str, authorization: str = Header(None)):
-    storage = read_storage()
-    if authorization != "Bearer fake-jwt-token":
-        raise HTTPException(status_code=401, detail="No autorizado")
-    if old_password != storage["password"]:
-        raise HTTPException(status_code=400, detail="Contraseña actual incorrecta")
-    storage["password"] = new_password
-    write_storage(storage)
-    return {"msg": "Contraseña cambiada"}
+    return {"token": "konyx_token_demo"}
 
-@router.post("/apis")
-async def change_apis(kissoro: str, enplural: str, authorization: str = Header(None)):
-    storage = read_storage()
-    if authorization != "Bearer fake-jwt-token":
-        raise HTTPException(status_code=401, detail="No autorizado")
-    storage["apis"]["kissoro"] = kissoro
-    storage["apis"]["enplural"] = enplural
-    write_storage(storage)
-    return {"msg": "APIs actualizadas"}
+
+# -----------------------------
+# 📡 STATUS
+# -----------------------------
+@router.get("/status")
+def status():
+    data = load_data()
+    return {
+        "password": data.get("password", "admin123"),
+        "apiKissoro": data.get("apiKissoro", ""),
+        "apiEnPlural": data.get("apiEnPlural", ""),
+        "apiGroq": data.get("apiGroq", ""),
+        "ultimoExport": data.get("ultimoExport", "-"),
+        "totalExportaciones": data.get("totalExportaciones", 0),
+        "totalExportacionesFallidas": data.get("totalExportacionesFallidas", 0),
+        "intentosLoginFallidos": data.get("intentosLoginFallidos", 0),
+    }
+
+
+# -----------------------------
+# 🧩 ACTUALIZAR CONTRASEÑA
+# -----------------------------
+@router.post("/update_password")
+def update_password(req: PasswordUpdate):
+    data = load_data()
+    data["password"] = req.password
+    save_data(data)
+    return {"message": "Contraseña actualizada correctamente", "password": req.password}
+
+
+# -----------------------------
+# 🌐 ACTUALIZAR APIS (Kissoro, EnPlural, Groq)
+# -----------------------------
+@router.post("/update_apis")
+def update_apis(req: ApiUpdate):
+    data = load_data()
+
+    if req.apiKissoro is not None:
+        data["apiKissoro"] = req.apiKissoro
+    if req.apiEnPlural is not None:
+        data["apiEnPlural"] = req.apiEnPlural
+    if req.apiGroq is not None:
+        data["apiGroq"] = req.apiGroq
+
+    save_data(data)
+
+    return {
+        "message": "APIs actualizadas correctamente",
+        "apiKissoro": data.get("apiKissoro", ""),
+        "apiEnPlural": data.get("apiEnPlural", ""),
+        "apiGroq": data.get("apiGroq", ""),
+    }
+
