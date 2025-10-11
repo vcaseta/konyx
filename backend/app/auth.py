@@ -1,90 +1,113 @@
-from fastapi import APIRouter, HTTPException
+import json
+from fastapi import APIRouter, HTTPException, Header, Form
 from pydantic import BaseModel
-from app.core.persistence import load_data, save_data
+from pathlib import Path
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
+# Ruta de almacenamiento persistente
+STORAGE_FILE = Path("backend/app/storage.json")
+
+
 # -----------------------------
-# 📘 Modelos
+# UTILIDADES DE LECTURA/ESCRITURA
+# -----------------------------
+def read_storage():
+    if not STORAGE_FILE.exists():
+        default_data = {
+            "password": "admin123",
+            "apis": {"kissoro": "", "enplural": "", "groq": ""},
+            "ultimoExport": "-",
+            "totalExportaciones": 0,
+            "totalExportacionesFallidas": 0,
+            "intentosLoginFallidos": 0,
+            "totalLogins": 0,
+        }
+        write_storage(default_data)
+    with open(STORAGE_FILE, "r") as f:
+        return json.load(f)
+
+
+def write_storage(data):
+    with open(STORAGE_FILE, "w") as f:
+        json.dump(data, f, indent=2)
+
+
+# -----------------------------
+# MODELOS
 # -----------------------------
 class LoginRequest(BaseModel):
     username: str
     password: str
 
 
-class PasswordUpdate(BaseModel):
-    password: str
-
-
-class ApiUpdate(BaseModel):
-    apiKissoro: str | None = None
-    apiEnPlural: str | None = None
-    apiGroq: str | None = None
-
-
 # -----------------------------
-# 🔑 LOGIN
+# ENDPOINTS
 # -----------------------------
 @router.post("/login")
-def login(req: LoginRequest):
-    data = load_data()
-    if req.password != data.get("password"):
-        data["intentosLoginFallidos"] = data.get("intentosLoginFallidos", 0) + 1
-        save_data(data)
+async def login(req: LoginRequest):
+    storage = read_storage()
+    if req.password != storage.get("password", "admin123"):
+        storage["intentosLoginFallidos"] = storage.get("intentosLoginFallidos", 0) + 1
+        write_storage(storage)
         raise HTTPException(status_code=401, detail="Usuario o contraseña incorrectos")
 
-    return {"token": "konyx_token_demo"}
+    # Login correcto
+    storage["totalLogins"] = storage.get("totalLogins", 0) + 1
+    write_storage(storage)
+    return {"token": "fake-jwt-token"}
 
 
-# -----------------------------
-# 📡 STATUS
-# -----------------------------
+@router.post("/change-password")
+async def change_password(
+    old_password: str = Form(...),
+    new_password: str = Form(...),
+    authorization: str = Header(None)
+):
+    storage = read_storage()
+    if authorization != "Bearer fake-jwt-token":
+        raise HTTPException(status_code=401, detail="No autorizado")
+    if old_password != storage.get("password", "admin123"):
+        raise HTTPException(status_code=400, detail="Contraseña actual incorrecta")
+    storage["password"] = new_password
+    write_storage(storage)
+    return {"msg": "Contraseña cambiada"}
+
+
+@router.post("/apis")
+async def change_apis(
+    kissoro: str = Form(""),
+    enplural: str = Form(""),
+    groq: str = Form(""),
+    authorization: str = Header(None)
+):
+    storage = read_storage()
+    if authorization != "Bearer fake-jwt-token":
+        raise HTTPException(status_code=401, detail="No autorizado")
+
+    if "apis" not in storage:
+        storage["apis"] = {"kissoro": "", "enplural": "", "groq": ""}
+
+    storage["apis"]["kissoro"] = kissoro
+    storage["apis"]["enplural"] = enplural
+    storage["apis"]["groq"] = groq
+    write_storage(storage)
+    return {"msg": "APIs actualizadas"}
+
+
 @router.get("/status")
-def status():
-    data = load_data()
+async def status():
+    """Devuelve configuración y estadísticas para el dashboard"""
+    storage = read_storage()
     return {
-        "password": data.get("password", "admin123"),
-        "apiKissoro": data.get("apiKissoro", ""),
-        "apiEnPlural": data.get("apiEnPlural", ""),
-        "apiGroq": data.get("apiGroq", ""),
-        "ultimoExport": data.get("ultimoExport", "-"),
-        "totalExportaciones": data.get("totalExportaciones", 0),
-        "totalExportacionesFallidas": data.get("totalExportacionesFallidas", 0),
-        "intentosLoginFallidos": data.get("intentosLoginFallidos", 0),
-    }
-
-
-# -----------------------------
-# 🧩 ACTUALIZAR CONTRASEÑA
-# -----------------------------
-@router.post("/update_password")
-def update_password(req: PasswordUpdate):
-    data = load_data()
-    data["password"] = req.password
-    save_data(data)
-    return {"message": "Contraseña actualizada correctamente", "password": req.password}
-
-
-# -----------------------------
-# 🌐 ACTUALIZAR APIS (Kissoro, EnPlural, Groq)
-# -----------------------------
-@router.post("/update_apis")
-def update_apis(req: ApiUpdate):
-    data = load_data()
-
-    if req.apiKissoro is not None:
-        data["apiKissoro"] = req.apiKissoro
-    if req.apiEnPlural is not None:
-        data["apiEnPlural"] = req.apiEnPlural
-    if req.apiGroq is not None:
-        data["apiGroq"] = req.apiGroq
-
-    save_data(data)
-
-    return {
-        "message": "APIs actualizadas correctamente",
-        "apiKissoro": data.get("apiKissoro", ""),
-        "apiEnPlural": data.get("apiEnPlural", ""),
-        "apiGroq": data.get("apiGroq", ""),
+        "password": storage.get("password", "admin123"),
+        "apiKissoro": storage.get("apis", {}).get("kissoro", ""),
+        "apiEnPlural": storage.get("apis", {}).get("enplural", ""),
+        "apiGroq": storage.get("apis", {}).get("groq", ""),
+        "ultimoExport": storage.get("ultimoExport", "-"),
+        "totalExportaciones": storage.get("totalExportaciones", 0),
+        "totalExportacionesFallidas": storage.get("totalExportacionesFallidas", 0),
+        "intentosLoginFallidos": storage.get("intentosLoginFallidos", 0),
+        "totalLogins": storage.get("totalLogins", 0),
     }
 
