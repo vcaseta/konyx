@@ -393,8 +393,6 @@ export default function DashboardPage() {
                 apiGroqNuevo={apiGroqNuevo}
                 setApiGroqNuevo={setApiGroqNuevo}
                 setApiGroqVigente={setApiGroqVigente}
-                token={tokenActual}
-                setToken={setTokenActual}
               />
 
               <PanelDebug
