@@ -1,6 +1,8 @@
 "use client";
 import React from "react";
 
+const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || "http://192.168.1.51:8000";
+
 interface PanelConfigProps {
   passActual: string;
   passNueva: string;
@@ -50,19 +52,45 @@ export const PanelConfig: React.FC<PanelConfigProps> = ({
   setApiGroqNuevo,
   setApiGroqVigente,
 }) => {
-  const handlePasswordChange = () => {
-    if (passNueva !== passConfirma) {
-      setPassMsg({ type: "err", text: "Las contraseñas no coinciden" });
+  // 🔒 Cambiar contraseña real
+  const handlePasswordChange = async () => {
+    setPassMsg(null);
+
+    if (!passActual || !passNueva || !passConfirma) {
+      setPassMsg({ type: "err", text: "Completa todos los campos" });
       return;
     }
-    setPasswordGlobal(passNueva);
-    setPassMsg({ type: "ok", text: "Contraseña cambiada correctamente" });
+
+    try {
+      const res = await fetch(`${BACKEND}/auth/update_password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          old_password: passActual,
+          new_password: passNueva,
+          confirm: passConfirma,
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || "Error al cambiar la contraseña");
+      }
+
+      const data = await res.json();
+      setPassMsg({ type: "ok", text: data.message });
+      setPasswordGlobal(data.password);
+      sessionStorage.setItem("konyx_password", data.password);
+      setPassActual("");
+      setPassNueva("");
+      setPassConfirma("");
+    } catch (err: any) {
+      setPassMsg({ type: "err", text: err.message || "Error inesperado" });
+    }
   };
 
-  const handleApiChange = (
-    tipo: "kissoro" | "enplural" | "groq",
-    nueva: string
-  ) => {
+  // ⚙️ Cambiar APIs (solo local por ahora)
+  const handleApiChange = (tipo: "kissoro" | "enplural" | "groq", nueva: string) => {
     if (tipo === "kissoro") setApiKissoroVigente(nueva);
     if (tipo === "enplural") setApiEnPluralVigente(nueva);
     if (tipo === "groq") setApiGroqVigente(nueva);
@@ -202,3 +230,4 @@ export const PanelConfig: React.FC<PanelConfigProps> = ({
     </div>
   );
 };
+
