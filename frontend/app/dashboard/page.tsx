@@ -299,29 +299,44 @@ export default function DashboardPage() {
 
         {/* Contenido principal */}
         <section className="flex flex-col space-y-6">
-          {menu === "config" ? (
-            <div className="space-y-6">
-              <PanelConfig
-                passwordGlobal={passwordGlobal}
-                setPasswordGlobal={setPasswordGlobal}
-                apiKissoroVigente={apiKissoroVigente}
-                setApiKissoroVigente={setApiKissoroVigente}
-                apiEnPluralVigente={apiEnPluralVigente}
-                setApiEnPluralVigente={setApiEnPluralVigente}
-                apiGroqVigente={apiGroqVigente}
-                setApiGroqVigente={setApiGroqVigente}
-              />
-              <PanelDebug
-                ultimoExport={ultimoExport}
-                totalExportaciones={totalExportaciones}
-                totalExportacionesFallidas={totalExportacionesFallidas}
-                intentosLoginFallidos={intentosLoginFallidos}
-                apiKissoro={apiKissoroVigente}
-                apiEnPlural={apiEnPluralVigente}
-                apiGroq={apiGroqVigente}
-                token={tokenActual}
-              />
-            </div>
+         {menu === "config" && (
+  <div className="space-y-6">
+    <PanelConfig
+      passActual={passActual}
+      passNueva={passNueva}
+      passConfirma={passConfirma}
+      setPassActual={setPassActual}
+      setPassNueva={setPassNueva}
+      setPassConfirma={setPassConfirma}
+      passMsg={passMsg}
+      setPassMsg={setPassMsg}
+      passwordGlobal={passwordGlobal}
+      setPasswordGlobal={setPasswordGlobal}
+      apiKissoroVigente={apiKissoroVigente}
+      apiKissoroNuevo={apiKissoroNuevo}
+      setApiKissoroNuevo={setApiKissoroNuevo}
+      setApiKissoroVigente={setApiKissoroVigente}
+      apiEnPluralVigente={apiEnPluralVigente}
+      apiEnPluralNuevo={apiEnPluralNuevo}
+      setApiEnPluralNuevo={setApiEnPluralNuevo}
+      setApiEnPluralVigente={setApiEnPluralVigente}
+      apiGroqVigente={apiGroqVigente}
+      apiGroqNuevo={apiGroqNuevo}
+      setApiGroqNuevo={setApiGroqNuevo}
+      setApiGroqVigente={setApiGroqVigente}
+    />
+
+    <PanelDebug
+      ultimoExport={ultimoExport}
+      totalExportaciones={totalExportaciones}
+      totalExportacionesFallidas={totalExportacionesFallidas}
+      intentosLoginFallidos={intentosLoginFallidos}
+      apiKissoro={apiKissoroVigente}
+      apiEnPlural={apiEnPluralVigente}
+      apiGroq={apiGroqVigente}
+      token={token}
+    />
+  </div>
           ) : menu === "about" ? (
             <PanelAbout />
           ) : menu === "exportar" ? (
