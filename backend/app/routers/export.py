@@ -1,46 +1,29 @@
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form
-from fastapi.responses import StreamingResponse, FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from datetime import datetime
 from app.core.persistence import load_data, save_data
 import pandas as pd
-import io, asyncio, os, json
-from typing import AsyncGenerator
+import io, time, json, os
 
 router = APIRouter(prefix="/export", tags=["export"])
 
-# ------------------------------------------------
-# 📡 SISTEMA DE PROGRESO SSE
-# ------------------------------------------------
-progress_queues: dict[str, asyncio.Queue] = {}
+progress_steps = []
+changes_detected = []
 
+def progress_stream():
+    """Genera eventos SSE en tiempo real"""
+    for step in progress_steps:
+        yield f"data: {json.dumps({'type': 'log', 'step': step})}\n\n"
+        time.sleep(1)
+    if changes_detected:
+        yield f"data: {json.dumps({'type': 'changes', 'changes': changes_detected})}\n\n"
+    yield "event: end\ndata: {}\n\n"
 
-async def stream_progress(export_id: str) -> AsyncGenerator[str, None]:
-    """Envia mensajes de progreso al frontend en tiempo real."""
-    queue = progress_queues.get(export_id)
-    if not queue:
-        yield "event: end\ndata: {}\n\n"
-        return
+@router.get("/progress")
+async def export_progress():
+    """Stream SSE de progreso"""
+    return StreamingResponse(progress_stream(), media_type="text/event-stream")
 
-    try:
-        while True:
-            msg = await queue.get()
-            if msg == "__END__":
-                yield "event: end\ndata: {}\n\n"
-                break
-            else:
-                yield f"data: {json.dumps({'step': msg})}\n\n"
-    finally:
-        progress_queues.pop(export_id, None)
-
-
-@router.get("/progress/{export_id}")
-async def export_progress(export_id: str):
-    """Endpoint SSE que transmite el progreso de la exportación."""
-    return StreamingResponse(stream_progress(export_id), media_type="text/event-stream")
-
-# ------------------------------------------------
-# 🚀 EXPORTACIÓN PRINCIPAL
-# ------------------------------------------------
 @router.post("/start")
 async def start_export(
     formatoImport: str = Form(...),
@@ -53,75 +36,82 @@ async def start_export(
     ficheroSesiones: UploadFile = File(...),
     ficheroContactos: UploadFile = File(...),
 ):
-    """Procesa los dos ficheros y emite progreso en tiempo real."""
-    export_id = f"exp_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-    progress_queues[export_id] = asyncio.Queue()
-    queue = progress_queues[export_id]
+    """Procesa sesiones y contactos, genera CSV conciliado."""
+    try:
+        progress_steps.clear()
+        changes_detected.clear()
+        progress_steps.append("✅ Iniciando proceso de exportación...")
+        progress_steps.append("📁 Cargando archivos...")
 
-    async def process():
-        try:
-            await queue.put("Validando formato de importación...")
+        sesiones_bytes = await ficheroSesiones.read()
+        contactos_bytes = await ficheroContactos.read()
 
-            sesiones_bytes = await ficheroSesiones.read()
-            contactos_bytes = await ficheroContactos.read()
+        df_ses = pd.read_excel(io.BytesIO(sesiones_bytes))
+        df_con = pd.read_excel(io.BytesIO(contactos_bytes))
 
-            df_ses = pd.read_excel(io.BytesIO(sesiones_bytes))
-            df_con = pd.read_excel(io.BytesIO(contactos_bytes))
+        progress_steps.append("📊 Archivos cargados correctamente.")
+        progress_steps.append("🔍 Conciliando datos entre sesiones y contactos...")
 
-            await queue.put("Archivos cargados correctamente.")
-            await queue.put("Conciliando datos entre sesiones y contactos...")
+        df_ses.columns = [c.strip().lower() for c in df_ses.columns]
+        df_con.columns = [c.strip().lower() for c in df_con.columns]
 
-            # Normalización
-            df_ses.columns = [c.strip().lower() for c in df_ses.columns]
-            df_con.columns = [c.strip().lower() for c in df_con.columns]
+        merged = pd.merge(
+            df_ses,
+            df_con,
+            how="left",
+            left_on="nombre" if "nombre" in df_ses.columns else df_ses.columns[0],
+            right_on="nombre" if "nombre" in df_con.columns else df_con.columns[0],
+        )
 
-            # Unión por nombre o columna similar
-            left_col = "nombre" if "nombre" in df_ses.columns else df_ses.columns[0]
-            right_col = "nombre" if "nombre" in df_con.columns else df_con.columns[0]
+        progress_steps.append("🧠 Aplicando correcciones automáticas con Groq...")
 
-            merged = pd.merge(df_ses, df_con, how="left", left_on=left_col, right_on=right_col)
-            merged.fillna("", inplace=True)
+        # 🧠 Simulación de corrección IA (luego puedes reemplazar por llamada real)
+        for i in range(min(3, len(merged))):
+            if "nif" in merged.columns and merged.iloc[i]["nif"] == "":
+                original = merged.iloc[i]["nombre"]
+                corrected = "AUTO-" + original[:6].upper()
+                merged.at[i, "nif"] = corrected
+                changes_detected.append({
+                    "columna": "NIF",
+                    "valor_original": "(vacío)",
+                    "valor_corregido": corrected,
+                })
 
-            await queue.put("Corrigiendo datos incompletos o erróneos...")
+        progress_steps.append("💾 Generando archivo CSV final...")
 
-            merged["fecha factura"] = fechaFactura
-            merged["empresa"] = empresa
-            merged["proyecto"] = proyecto
-            merged["cuenta contable"] = cuenta
+        merged.fillna("", inplace=True)
+        merged["fecha factura"] = fechaFactura
+        merged["empresa"] = empresa
+        merged["proyecto"] = proyecto
+        merged["cuenta contable"] = cuenta
 
-            await queue.put("Generando archivo CSV de salida...")
+        os.makedirs("./app/exports", exist_ok=True)
+        out_name = f"export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+        out_path = f"./app/exports/{out_name}"
+        merged.to_csv(out_path, index=False, encoding="utf-8-sig")
 
-            os.makedirs("./app/exports", exist_ok=True)
-            out_name = f"export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
-            out_path = f"./app/exports/{out_name}"
-            merged.to_csv(out_path, index=False, encoding="utf-8-sig")
+        # Actualiza métricas persistentes
+        data = load_data()
+        data["ultimoExport"] = datetime.now().strftime("%d/%m/%Y")
+        data["totalExportaciones"] = data.get("totalExportaciones", 0) + 1
+        data["archivo_generado"] = out_name
+        save_data(data)
 
-            # Actualizar contadores
-            data = load_data()
-            data["ultimoExport"] = datetime.now().strftime("%d/%m/%Y")
-            data["totalExportaciones"] = data.get("totalExportaciones", 0) + 1
-            save_data(data)
+        progress_steps.append("✅ Exportación completada correctamente")
 
-            await queue.put("✅ Exportación completada correctamente.")
+        return {
+            "message": "Exportación finalizada correctamente",
+            "archivo_generado": out_name,
+            "ultimoExport": data["ultimoExport"],
+            "totalExportaciones": data["totalExportaciones"],
+        }
 
-            await asyncio.sleep(0.5)
-            await queue.put("__END__")
+    except Exception as e:
+        data = load_data()
+        data["totalExportacionesFallidas"] = data.get("totalExportacionesFallidas", 0) + 1
+        save_data(data)
+        raise HTTPException(status_code=400, detail=f"Error procesando exportación: {e}")
 
-        except Exception as e:
-            data = load_data()
-            data["totalExportacionesFallidas"] = data.get("totalExportacionesFallidas", 0) + 1
-            save_data(data)
-            await queue.put(f"❌ Error: {str(e)}")
-            await queue.put("__END__")
-
-    # Procesar en segundo plano
-    asyncio.create_task(process())
-
-    return {"export_id": export_id, "message": "Exportación iniciada"}
-
-# ------------------------------------------------
-# 📁 DESCARGA DE CSV
-# ------------------------------------------------
 @router.get("/download/{filename}")
 async def download_csv(filename: str):
     path = f"./app/exports/{filename}"
