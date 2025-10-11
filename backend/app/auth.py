@@ -1,113 +1,159 @@
-import json
-from fastapi import APIRouter, HTTPException, Header, Form
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
-from pathlib import Path
+from datetime import datetime
+from typing import Optional, Dict, Any
+
+from app.core.persistence import load_data, save_data
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-# Ruta de almacenamiento persistente
-STORAGE_FILE = Path("backend/app/storage.json")
-
 
 # -----------------------------
-# UTILIDADES DE LECTURA/ESCRITURA
-# -----------------------------
-def read_storage():
-    if not STORAGE_FILE.exists():
-        default_data = {
-            "password": "admin123",
-            "apis": {"kissoro": "", "enplural": "", "groq": ""},
-            "ultimoExport": "-",
-            "totalExportaciones": 0,
-            "totalExportacionesFallidas": 0,
-            "intentosLoginFallidos": 0,
-            "totalLogins": 0,
-        }
-        write_storage(default_data)
-    with open(STORAGE_FILE, "r") as f:
-        return json.load(f)
-
-
-def write_storage(data):
-    with open(STORAGE_FILE, "w") as f:
-        json.dump(data, f, indent=2)
-
-
-# -----------------------------
-# MODELOS
+# Modelos (para JSON si lo usas)
 # -----------------------------
 class LoginRequest(BaseModel):
-    username: str
+    username: Optional[str] = None
     password: str
 
 
+class PasswordUpdate(BaseModel):
+    password: str
+
+
+class ApiUpdate(BaseModel):
+    apiKissoro: Optional[str] = None
+    apiEnPlural: Optional[str] = None
+    apiGroq: Optional[str] = None
+
+
 # -----------------------------
-# ENDPOINTS
+# Helpers
+# -----------------------------
+async def _read_payload(request: Request) -> Dict[str, Any]:
+    """
+    Lee el payload tanto si llega como JSON como si llega como FormData.
+    Devuelve siempre un dict plano.
+    """
+    # intenta JSON
+    try:
+        data = await request.json()
+        if isinstance(data, dict):
+            return data
+    except Exception:
+        pass
+
+    # intenta form
+    try:
+        form = await request.form()
+        return {k: (v if v is not None else "") for k, v in form.items()}
+    except Exception:
+        pass
+
+    return {}
+
+
+def _ensure_defaults(d: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Garantiza llaves por defecto en el storage.
+    No sobreescribe valores existentes.
+    """
+    d.setdefault("password", "admin123")
+    d.setdefault("apiKissoro", "")
+    d.setdefault("apiEnPlural", "")
+    d.setdefault("apiGroq", "")
+    d.setdefault("ultimoExport", "-")
+    d.setdefault("totalExportaciones", 0)
+    d.setdefault("totalExportacionesFallidas", 0)
+    d.setdefault("intentosLoginFallidos", 0)
+    d.setdefault("totalLogins", 0)
+    return d
+
+
+# -----------------------------
+# Endpoints
 # -----------------------------
 @router.post("/login")
-async def login(req: LoginRequest):
-    storage = read_storage()
-    if req.password != storage.get("password", "admin123"):
-        storage["intentosLoginFallidos"] = storage.get("intentosLoginFallidos", 0) + 1
-        write_storage(storage)
+async def login(request: Request):
+    """
+    Acepta:
+      - JSON: { "username": "...", "password": "..." }
+      - FormData: username=...&password=...
+    """
+    payload = await _read_payload(request)
+    password = (payload.get("password") or "").strip()
+
+    if not password:
+        raise HTTPException(status_code=400, detail="Falta 'password'.")
+
+    data = _ensure_defaults(load_data())
+
+    if password != data.get("password", "admin123"):
+        data["intentosLoginFallidos"] = int(data.get("intentosLoginFallidos", 0)) + 1
+        save_data(data)
         raise HTTPException(status_code=401, detail="Usuario o contraseña incorrectos")
 
-    # Login correcto
-    storage["totalLogins"] = storage.get("totalLogins", 0) + 1
-    write_storage(storage)
-    return {"token": "fake-jwt-token"}
+    # login correcto
+    data["totalLogins"] = int(data.get("totalLogins", 0)) + 1
+    data["ultimoLogin"] = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+    save_data(data)
 
-
-@router.post("/change-password")
-async def change_password(
-    old_password: str = Form(...),
-    new_password: str = Form(...),
-    authorization: str = Header(None)
-):
-    storage = read_storage()
-    if authorization != "Bearer fake-jwt-token":
-        raise HTTPException(status_code=401, detail="No autorizado")
-    if old_password != storage.get("password", "admin123"):
-        raise HTTPException(status_code=400, detail="Contraseña actual incorrecta")
-    storage["password"] = new_password
-    write_storage(storage)
-    return {"msg": "Contraseña cambiada"}
-
-
-@router.post("/apis")
-async def change_apis(
-    kissoro: str = Form(""),
-    enplural: str = Form(""),
-    groq: str = Form(""),
-    authorization: str = Header(None)
-):
-    storage = read_storage()
-    if authorization != "Bearer fake-jwt-token":
-        raise HTTPException(status_code=401, detail="No autorizado")
-
-    if "apis" not in storage:
-        storage["apis"] = {"kissoro": "", "enplural": "", "groq": ""}
-
-    storage["apis"]["kissoro"] = kissoro
-    storage["apis"]["enplural"] = enplural
-    storage["apis"]["groq"] = groq
-    write_storage(storage)
-    return {"msg": "APIs actualizadas"}
+    # Mantener token que espera el frontend
+    return {"token": "konyx_token_demo"}
 
 
 @router.get("/status")
-async def status():
-    """Devuelve configuración y estadísticas para el dashboard"""
-    storage = read_storage()
+def status():
+    """
+    Devuelve configuración y métricas para el dashboard.
+    """
+    data = _ensure_defaults(load_data())
     return {
-        "password": storage.get("password", "admin123"),
-        "apiKissoro": storage.get("apis", {}).get("kissoro", ""),
-        "apiEnPlural": storage.get("apis", {}).get("enplural", ""),
-        "apiGroq": storage.get("apis", {}).get("groq", ""),
-        "ultimoExport": storage.get("ultimoExport", "-"),
-        "totalExportaciones": storage.get("totalExportaciones", 0),
-        "totalExportacionesFallidas": storage.get("totalExportacionesFallidas", 0),
-        "intentosLoginFallidos": storage.get("intentosLoginFallidos", 0),
-        "totalLogins": storage.get("totalLogins", 0),
+        "password": data.get("password", "admin123"),
+        "apiKissoro": data.get("apiKissoro", ""),
+        "apiEnPlural": data.get("apiEnPlural", ""),
+        "apiGroq": data.get("apiGroq", ""),
+        "ultimoExport": data.get("ultimoExport", "-"),
+        "totalExportaciones": data.get("totalExportaciones", 0),
+        "totalExportacionesFallidas": data.get("totalExportacionesFallidas", 0),
+        "intentosLoginFallidos": data.get("intentosLoginFallidos", 0),
+        "totalLogins": data.get("totalLogins", 0),
+        # opcional: puedes exponer "archivo_generado" si lo usas en el PanelExport
+        "archivo_generado": data.get("archivo_generado", ""),
     }
 
+
+@router.post("/update_password")
+async def update_password(req: PasswordUpdate):
+    """
+    Cambia la contraseña global. Se usa desde PanelConfig.
+    """
+    if not req.password:
+        raise HTTPException(status_code=400, detail="La nueva contraseña no puede estar vacía.")
+
+    data = _ensure_defaults(load_data())
+    data["password"] = req.password
+    save_data(data)
+    return {"message": "Contraseña actualizada correctamente", "password": req.password}
+
+
+@router.post("/update_apis")
+async def update_apis(req: ApiUpdate):
+    """
+    Actualiza APIs de Kissoro / EnPlural / Groq.
+    El PanelConfig envía JSON con estas claves.
+    """
+    data = _ensure_defaults(load_data())
+    if req.apiKissoro is not None:
+        data["apiKissoro"] = req.apiKissoro
+    if req.apiEnPlural is not None:
+        data["apiEnPlural"] = req.apiEnPlural
+    if req.apiGroq is not None:
+        data["apiGroq"] = req.apiGroq
+
+    save_data(data)
+    return {
+        "message": "APIs actualizadas correctamente",
+        "apiKissoro": data["apiKissoro"],
+        "apiEnPlural": data["apiEnPlural"],
+        "apiGroq": data["apiGroq"],
+    }
