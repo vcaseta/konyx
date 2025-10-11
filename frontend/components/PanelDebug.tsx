@@ -19,44 +19,45 @@ export const PanelDebug: React.FC<PanelDebugProps> = ({
   token,
 }) => {
   return (
-    <div className="bg-slate-100/90 border border-slate-300 rounded-2xl shadow-sm p-6 backdrop-blur-sm">
-      {/* Línea superior decorativa */}
-      <div className="relative mb-6">
-        <div className="absolute inset-x-0 top-1/2 border-t border-slate-300"></div>
-        <h3 className="relative inline-block px-4 bg-slate-100/90 text-sm font-semibold text-slate-600 left-1/2 -translate-x-1/2">
-          Estado del sistema
-        </h3>
-      </div>
+    <div
+      className="rounded-2xl shadow-md p-6 backdrop-blur-sm border border-slate-700 text-slate-200"
+      style={{ backgroundColor: "#26252d" }}
+    >
+      {/* Título alineado a la izquierda */}
+      <h3 className="text-sm font-semibold text-slate-300 mb-4 border-b border-slate-600 pb-1">
+        Estado del sistema
+      </h3>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-        <div className="bg-white/70 border border-slate-200 rounded-lg p-3">
-          <span className="block text-slate-500">Último export realizado</span>
-          <span className="font-semibold text-slate-800">{ultimoExport || "—"}</span>
+      {/* Rejilla 3 columnas compacta */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+        <div className="bg-slate-800/30 border border-slate-700 rounded-lg p-3 transition hover:bg-slate-700/40">
+          <span className="block text-slate-400">Último export</span>
+          <span className="font-semibold">{ultimoExport || "—"}</span>
         </div>
 
-        <div className="bg-white/70 border border-slate-200 rounded-lg p-3">
-          <span className="block text-slate-500">Exportaciones correctas</span>
-          <span className="font-semibold text-slate-800">{totalExportaciones}</span>
+        <div className="bg-slate-800/30 border border-slate-700 rounded-lg p-3 transition hover:bg-slate-700/40">
+          <span className="block text-slate-400">Exportaciones OK</span>
+          <span className="font-semibold">{totalExportaciones}</span>
         </div>
 
-        <div className="bg-white/70 border border-slate-200 rounded-lg p-3">
-          <span className="block text-slate-500">Exportaciones fallidas</span>
-          <span className="font-semibold text-slate-800">{totalExportacionesFallidas}</span>
+        <div className="bg-slate-800/30 border border-slate-700 rounded-lg p-3 transition hover:bg-slate-700/40">
+          <span className="block text-slate-400">Exportaciones fallidas</span>
+          <span className="font-semibold">{totalExportacionesFallidas}</span>
         </div>
 
-        <div className="bg-white/70 border border-slate-200 rounded-lg p-3">
-          <span className="block text-slate-500">Intentos de login fallidos</span>
-          <span className="font-semibold text-slate-800">{intentosLoginFallidos}</span>
+        <div className="bg-slate-800/30 border border-slate-700 rounded-lg p-3 transition hover:bg-slate-700/40">
+          <span className="block text-slate-400">Logins exitosos</span>
+          <span className="font-semibold">{totalLogins}</span>
         </div>
 
-        <div className="bg-white/70 border border-slate-200 rounded-lg p-3">
-          <span className="block text-slate-500">Total logins exitosos</span>
-          <span className="font-semibold text-slate-800">{totalLogins}</span>
+        <div className="bg-slate-800/30 border border-slate-700 rounded-lg p-3 transition hover:bg-slate-700/40">
+          <span className="block text-slate-400">Intentos fallidos</span>
+          <span className="font-semibold">{intentosLoginFallidos}</span>
         </div>
 
-        <div className="bg-white/70 border border-slate-200 rounded-lg p-3 col-span-full">
-          <span className="block text-slate-500">Token activo</span>
-          <span className="font-mono text-xs text-slate-700 break-all">{token}</span>
+        <div className="bg-slate-800/30 border border-slate-700 rounded-lg p-3 sm:col-span-3 transition hover:bg-slate-700/40">
+          <span className="block text-slate-400">Token activo</span>
+          <span className="font-mono text-xs break-all">{token}</span>
         </div>
       </div>
     </div>
