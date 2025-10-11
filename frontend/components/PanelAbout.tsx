@@ -12,7 +12,7 @@ export function PanelAbout() {
         />
 
         <h2 className="text-3xl font-bold text-indigo-700 mt-4">
-          VM Audiovisual Project Manager
+          VM AV-TI Project Manager
         </h2>
 
         <div className="mt-2 space-y-1 text-sm">
