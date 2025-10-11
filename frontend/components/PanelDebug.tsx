@@ -5,9 +5,7 @@ interface PanelDebugProps {
   totalExportaciones: number;
   totalExportacionesFallidas: number;
   intentosLoginFallidos: number;
-  apiKissoro: string;
-  apiEnPlural: string;
-  apiGroq: string;
+  totalLogins: number; // ✅ nuevo
   token: string;
 }
 
@@ -16,9 +14,7 @@ export function PanelDebug({
   totalExportaciones,
   totalExportacionesFallidas,
   intentosLoginFallidos,
-  apiKissoro,
-  apiEnPlural,
-  apiGroq,
+  totalLogins,
   token,
 }: PanelDebugProps) {
   return (
@@ -28,7 +24,7 @@ export function PanelDebug({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-6 text-sm text-gray-700">
         <div className="flex justify-between border-b border-gray-200 pb-1">
           <span className="font-semibold text-gray-600">🕒 Último export:</span>
-          <span className="text-indigo-700">{ultimoExport}</span>
+          <span className="text-indigo-700">{ultimoExport || "—"}</span>
         </div>
 
         <div className="flex justify-between border-b border-gray-200 pb-1">
@@ -42,27 +38,13 @@ export function PanelDebug({
         </div>
 
         <div className="flex justify-between border-b border-gray-200 pb-1">
-          <span className="font-semibold text-gray-600">🚫 Logins fallidos:</span>
-          <span className="text-orange-600">{intentosLoginFallidos}</span>
+          <span className="font-semibold text-gray-600">✅ Logins correctos:</span>
+          <span className="text-green-600">{totalLogins}</span>
         </div>
 
-        <div className="col-span-full mt-3 border-t border-gray-300 pt-2">
-          <h4 className="font-semibold text-indigo-700 mb-2">🔗 Claves de API</h4>
-
-          <div className="text-xs text-gray-600 space-y-1">
-            <div className="flex justify-between border-b border-gray-200 pb-1">
-              <span>Kissoro:</span>
-              <span className="text-indigo-700 truncate max-w-[60%]">{apiKissoro || "—"}</span>
-            </div>
-            <div className="flex justify-between border-b border-gray-200 pb-1">
-              <span>En Plural:</span>
-              <span className="text-indigo-700 truncate max-w-[60%]">{apiEnPlural || "—"}</span>
-            </div>
-            <div className="flex justify-between border-b border-gray-200 pb-1">
-              <span>Groq:</span>
-              <span className="text-indigo-700 truncate max-w-[60%]">{apiGroq || "—"}</span>
-            </div>
-          </div>
+        <div className="flex justify-between border-b border-gray-200 pb-1">
+          <span className="font-semibold text-gray-600">🚫 Logins fallidos:</span>
+          <span className="text-orange-600">{intentosLoginFallidos}</span>
         </div>
 
         <div className="col-span-full mt-4 border-t border-gray-300 pt-2">
