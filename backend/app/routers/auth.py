@@ -1,50 +1,40 @@
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter, HTTPException, Form
 from app.core.persistence import load_data, save_data
+from datetime import datetime
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-class LoginRequest(BaseModel):
-    username: str
-    password: str
-
-class PasswordUpdate(BaseModel):
-    password: str
-
-class ApiUpdate(BaseModel):
-    apiKissoro: str | None = None
-    apiEnPlural: str | None = None
-    apiGroq: str | None = None
-
 @router.post("/login")
-def login(req: LoginRequest):
+async def login(usuario: str = Form(...), password: str = Form(...)):
     data = load_data()
-    if req.password != data.get("password"):
-        data["intentosLoginFallidos"] = data.get("intentosLoginFallidos", 0) + 1
+
+    # Validación simple del password guardado
+    stored_password = data.get("password", "1234")
+    if password == stored_password:
+        data["ultimoLogin"] = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+        data["totalLogins"] = data.get("totalLogins", 0) + 1  # ✅ incrementa logins correctos
         save_data(data)
-        raise HTTPException(status_code=401, detail="Contraseña incorrecta")
-    return {"token": "konyx_token_demo"}
+        return {"token": f"konyx_token_{usuario}", "status": "ok"}
+
+    # Login incorrecto
+    data["intentosLoginFallidos"] = data.get("intentosLoginFallidos", 0) + 1
+    save_data(data)
+    raise HTTPException(status_code=401, detail="Credenciales incorrectas")
 
 @router.get("/status")
-def status():
+async def status():
+    """Devuelve información general del sistema."""
     data = load_data()
-    return data
+    return {
+        "ultimoExport": data.get("ultimoExport", "-"),
+        "totalExportaciones": data.get("totalExportaciones", 0),
+        "totalExportacionesFallidas": data.get("totalExportacionesFallidas", 0),
+        "intentosLoginFallidos": data.get("intentosLoginFallidos", 0),
+        "totalLogins": data.get("totalLogins", 0),  # ✅ nuevo
+        "password": data.get("password", "1234"),
+        "apiKissoro": data.get("apiKissoro", ""),
+        "apiEnPlural": data.get("apiEnPlural", ""),
+        "apiGroq": data.get("apiGroq", ""),
+        "archivo_generado": data.get("archivo_generado", ""),
+    }
 
-@router.post("/update_password")
-def update_password(req: PasswordUpdate):
-    data = load_data()
-    data["password"] = req.password
-    save_data(data)
-    return {"message": "Contraseña actualizada", "password": req.password}
-
-@router.post("/update_apis")
-def update_apis(req: ApiUpdate):
-    data = load_data()
-    if req.apiKissoro is not None:
-        data["apiKissoro"] = req.apiKissoro
-    if req.apiEnPlural is not None:
-        data["apiEnPlural"] = req.apiEnPlural
-    if req.apiGroq is not None:
-        data["apiGroq"] = req.apiGroq
-    save_data(data)
-    return {"message": "APIs actualizadas correctamente", **data}
