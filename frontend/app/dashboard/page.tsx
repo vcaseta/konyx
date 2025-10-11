@@ -404,8 +404,6 @@ export default function DashboardPage() {
                 intentosLoginFallidos={intentosLoginFallidos}
                 apiKissoro={apiKissoroVigente}
                 apiEnPlural={apiEnPluralVigente}
-                apiGroq={apiGroqVigente}
-                token={tokenActual}
               />
             </div>
           )}
