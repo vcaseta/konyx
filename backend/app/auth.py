@@ -9,7 +9,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 # -----------------------------
-# Modelos (para JSON si lo usas)
+# Modelos
 # -----------------------------
 class LoginRequest(BaseModel):
     username: Optional[str] = None
@@ -17,7 +17,9 @@ class LoginRequest(BaseModel):
 
 
 class PasswordUpdate(BaseModel):
-    password: str
+    old_password: str
+    new_password: str
+    confirm: str
 
 
 class ApiUpdate(BaseModel):
@@ -34,7 +36,6 @@ async def _read_payload(request: Request) -> Dict[str, Any]:
     Lee el payload tanto si llega como JSON como si llega como FormData.
     Devuelve siempre un dict plano.
     """
-    # intenta JSON
     try:
         data = await request.json()
         if isinstance(data, dict):
@@ -42,7 +43,6 @@ async def _read_payload(request: Request) -> Dict[str, Any]:
     except Exception:
         pass
 
-    # intenta form
     try:
         form = await request.form()
         return {k: (v if v is not None else "") for k, v in form.items()}
@@ -92,12 +92,10 @@ async def login(request: Request):
         save_data(data)
         raise HTTPException(status_code=401, detail="Usuario o contraseña incorrectos")
 
-    # login correcto
     data["totalLogins"] = int(data.get("totalLogins", 0)) + 1
     data["ultimoLogin"] = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
     save_data(data)
 
-    # Mantener token que espera el frontend
     return {"token": "konyx_token_demo"}
 
 
@@ -117,7 +115,6 @@ def status():
         "totalExportacionesFallidas": data.get("totalExportacionesFallidas", 0),
         "intentosLoginFallidos": data.get("intentosLoginFallidos", 0),
         "totalLogins": data.get("totalLogins", 0),
-        # opcional: puedes exponer "archivo_generado" si lo usas en el PanelExport
         "archivo_generado": data.get("archivo_generado", ""),
     }
 
@@ -127,22 +124,30 @@ async def update_password(req: PasswordUpdate):
     """
     Cambia la contraseña global. Se usa desde PanelConfig.
     """
-    if not req.password:
-        raise HTTPException(status_code=400, detail="La nueva contraseña no puede estar vacía.")
-
     data = _ensure_defaults(load_data())
-    data["password"] = req.password
+
+    # Validar contraseña actual
+    if req.old_password != data.get("password", "admin123"):
+        raise HTTPException(status_code=400, detail="Contraseña actual incorrecta")
+
+    # Validar coincidencia
+    if req.new_password != req.confirm:
+        raise HTTPException(status_code=400, detail="Las contraseñas no coinciden")
+
+    # Actualizar y guardar
+    data["password"] = req.new_password
     save_data(data)
-    return {"message": "Contraseña actualizada correctamente", "password": req.password}
+
+    return {"message": "Contraseña actualizada correctamente", "password": req.new_password}
 
 
 @router.post("/update_apis")
 async def update_apis(req: ApiUpdate):
     """
     Actualiza APIs de Kissoro / EnPlural / Groq.
-    El PanelConfig envía JSON con estas claves.
     """
     data = _ensure_defaults(load_data())
+
     if req.apiKissoro is not None:
         data["apiKissoro"] = req.apiKissoro
     if req.apiEnPlural is not None:
@@ -157,3 +162,4 @@ async def update_apis(req: ApiUpdate):
         "apiEnPlural": data["apiEnPlural"],
         "apiGroq": data["apiGroq"],
     }
+
