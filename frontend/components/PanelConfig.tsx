@@ -72,19 +72,32 @@ export const PanelConfig: React.FC<PanelConfigProps> = ({
         }),
       });
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.detail || "Error al cambiar la contraseña");
+      let data: any;
+      try {
+        data = await res.json();
+      } catch {
+        throw new Error("Respuesta no válida del servidor");
       }
 
-      const data = await res.json();
-      setPassMsg({ type: "ok", text: data.message });
+      // Manejo robusto de errores (evita [object Object])
+      if (!res.ok) {
+        const detail = Array.isArray(data.detail)
+          ? data.detail.map((d: any) => d.msg).join(", ")
+          : data.detail || data.error || data.message || "Error al cambiar la contraseña";
+
+        console.warn("⚠️ Error al cambiar la contraseña:", data);
+        throw new Error(detail);
+      }
+
+      setPassMsg({ type: "ok", text: data.message || "Contraseña actualizada correctamente" });
       setPasswordGlobal(data.password);
       sessionStorage.setItem("konyx_password", data.password);
       setPassActual("");
       setPassNueva("");
       setPassConfirma("");
+      console.log("✅ Contraseña actualizada correctamente");
     } catch (err: any) {
+      console.warn("❌ Error en handlePasswordChange:", err);
       setPassMsg({ type: "err", text: err.message || "Error inesperado" });
     }
   };
@@ -133,6 +146,7 @@ export const PanelConfig: React.FC<PanelConfigProps> = ({
         localStorage.setItem("apiGroq", data.apiGroq || nueva);
       }
     } catch (err: any) {
+      console.warn("❌ Error en handleApiChange:", err);
       setPassMsg({ type: "err", text: err.message || "Error inesperado" });
     }
   };
