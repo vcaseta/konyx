@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Body
 from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional, Dict, Any
@@ -92,6 +92,7 @@ async def login(request: Request):
         save_data(data)
         raise HTTPException(status_code=401, detail="Usuario o contraseña incorrectos")
 
+    # Login correcto
     data["totalLogins"] = int(data.get("totalLogins", 0)) + 1
     data["ultimoLogin"] = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
     save_data(data)
@@ -120,7 +121,7 @@ def status():
 
 
 @router.post("/update_password")
-async def update_password(req: PasswordUpdate):
+async def update_password(req: PasswordUpdate = Body(...)):
     """
     Cambia la contraseña global. Se usa desde PanelConfig.
     """
@@ -142,7 +143,7 @@ async def update_password(req: PasswordUpdate):
 
 
 @router.post("/update_apis")
-async def update_apis(req: ApiUpdate):
+async def update_apis(req: ApiUpdate = Body(...)):
     """
     Actualiza APIs de Kissoro / EnPlural / Groq.
     """
