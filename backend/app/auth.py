@@ -8,7 +8,6 @@ from app.core.persistence import load_data, save_data
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-# -----------------------------
 # Modelos
 # -----------------------------
 class LoginRequest(BaseModel):
