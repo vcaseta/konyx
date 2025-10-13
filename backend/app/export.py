@@ -11,9 +11,9 @@ os.makedirs(EXPORT_DIR, exist_ok=True)
 progress_queue = asyncio.Queue()
 
 
-def log(msg: str):
-    """Encola un mensaje para el flujo SSE."""
-    asyncio.create_task(progress_queue.put(json.dumps({"type": "log", "step": msg})))
+async def log(msg: str):
+    """Encola un mensaje para el flujo SSE, compatible con asyncio."""
+    await progress_queue.put(json.dumps({"type": "log", "step": msg}))
 
 
 # 🧹 Resetear la cola de progreso
@@ -27,6 +27,7 @@ async def reset_progress():
         return JSONResponse({"status": "error", "detail": str(e)})
 
 
+# 🚀 Iniciar exportación
 @router.post("/start")
 async def start_export(
     formatoImport: str = Form(...),
@@ -39,19 +40,21 @@ async def start_export(
     ficheroSesiones: UploadFile = None,
     ficheroContactos: UploadFile = None
 ):
-    log(f"🚀 Exportación iniciada por {usuario} ({empresa})")
-    log(f"Formato import: {formatoImport} / export: {formatoExport}")
+    await log("⏳ Iniciando exportación... preparando archivos...")
 
     if not ficheroSesiones or not ficheroContactos:
-        log("❌ Faltan ficheros de entrada.")
+        await log("❌ Faltan ficheros de entrada.")
         return {"error": "Ficheros no enviados"}
+
+    await log(f"🚀 Exportación iniciada por {usuario} ({empresa})")
+    await log(f"Formato import: {formatoImport} / export: {formatoExport}")
 
     try:
         df_ses = pd.read_excel(io.BytesIO(await ficheroSesiones.read()))
         df_con = pd.read_excel(io.BytesIO(await ficheroContactos.read()))
-        log("📄 Archivos cargados correctamente.")
+        await log("📄 Archivos cargados correctamente.")
     except Exception as e:
-        log(f"❌ Error leyendo los ficheros: {e}")
+        await log(f"❌ Error leyendo los ficheros: {e}")
         return {"error": str(e)}
 
     # Limpieza de nombres para el archivo final
@@ -66,7 +69,7 @@ async def start_export(
     # 🧾 Exportación HOLDed CSV
     # -------------------------------
     if formatoExport.lower() == "holded":
-        log("🧮 Procesando datos para Holded...")
+        await log("🧮 Procesando datos para Holded...")
 
         df_ses.columns = [c.strip().lower() for c in df_ses.columns]
         df_con.columns = [c.strip().lower() for c in df_con.columns]
@@ -108,26 +111,26 @@ async def start_export(
         filepath = os.path.join(EXPORT_DIR, filename)
         facturas_df.to_csv(filepath, index=False, sep=";")
 
-        log(f"✅ CSV generado correctamente: {filename}")
+        await log(f"✅ CSV generado correctamente: {filename}")
         await progress_queue.put(json.dumps({"type": "end", "file": filename}))
         return {"status": "ok", "file": filename}
 
     # -------------------------------
-    # 🧾 Exportación Gestoría (simple)
+    # 🧾 Exportación Gestoría
     # -------------------------------
     elif formatoExport.lower() == "gestoria":
-        log("📦 Generando CSV tipo Gestoría...")
+        await log("📦 Generando CSV tipo Gestoría...")
         await asyncio.sleep(1)
         merged = df_ses.merge(df_con, how="left", on="nombre", suffixes=("_ses", "_con"))
         filename = f"{empresa_safe}_{formato_safe}_{fecha_safe}.csv"
         filepath = os.path.join(EXPORT_DIR, filename)
         merged.to_csv(filepath, index=False, sep=";")
-        log(f"✅ Archivo CSV generado: {filename}")
+        await log(f"✅ Archivo CSV generado: {filename}")
         await progress_queue.put(json.dumps({"type": "end", "file": filename}))
         return {"status": "ok", "file": filename}
 
     else:
-        log(f"❌ Formato de exportación desconocido: {formatoExport}")
+        await log(f"❌ Formato de exportación desconocido: {formatoExport}")
         await progress_queue.put(json.dumps({"type": "end"}))
         return {"error": "Formato desconocido"}
 
@@ -136,6 +139,8 @@ async def start_export(
 @router.get("/progress")
 async def export_progress():
     async def event_stream():
+        # Enviamos un mensaje inicial al conectar
+        yield "data: {\"type\":\"log\",\"step\":\"👋 Conectado al flujo de progreso.\"}\n\n"
         while True:
             data = await progress_queue.get()
             yield f"data: {data}\n\n"
@@ -151,3 +156,4 @@ async def download_file(filename: str):
     if not os.path.exists(filepath):
         return {"error": "Archivo no encontrado"}
     return FileResponse(filepath, filename=filename)
+
