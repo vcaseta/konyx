@@ -28,6 +28,20 @@ async def reset_progress():
 
 
 # 🚀 Iniciar exportación
+print("📥 Campos recibidos desde frontend (depuración):")
+print({
+    "formatoImport": formatoImport,
+    "formatoExport": formatoExport,
+    "empresa": empresa,
+    "fechaFactura": fechaFactura,
+    "proyecto": proyecto,
+    "cuenta": cuenta,
+    "usuario": usuario,
+    "ficheroSesiones": ficheroSesiones.filename if ficheroSesiones else None,
+    "ficheroContactos": ficheroContactos.filename if ficheroContactos else None,
+})
+
+
 @router.post("/start")
 async def start_export(
     formatoImport: str = Form(...),
