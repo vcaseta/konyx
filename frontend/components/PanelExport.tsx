@@ -92,13 +92,20 @@ export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) 
   };
 
   // 🧹 Reiniciar para nueva exportación
-  const handleNewExport = () => {
+  const handleNewExport = async () => {
+    try {
+      await fetch(`${BACKEND}/export/reset`, { method: "POST" }); // 🧠 Limpia la cola en backend
+      console.log("Cola de progreso reiniciada");
+    } catch {
+      console.warn("No se pudo limpiar la cola de progreso");
+    }
+
     setLogs([]);
     setChanges([]);
     setFinished(false);
     setFilename(null);
     setError(null);
-    onReset();
+    onReset(); // Volver al panel inicial
   };
 
   return (
