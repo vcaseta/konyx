@@ -161,46 +161,59 @@ export default function DashboardPage() {
     fetchBackendData();
   }, []);
 
-  // ---------------------------
-  // EXPORTAR
-  // ---------------------------
-  const onConfirmExport = async (ok: boolean) => {
-    if (!ok) return setMenu("formatoImport");
+ // ---------------------------
+// EXPORTAR
+// ---------------------------
+const onConfirmExport = async (ok: boolean) => {
+  if (!ok) return setMenu("formatoImport");
 
-    try {
-      const usuario = sessionStorage.getItem("konyx_user") || "desconocido";
+  try {
+    const usuario = sessionStorage.getItem("konyx_user") || "desconocido";
 
-      const formData = new FormData();
-      formData.append("formatoImport", formatoImport!);
-      formData.append("formatoExport", formatoExport!);
-      formData.append("empresa", empresa!);
-      formData.append("fechaFactura", fechaFactura);
-      formData.append("proyecto", proyecto!);
-      formData.append("cuenta", cuenta === "Otra (introducir)" ? cuentaOtra : (cuenta as string));
-      formData.append("usuario", usuario);
+    const formData = new FormData();
+    formData.append("formatoImport", formatoImport || "");
+    formData.append("formatoExport", formatoExport || "");
+    formData.append("empresa", empresa || "");
+    formData.append("fechaFactura", fechaFactura || "");
+    formData.append("proyecto", proyecto || "");
+    formData.append("cuenta", cuenta === "Otra (introducir)" ? cuentaOtra : cuenta || "");
+    formData.append("usuario", usuario);
 
-      const fileSes = fileSesionesRef.current?.files?.[0];
-      const fileCon = fileContactosRef.current?.files?.[0];
-      if (!fileSes || !fileCon) throw new Error("Faltan archivos: sesiones y/o contactos.");
+    const fileSes = fileSesionesRef.current?.files?.[0];
+    const fileCon = fileContactosRef.current?.files?.[0];
 
-      formData.append("ficheroSesiones", fileSes);
-      formData.append("ficheroContactos", fileCon);
+    if (!fileSes || !fileCon) throw new Error("Faltan archivos: sesiones y/o contactos.");
 
-      const res = await fetch(`${BACKEND}/export/start`, { method: "POST", body: formData });
-      for (const [key, value] of formData.entries()) {
-      console.log("📤", key, "=", value);
-     }
-      setMenu("exportar");
-      await refreshStats();
+    formData.append("ficheroSesiones", fileSes);
+    formData.append("ficheroContactos", fileCon);
 
-      if (!res.ok) {
-        const msg = await res.text().catch(() => "");
-        throw new Error(msg || "Error iniciando exportación");
-      }
-    } catch (e: any) {
-      alert("Error iniciando exportación: " + (e?.message || e));
+    console.log("📦 Contenido de formData:");
+    for (const [key, value] of formData.entries()) {
+      console.log("➡️", key, "=", value);
     }
-  };
+
+    const res = await fetch(`${BACKEND}/export/start`, {
+      method: "POST",
+      body: formData,
+    });
+
+    console.log("📥 Respuesta del backend:", res.status);
+
+    if (!res.ok) {
+      const msg = await res.text().catch(() => "");
+      console.error("❌ Error detallado del backend:", msg);
+      alert("Error iniciando exportación: " + msg);
+      throw new Error(msg || "Error iniciando exportación");
+    }
+
+    console.log("✅ Exportación enviada correctamente");
+    setMenu("exportar");
+    await refreshStats();
+  } catch (e: any) {
+    console.error("❌ Error en onConfirmExport:", e);
+    alert("Error iniciando exportación: " + (e?.message || e));
+  }
+};
 
   // ---------------------------
   // LOGOUT
