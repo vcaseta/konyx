@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse, JSONResponse
 from datetime import datetime
 from app.core.persistence import load_data, save_data
 import pandas as pd
@@ -10,6 +10,9 @@ router = APIRouter(prefix="/export", tags=["export"])
 progress_steps = []
 changes_detected = []
 
+EXPORT_DIR = "./app/exports"
+os.makedirs(EXPORT_DIR, exist_ok=True)
+
 def progress_stream():
     """Genera eventos SSE en tiempo real"""
     for step in progress_steps:
@@ -19,10 +22,12 @@ def progress_stream():
         yield f"data: {json.dumps({'type': 'changes', 'changes': changes_detected})}\n\n"
     yield "event: end\ndata: {}\n\n"
 
+
 @router.get("/progress")
 async def export_progress():
     """Stream SSE de progreso"""
     return StreamingResponse(progress_stream(), media_type="text/event-stream")
+
 
 @router.post("/start")
 async def start_export(
@@ -65,7 +70,7 @@ async def start_export(
 
         progress_steps.append("🧠 Aplicando correcciones automáticas con Groq...")
 
-        # 🧠 Simulación de corrección IA (luego puedes reemplazar por llamada real)
+        # 🧠 Simulación de corrección IA (puedes sustituir luego por llamada real)
         for i in range(min(3, len(merged))):
             if "nif" in merged.columns and merged.iloc[i]["nif"] == "":
                 original = merged.iloc[i]["nombre"]
@@ -85,9 +90,8 @@ async def start_export(
         merged["proyecto"] = proyecto
         merged["cuenta contable"] = cuenta
 
-        os.makedirs("./app/exports", exist_ok=True)
         out_name = f"export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
-        out_path = f"./app/exports/{out_name}"
+        out_path = os.path.join(EXPORT_DIR, out_name)
         merged.to_csv(out_path, index=False, encoding="utf-8-sig")
 
         # Actualiza métricas persistentes
@@ -112,9 +116,40 @@ async def start_export(
         save_data(data)
         raise HTTPException(status_code=400, detail=f"Error procesando exportación: {e}")
 
+
 @router.get("/download/{filename}")
 async def download_csv(filename: str):
-    path = f"./app/exports/{filename}"
+    path = os.path.join(EXPORT_DIR, filename)
     if not os.path.exists(path):
         raise HTTPException(status_code=404, detail="Archivo no encontrado")
     return FileResponse(path, media_type="text/csv", filename=filename)
+
+
+# 🧹 Consultar archivos existentes
+@router.get("/cleanup")
+async def get_export_files():
+    """Devuelve cuántos archivos hay en /app/exports"""
+    try:
+        files = [f for f in os.listdir(EXPORT_DIR) if os.path.isfile(os.path.join(EXPORT_DIR, f))]
+        return {"status": "ok", "count": len(files), "files": files}
+    except Exception as e:
+        return {"status": "error", "detail": str(e)}
+
+
+# 🧹 Eliminar manualmente todos los archivos CSV
+@router.post("/cleanup")
+async def cleanup_exports():
+    """Elimina todos los archivos CSV del directorio de exportación"""
+    try:
+        removed = 0
+        for f in os.listdir(EXPORT_DIR):
+            path = os.path.join(EXPORT_DIR, f)
+            if os.path.isfile(path):
+                os.remove(path)
+                removed += 1
+
+        msg = f"🧹 Limpieza manual completada ({removed} archivos eliminados)"
+        print(msg)
+        return JSONResponse({"status": "ok", "message": msg, "removed": removed})
+    except Exception as e:
+        return JSONResponse({"status": "error", "detail": str(e)})
