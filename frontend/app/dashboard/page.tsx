@@ -167,8 +167,6 @@ export default function DashboardPage() {
   const onConfirmExport = async (ok: boolean) => {
     if (!ok) return setMenu("formatoImport");
 
-    const res = await fetch(`${BACKEND}/export/start`, { method: "POST", body: formData });
-
     try {
       const usuario = sessionStorage.getItem("konyx_user") || "desconocido";
 
@@ -189,6 +187,9 @@ export default function DashboardPage() {
       formData.append("ficheroContactos", fileCon);
 
       const res = await fetch(`${BACKEND}/export/start`, { method: "POST", body: formData });
+      for (const [key, value] of formData.entries()) {
+      console.log("📤", key, "=", value);
+     }
       setMenu("exportar");
       await refreshStats();
 
