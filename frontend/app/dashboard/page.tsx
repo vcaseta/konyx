@@ -167,6 +167,8 @@ export default function DashboardPage() {
   const onConfirmExport = async (ok: boolean) => {
     if (!ok) return setMenu("formatoImport");
 
+    const res = await fetch(`${BACKEND}/export/start`, { method: "POST", body: formData });
+
     try {
       const usuario = sessionStorage.getItem("konyx_user") || "desconocido";
 
