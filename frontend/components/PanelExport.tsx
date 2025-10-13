@@ -2,8 +2,8 @@
 import React, { useEffect, useState } from "react";
 
 interface PanelExportProps {
-  onConfirm: (ok: boolean) => Promise<void> | void; // ← acepta async
-  onReset: () => void; // 🔄 limpiar datos y volver al inicio
+  onConfirm: (ok: boolean) => Promise<void> | void;
+  onReset: () => void;
 }
 
 interface Change {
@@ -21,6 +21,21 @@ export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) 
   const [filename, setFilename] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // 🚀 Iniciar exportación automáticamente al entrar en el panel
+  useEffect(() => {
+    const iniciarExport = async () => {
+      try {
+        const res = await fetch(`${BACKEND}/export/start`, { method: "POST" });
+        console.log("Exportación iniciada:", res.status);
+        if (!res.ok) setError("Error al iniciar exportación.");
+      } catch (err) {
+        console.error("Error en /export/start:", err);
+        setError("Error al conectar con el backend.");
+      }
+    };
+    iniciarExport();
+  }, [BACKEND]);
+
   // 🔄 Escucha en tiempo real del progreso SSE
   useEffect(() => {
     const source = new EventSource(`${BACKEND}/export/progress`);
@@ -33,6 +48,9 @@ export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) 
           setLogs((prev) => [...prev, data.step]);
         } else if (data.type === "changes") {
           setChanges(data.changes || []);
+        } else if (data.type === "end" && data.file) {
+          setLogs((prev) => [...prev, `💾 Archivo generado: ${data.file}`]);
+          setFilename(data.file);
         }
       } catch {
         /* Ignorar parseos vacíos */
@@ -73,24 +91,6 @@ export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) 
     }
   };
 
-  // 🔍 Obtener nombre del archivo generado (desde el backend)
-  useEffect(() => {
-    const checkResult = async () => {
-      try {
-        const res = await fetch(`${BACKEND}/auth/status`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data?.archivo_generado) {
-            setFilename(data.archivo_generado);
-          }
-        }
-      } catch {
-        /* ignore */
-      }
-    };
-    checkResult();
-  }, [BACKEND]);
-
   // 🧹 Reiniciar para nueva exportación
   const handleNewExport = () => {
     setLogs([]);
@@ -98,7 +98,7 @@ export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) 
     setFinished(false);
     setFilename(null);
     setError(null);
-    onReset(); // Llama al Dashboard para reiniciar selección
+    onReset();
   };
 
   return (
@@ -109,7 +109,7 @@ export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) 
       <div className="bg-gray-100 rounded-lg p-3 max-h-56 overflow-y-auto text-sm border border-gray-200">
         {logs.length > 0 ? (
           logs.map((log, i) => (
-            <div key={i} className="text-gray-700 mb-1">
+            <div key={i} className={`mb-1 ${log.includes("💾") ? "text-green-600 font-semibold" : "text-gray-700"}`}>
               {log}
             </div>
           ))
