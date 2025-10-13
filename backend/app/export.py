@@ -9,6 +9,7 @@ os.makedirs(EXPORT_DIR, exist_ok=True)
 
 progress_queue = asyncio.Queue()
 
+
 def log(msg: str):
     """Encola un mensaje para el flujo SSE."""
     asyncio.create_task(progress_queue.put(json.dumps({"type": "log", "step": msg})))
@@ -71,10 +72,10 @@ async def start_export(
                 "Concepto": "Servicios de Psicoterapia",
                 "IVA": 0,
                 "Importe": round(total, 2),
-                "Fecha": fechaFactura,         # ← desde frontend
+                "Fecha": fechaFactura,
                 "Forma de pago (ID)": "",
-                "Cuenta contable": cuenta,     # ← desde frontend
-                "Proyecto": proyecto,          # ← desde frontend
+                "Cuenta contable": cuenta,
+                "Proyecto": proyecto,
                 "Empresa": empresa,
                 "NIF": grupo.get("nif", [""])[0] if "nif" in grupo else "",
                 "Email": grupo.get("email", [""])[0] if "email" in grupo else "",
@@ -91,13 +92,12 @@ async def start_export(
 
         facturas_df = pd.DataFrame(facturas)
 
-        # 🧾 Nombre de archivo personalizado
         filename = f"{empresa_safe}_{formato_safe}_{fecha_safe}.csv"
         filepath = os.path.join(EXPORT_DIR, filename)
         facturas_df.to_csv(filepath, index=False, sep=";")
 
         log(f"✅ CSV generado correctamente: {filename}")
-        await progress_queue.put(json.dumps({"type": "end"}))
+        await progress_queue.put(json.dumps({"type": "end", "file": filename}))
         return {"status": "ok", "file": filename}
 
     # -------------------------------
@@ -111,7 +111,7 @@ async def start_export(
         filepath = os.path.join(EXPORT_DIR, filename)
         merged.to_csv(filepath, index=False, sep=";")
         log(f"✅ Archivo CSV generado: {filename}")
-        await progress_queue.put(json.dumps({"type": "end"}))
+        await progress_queue.put(json.dumps({"type": "end", "file": filename}))
         return {"status": "ok", "file": filename}
 
     else:
@@ -139,3 +139,4 @@ async def download_file(filename: str):
     if not os.path.exists(filepath):
         return {"error": "Archivo no encontrado"}
     return FileResponse(filepath, filename=filename)
+
