@@ -3,7 +3,7 @@ from fastapi.responses import FileResponse, StreamingResponse, JSONResponse
 from datetime import datetime
 from app.core.persistence import load_data, save_data
 import pandas as pd
-import io, time, json, os
+import io, time, json, os, shutil
 
 router = APIRouter(prefix="/export", tags=["export"])
 
@@ -11,7 +11,14 @@ progress_steps = []
 changes_detected = []
 
 EXPORT_DIR = "./app/exports"
+TEMP_INPUTS = "./app/temp_inputs"
+
 os.makedirs(EXPORT_DIR, exist_ok=True)
+os.makedirs(TEMP_INPUTS, exist_ok=True)
+
+# ============================================================
+# 🔄 PROGRESO SSE
+# ============================================================
 
 def progress_stream():
     """Genera eventos SSE en tiempo real"""
@@ -28,6 +35,10 @@ async def export_progress():
     """Stream SSE de progreso"""
     return StreamingResponse(progress_stream(), media_type="text/event-stream")
 
+
+# ============================================================
+# 🚀 INICIAR EXPORTACIÓN
+# ============================================================
 
 @router.post("/start")
 async def start_export(
@@ -48,11 +59,18 @@ async def start_export(
         progress_steps.append("✅ Iniciando proceso de exportación...")
         progress_steps.append("📁 Cargando archivos...")
 
-        sesiones_bytes = await ficheroSesiones.read()
-        contactos_bytes = await ficheroContactos.read()
+        # Guardar temporalmente por si quieres inspeccionarlos
+        sesiones_path = os.path.join(TEMP_INPUTS, f"{usuario}_sesiones.xlsx")
+        contactos_path = os.path.join(TEMP_INPUTS, f"{usuario}_contactos.xlsx")
 
-        df_ses = pd.read_excel(io.BytesIO(sesiones_bytes))
-        df_con = pd.read_excel(io.BytesIO(contactos_bytes))
+        with open(sesiones_path, "wb") as f:
+            f.write(await ficheroSesiones.read())
+        with open(contactos_path, "wb") as f:
+            f.write(await ficheroContactos.read())
+
+        # Leer directamente en memoria
+        df_ses = pd.read_excel(sesiones_path)
+        df_con = pd.read_excel(contactos_path)
 
         progress_steps.append("📊 Archivos cargados correctamente.")
         progress_steps.append("🔍 Conciliando datos entre sesiones y contactos...")
@@ -70,7 +88,7 @@ async def start_export(
 
         progress_steps.append("🧠 Aplicando correcciones automáticas con Groq...")
 
-        # 🧠 Simulación de corrección IA (puedes sustituir luego por llamada real)
+        # Simulación de corrección IA
         for i in range(min(3, len(merged))):
             if "nif" in merged.columns and merged.iloc[i]["nif"] == "":
                 original = merged.iloc[i]["nombre"]
@@ -117,6 +135,10 @@ async def start_export(
         raise HTTPException(status_code=400, detail=f"Error procesando exportación: {e}")
 
 
+# ============================================================
+# ⬇️ DESCARGA
+# ============================================================
+
 @router.get("/download/{filename}")
 async def download_csv(filename: str):
     path = os.path.join(EXPORT_DIR, filename)
@@ -125,31 +147,44 @@ async def download_csv(filename: str):
     return FileResponse(path, media_type="text/csv", filename=filename)
 
 
-# 🧹 Consultar archivos existentes
+# ============================================================
+# 🧹 LIMPIEZA DE ARCHIVOS (entradas + salidas)
+# ============================================================
+
 @router.get("/cleanup")
 async def get_export_files():
-    """Devuelve cuántos archivos hay en /app/exports"""
+    """Devuelve cuántos archivos hay en export y temp_inputs"""
     try:
-        files = [f for f in os.listdir(EXPORT_DIR) if os.path.isfile(os.path.join(EXPORT_DIR, f))]
-        return {"status": "ok", "count": len(files), "files": files}
+        exp_files = [f for f in os.listdir(EXPORT_DIR) if os.path.isfile(os.path.join(EXPORT_DIR, f))]
+        inp_files = [f for f in os.listdir(TEMP_INPUTS) if os.path.isfile(os.path.join(TEMP_INPUTS, f))]
+
+        return {
+            "status": "ok",
+            "exports_count": len(exp_files),
+            "inputs_count": len(inp_files),
+            "total": len(exp_files) + len(inp_files),
+            "exports": exp_files,
+            "inputs": inp_files,
+        }
     except Exception as e:
         return {"status": "error", "detail": str(e)}
 
 
-# 🧹 Eliminar manualmente todos los archivos CSV
 @router.post("/cleanup")
 async def cleanup_exports():
-    """Elimina todos los archivos CSV del directorio de exportación"""
+    """Elimina todos los archivos de exportación e input temporal"""
     try:
         removed = 0
-        for f in os.listdir(EXPORT_DIR):
-            path = os.path.join(EXPORT_DIR, f)
-            if os.path.isfile(path):
-                os.remove(path)
-                removed += 1
+        for folder in [EXPORT_DIR, TEMP_INPUTS]:
+            for f in os.listdir(folder):
+                path = os.path.join(folder, f)
+                if os.path.isfile(path):
+                    os.remove(path)
+                    removed += 1
 
-        msg = f"🧹 Limpieza manual completada ({removed} archivos eliminados)"
+        msg = f"🧹 Limpieza completada ({removed} archivos eliminados de export + temp_inputs)"
         print(msg)
         return JSONResponse({"status": "ok", "message": msg, "removed": removed})
     except Exception as e:
         return JSONResponse({"status": "error", "detail": str(e)})
+
