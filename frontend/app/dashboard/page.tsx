@@ -16,7 +16,6 @@ import { PanelAbout } from "../../components/PanelAbout";
 import { PanelResumen } from "../../components/PanelResumen";
 import { Item } from "../../components/Item";
 
-
 const FORMATO_IMPORT_OPTS = ["Eholo", "Gestoria"] as const;
 const FORMATO_EXPORT_OPTS = ["Holded", "Gestoria"] as const;
 const EMPRESAS = ["Kissoro", "En Plural Psicologia"] as const;
@@ -71,7 +70,7 @@ export default function DashboardPage() {
   const fileSesionesRef = useRef<HTMLInputElement>(null);
   const fileContactosRef = useRef<HTMLInputElement>(null);
 
-  // Contraseña y APIs (solo en config)
+  // Configuración y APIs
   const [passActual, setPassActual] = useState("");
   const [passNueva, setPassNueva] = useState("");
   const [passConfirma, setPassConfirma] = useState("");
@@ -84,14 +83,13 @@ export default function DashboardPage() {
   const [apiGroqVigente, setApiGroqVigente] = useState(() => localStorage.getItem("apiGroq") || "");
   const [apiGroqNuevo, setApiGroqNuevo] = useState("");
 
-  // Estadísticas (Debug)
+  // Debug
   const [ultimoExport, setUltimoExport] = useState("-");
   const [totalExportaciones, setTotalExportaciones] = useState(0);
   const [totalExportacionesFallidas, setTotalExportacionesFallidas] = useState(0);
   const [intentosLoginFallidos, setIntentosLoginFallidos] = useState(0);
   const [totalLogins, setTotalLogins] = useState(0);
-
-  const [tokenActual, setTokenActual] = useState(token || "konyx_token_demo");
+  const [tokenActual] = useState(token || "konyx_token_demo");
 
   // ---------------------------
   // HELPERS
@@ -128,99 +126,48 @@ export default function DashboardPage() {
       setTotalExportacionesFallidas(s.totalExportacionesFallidas || 0);
       setIntentosLoginFallidos(s.intentosLoginFallidos || 0);
       setTotalLogins(s.totalLogins || 0);
-    } catch {
-      // ignore
-    }
+    } catch {}
   };
 
   // ---------------------------
-  // CARGA INICIAL DESDE BACKEND
+  // EXPORTAR
   // ---------------------------
-  useEffect(() => {
-    const fetchBackendData = async () => {
-      try {
-        const res = await fetch(`${BACKEND}/auth/status`);
-        if (!res.ok) throw new Error("Error al sincronizar datos del backend");
-        const data = await res.json();
+  const onConfirmExport = async (ok: boolean) => {
+    if (!ok) return setMenu("formatoImport");
 
-        setPasswordGlobal(data.password || "1234");
-        sessionStorage.setItem("konyx_password", data.password || "1234");
+    try {
+      const usuario = sessionStorage.getItem("konyx_user") || "desconocido";
+      const formData = new FormData();
+      formData.append("formatoImport", formatoImport || "");
+      formData.append("formatoExport", formatoExport || "");
+      formData.append("empresa", empresa || "");
+      formData.append("fechaFactura", fechaFactura || "");
+      formData.append("proyecto", proyecto || "");
+      formData.append("cuenta", cuenta === "Otra (introducir)" ? cuentaOtra : cuenta || "");
+      formData.append("usuario", usuario);
 
-        setApiKissoroVigente(data.apiKissoro || "");
-        setApiEnPluralVigente(data.apiEnPlural || "");
-        setApiGroqVigente(data.apiGroq || "");
+      const fileSes = fileSesionesRef.current?.files?.[0];
+      const fileCon = fileContactosRef.current?.files?.[0];
 
-        setUltimoExport(data.ultimoExport || "-");
-        setTotalExportaciones(data.totalExportaciones || 0);
-        setTotalExportacionesFallidas(data.totalExportacionesFallidas || 0);
-        setIntentosLoginFallidos(data.intentosLoginFallidos || 0);
-        setTotalLogins(data.totalLogins || 0);
-      } catch (err) {
-        console.error("Error sincronizando con backend:", err);
+      if (!fileSes || !fileCon) {
+        alert("⚠️ No se han seleccionado correctamente los ficheros de sesiones y/o contactos.");
+        return;
       }
-    };
-    fetchBackendData();
-  }, []);
 
- // ---------------------------
-// EXPORTAR
-// ---------------------------
-const onConfirmExport = async (ok: boolean) => {
-  if (!ok) return setMenu("formatoImport");
+      formData.append("ficheroSesiones", fileSes);
+      formData.append("ficheroContactos", fileCon);
 
-  try {
-    const usuario = sessionStorage.getItem("konyx_user") || "desconocido";
+      console.log("🚀 Enviando exportación...");
+      await fetch(`${BACKEND}/export/start`, { method: "POST", body: formData });
 
-    const formData = new FormData();
-    formData.append("formatoImport", formatoImport || "");
-    formData.append("formatoExport", formatoExport || "");
-    formData.append("empresa", empresa || "");
-    formData.append("fechaFactura", fechaFactura || "");
-    formData.append("proyecto", proyecto || "");
-    formData.append("cuenta", cuenta === "Otra (introducir)" ? cuentaOtra : cuenta || "");
-    formData.append("usuario", usuario);
-
-const fileSes = fileSesionesRef.current?.files?.[0];
-const fileCon = fileContactosRef.current?.files?.[0];
-
-console.log("📂 Sesiones ref:", fileSesionesRef.current);
-console.log("📂 Contactos ref:", fileContactosRef.current);
-console.log("📄 Sesiones file:", fileSes);
-console.log("📄 Contactos file:", fileCon);
-
-if (!fileSes || !fileCon) {
-  alert("⚠️ No se han seleccionado correctamente los ficheros de sesiones y/o contactos.");
-  throw new Error("Faltan archivos: sesiones y/o contactos.");
-}
-
-    formData.append("ficheroSesiones", fileSes);
-    formData.append("ficheroContactos", fileCon);
-
-    console.log("📦 Contenido de formData:");
-    for (const [key, value] of formData.entries()) {
-      console.log("➡️", key, "=", value);
+      // Cambiamos al panel de progreso
+      setMenu("exportar");
+      await refreshStats();
+    } catch (e) {
+      console.error("❌ Error en onConfirmExport:", e);
+      alert("Error iniciando exportación.");
     }
-
-    const res = await fetch(`${BACKEND}/export/debug_form`, { method: "POST", body: formData });
-
-
-    console.log("📥 Respuesta del backend:", res.status);
-
-    if (!res.ok) {
-      const msg = await res.text().catch(() => "");
-      console.error("❌ Error detallado del backend:", msg);
-      alert("Error iniciando exportación: " + msg);
-      throw new Error(msg || "Error iniciando exportación");
-    }
-
-    console.log("✅ Exportación enviada correctamente");
-    setMenu("exportar");
-    await refreshStats();
-  } catch (e: any) {
-    console.error("❌ Error en onConfirmExport:", e);
-    alert("Error iniciando exportación: " + (e?.message || e));
-  }
-};
+  };
 
   // ---------------------------
   // LOGOUT
@@ -234,10 +181,7 @@ if (!fileSes || !fileCon) {
   // RENDER
   // ---------------------------
   return (
-    <main
-      className="min-h-screen bg-no-repeat bg-center bg-cover p-4"
-      style={{ backgroundImage: "url(/fondo.png)", backgroundSize: "100% 100%" }}
-    >
+    <main className="min-h-screen bg-no-repeat bg-center bg-cover p-4" style={{ backgroundImage: "url(/fondo.png)", backgroundSize: "100% 100%" }}>
       <div className="mx-auto max-w-7xl grid grid-cols-1 md:grid-cols-[260px_1fr] gap-6">
         {/* Sidebar */}
         <aside className="md:sticky md:top-6">
@@ -304,13 +248,8 @@ if (!fileSes || !fileCon) {
 
         {/* Contenido */}
         <section className="flex flex-col space-y-6">
-          {/* Paneles */}
-          {menu === "formatoImport" && (
-            <PanelOption title="Formato Importación" options={FORMATO_IMPORT_OPTS} value={formatoImport} onChange={setFormatoImport} />
-          )}
-          {menu === "formatoExport" && (
-            <PanelOption title="Formato Exportación" options={FORMATO_EXPORT_OPTS} value={formatoExport} onChange={setFormatoExport} />
-          )}
+          {menu === "formatoImport" && <PanelOption title="Formato Importación" options={FORMATO_IMPORT_OPTS} value={formatoImport} onChange={setFormatoImport} />}
+          {menu === "formatoExport" && <PanelOption title="Formato Exportación" options={FORMATO_EXPORT_OPTS} value={formatoExport} onChange={setFormatoExport} />}
           {menu === "empresa" && <PanelOption title="Empresa" options={EMPRESAS} value={empresa} onChange={setEmpresa} />}
           {menu === "proyecto" && <PanelOption title="Proyecto" options={PROYECTOS} value={proyecto} onChange={setProyecto} />}
           {menu === "cuenta" && (
@@ -331,12 +270,7 @@ if (!fileSes || !fileCon) {
             <PanelFile value={ficheroSesiones} onPickFileClick={onPickSesionesClick} onPickFile={onPickSesiones} fileInputRef={fileSesionesRef} />
           )}
           {menu === "ficheroContactos" && (
-            <PanelFileContactos
-              value={ficheroContactos}
-              onPickFileClick={onPickContactosClick}
-              onPickFile={onPickContactos}
-              fileInputRef={fileContactosRef}
-            />
+            <PanelFileContactos value={ficheroContactos} onPickFileClick={onPickContactosClick} onPickFile={onPickContactos} fileInputRef={fileContactosRef} />
           )}
 
           {menu === "config" && (
@@ -378,42 +312,23 @@ if (!fileSes || !fileCon) {
           )}
 
           {menu === "about" && <PanelAbout />}
-          {menu === "exportar" && (
-            <PanelExport
-              onConfirm={onConfirmExport}
-              onReset={() => {
-                setFormatoImport(null);
-                setFormatoExport(null);
-                setEmpresa(null);
-                setFechaFactura("");
-                setProyecto(null);
-                setCuenta(null);
-                setCuentaOtra("");
-                setFicheroSesiones("");
-                setFicheroContactos("");
-                if (fileSesionesRef.current) fileSesionesRef.current.value = "";
-                if (fileContactosRef.current) fileContactosRef.current.value = "";
-                setMenu("formatoImport");
-              }}
-            />
-          )}
+          {menu === "exportar" && <PanelExport onConfirm={onConfirmExport} onReset={() => setMenu("formatoImport")} />}
           {menu === "cerrar" && <PanelCerrar onConfirm={logout} onCancel={() => setMenu("formatoImport")} />}
 
-        {/* Panel Resumen: visible en todos los menús excepto Configuración, Exportar, About y Cerrar */}
-{menu !== "config" && menu !== "exportar" && menu !== "about" && menu !== "cerrar" && (
-  <PanelResumen
-    formatoImport={formatoImport}
-    formatoExport={formatoExport}
-    empresa={empresa}
-    fechaFactura={fechaFactura}
-    proyecto={proyecto}
-    cuenta={cuenta}
-    cuentaOtra={cuentaOtra}
-    ficheroSesiones={ficheroSesiones}
-    ficheroContactos={ficheroContactos}
-  />
-)}
-
+          {/* Panel resumen */}
+          {menu !== "config" && menu !== "exportar" && menu !== "about" && menu !== "cerrar" && (
+            <PanelResumen
+              formatoImport={formatoImport}
+              formatoExport={formatoExport}
+              empresa={empresa}
+              fechaFactura={fechaFactura}
+              proyecto={proyecto}
+              cuenta={cuenta}
+              cuentaOtra={cuentaOtra}
+              ficheroSesiones={ficheroSesiones}
+              ficheroContactos={ficheroContactos}
+            />
+          )}
         </section>
       </div>
     </main>
