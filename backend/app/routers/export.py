@@ -54,12 +54,26 @@ async def start_export(
 ):
     """Procesa sesiones y contactos, genera CSV conciliado."""
     try:
+        # 🧠 DEBUG: mostrar qué llega desde frontend
+        print("📦 Campos recibidos desde frontend:")
+        print({
+            "formatoImport": formatoImport,
+            "formatoExport": formatoExport,
+            "empresa": empresa,
+            "fechaFactura": fechaFactura,
+            "proyecto": proyecto,
+            "cuenta": cuenta,
+            "usuario": usuario,
+            "ficheroSesiones": ficheroSesiones.filename if ficheroSesiones else None,
+            "ficheroContactos": ficheroContactos.filename if ficheroContactos else None,
+        })
+
         progress_steps.clear()
         changes_detected.clear()
         progress_steps.append("✅ Iniciando proceso de exportación...")
         progress_steps.append("📁 Cargando archivos...")
 
-        # Guardar temporalmente por si quieres inspeccionarlos
+        # Guardar temporalmente los archivos subidos
         sesiones_path = os.path.join(TEMP_INPUTS, f"{usuario}_sesiones.xlsx")
         contactos_path = os.path.join(TEMP_INPUTS, f"{usuario}_contactos.xlsx")
 
@@ -187,4 +201,3 @@ async def cleanup_exports():
         return JSONResponse({"status": "ok", "message": msg, "removed": removed})
     except Exception as e:
         return JSONResponse({"status": "error", "detail": str(e)})
-
