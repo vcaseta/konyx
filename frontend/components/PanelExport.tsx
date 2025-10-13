@@ -26,7 +26,7 @@ export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) 
   useEffect(() => {
     const iniciarExport = async () => {
       try {
-        const res = await fetch(`${BACKEND}/export/debug_form`, { method: "POST" });
+        const res = await fetch(`${BACKEND}/export/start`, { method: "POST" });
         console.log("Exportación iniciada:", res.status);
         if (!res.ok) setError("Error al iniciar exportación.");
       } catch (err) {
