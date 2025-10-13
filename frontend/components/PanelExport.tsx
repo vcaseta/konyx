@@ -20,13 +20,42 @@ export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) 
   const [finished, setFinished] = useState(false);
   const [filename, setFilename] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [connected, setConnected] = useState(false);
+
+  // 🚀 Iniciar exportación automáticamente al entrar en el panel
+  useEffect(() => {
+    const iniciarExport = async () => {
+      try {
+        const res = await fetch(`${BACKEND}/export/start`, { method: "POST" });
+        console.log("Exportación iniciada:", res.status);
+        if (!res.ok) setError("Error al iniciar exportación.");
+      } catch (err) {
+        console.error("Error en /export/start:", err);
+        setError("Error al conectar con el backend.");
+      }
+    };
+    iniciarExport();
+  }, [BACKEND]);
 
   // 🔄 Escucha en tiempo real del progreso SSE
   useEffect(() => {
+    console.log("📡 Conectando a SSE:", `${BACKEND}/export/progress`);
     const source = new EventSource(`${BACKEND}/export/progress`);
+
+    source.onopen = () => {
+      console.log("✅ Conectado al flujo SSE.");
+      setConnected(true);
+    };
+
+    source.onerror = (err) => {
+      console.error("❌ Error en conexión SSE:", err);
+      setError("Error en la conexión de progreso.");
+      source.close();
+    };
 
     source.onmessage = (event) => {
       if (!event.data) return;
+      console.log("📡 Evento recibido SSE:", event.data);
       try {
         const data = JSON.parse(event.data);
         if (data.type === "log") {
@@ -36,16 +65,13 @@ export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) 
         } else if (data.type === "end" && data.file) {
           setLogs((prev) => [...prev, `💾 Archivo generado: ${data.file}`]);
           setFilename(data.file);
+          setFinished(true);
+          source.close();
         }
-      } catch {
-        /* Ignorar parseos vacíos */
+      } catch (e) {
+        console.warn("Evento SSE no JSON:", event.data);
       }
     };
-
-    source.addEventListener("end", () => {
-      setFinished(true);
-      source.close();
-    });
 
     return () => source.close();
   }, [BACKEND]);
@@ -79,8 +105,8 @@ export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) 
   // 🧹 Reiniciar para nueva exportación
   const handleNewExport = async () => {
     try {
-      await fetch(`${BACKEND}/export/cleanup`, { method: "POST" }); // limpia la cola y archivos
-      console.log("🧹 Limpieza completada en backend");
+      await fetch(`${BACKEND}/export/reset`, { method: "POST" });
+      console.log("Cola de progreso reiniciada");
     } catch {
       console.warn("No se pudo limpiar la cola de progreso");
     }
@@ -90,23 +116,28 @@ export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) 
     setFinished(false);
     setFilename(null);
     setError(null);
-    onReset(); // volver al panel inicial
+    setConnected(false);
+    onReset();
   };
 
   return (
     <div className="bg-white/80 rounded-2xl shadow-lg p-6 space-y-5">
       <h3 className="text-xl font-bold text-indigo-700 text-center">🚀 Exportación en curso</h3>
 
+      {/* Estado de conexión */}
+      <div className="text-center text-sm">
+        {connected ? (
+          <span className="text-green-600 font-semibold">🟢 Conectado al servidor</span>
+        ) : (
+          <span className="text-gray-400 italic">Conectando...</span>
+        )}
+      </div>
+
       {/* Logs */}
-      <div className="bg-gray-100 rounded-lg p-3 max-h-56 overflow-y-auto text-sm border border-gray-200">
+      <div className="bg-gray-100 rounded-lg p-3 max-h-64 overflow-y-auto text-sm border border-gray-200">
         {logs.length > 0 ? (
           logs.map((log, i) => (
-            <div
-              key={i}
-              className={`mb-1 ${
-                log.includes("💾") ? "text-green-600 font-semibold" : "text-gray-700"
-              }`}
-            >
+            <div key={i} className={`mb-1 ${log.includes("✅") ? "text-green-600 font-semibold" : "text-gray-700"}`}>
               {log}
             </div>
           ))
@@ -118,9 +149,7 @@ export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) 
       {/* Cambios IA */}
       {changes.length > 0 && (
         <div className="mt-4">
-          <h4 className="text-md font-bold text-indigo-700 mb-2 text-center">
-            🧠 Cambios aplicados por Groq
-          </h4>
+          <h4 className="text-md font-bold text-indigo-700 mb-2 text-center">🧠 Cambios aplicados por Groq</h4>
           <div className="overflow-x-auto border rounded-lg">
             <table className="w-full border-collapse text-sm">
               <thead className="bg-indigo-100 text-indigo-800">
@@ -146,13 +175,13 @@ export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) 
 
       {/* Acciones finales */}
       <div className="flex flex-col md:flex-row justify-center gap-4 mt-6">
-        {finished && (
+        {finished ? (
           <>
             <button
               onClick={handleDownload}
               className="bg-indigo-600 text-white px-5 py-2 rounded-lg hover:bg-indigo-700 transition shadow"
             >
-              ⬇️ Descargar Excel
+              ⬇️ Descargar CSV
             </button>
             <button
               onClick={handleNewExport}
@@ -161,11 +190,8 @@ export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) 
               🔄 Nueva exportación
             </button>
           </>
-        )}
-        {!finished && (
-          <div className="text-indigo-600 font-semibold animate-pulse text-center">
-            Procesando...
-          </div>
+        ) : (
+          <div className="text-indigo-600 font-semibold animate-pulse text-center">Procesando...</div>
         )}
       </div>
 
@@ -173,3 +199,4 @@ export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) 
     </div>
   );
 };
+
