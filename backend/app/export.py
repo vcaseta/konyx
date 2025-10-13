@@ -1,5 +1,5 @@
 from fastapi import APIRouter, UploadFile, Form
-from fastapi.responses import StreamingResponse, FileResponse
+from fastapi.responses import StreamingResponse, FileResponse, JSONResponse
 import pandas as pd
 import asyncio, time, os, io, json, re
 
@@ -7,12 +7,24 @@ router = APIRouter(prefix="/export", tags=["export"])
 EXPORT_DIR = "/app/exports"
 os.makedirs(EXPORT_DIR, exist_ok=True)
 
+# 🧠 Cola de progreso (logs SSE)
 progress_queue = asyncio.Queue()
 
 
 def log(msg: str):
     """Encola un mensaje para el flujo SSE."""
     asyncio.create_task(progress_queue.put(json.dumps({"type": "log", "step": msg})))
+
+
+# 🧹 Resetear la cola de progreso
+@router.post("/reset")
+async def reset_progress():
+    try:
+        while not progress_queue.empty():
+            progress_queue.get_nowait()
+        return JSONResponse({"status": "ok", "message": "Cola de progreso reiniciada"})
+    except Exception as e:
+        return JSONResponse({"status": "error", "detail": str(e)})
 
 
 @router.post("/start")
@@ -139,4 +151,3 @@ async def download_file(filename: str):
     if not os.path.exists(filepath):
         return {"error": "Archivo no encontrado"}
     return FileResponse(filepath, filename=filename)
-
