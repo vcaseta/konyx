@@ -16,6 +16,8 @@ import { PanelAbout } from "../../components/PanelAbout";
 import { PanelResumen } from "../../components/PanelResumen";
 import { Item } from "../../components/Item";
 
+const res = await fetch(`${BACKEND}/export/debug_form`, { method: "POST", body: formData });
+
 const FORMATO_IMPORT_OPTS = ["Eholo", "Gestoria"] as const;
 const FORMATO_EXPORT_OPTS = ["Holded", "Gestoria"] as const;
 const EMPRESAS = ["Kissoro", "En Plural Psicologia"] as const;
