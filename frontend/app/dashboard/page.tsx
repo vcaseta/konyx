@@ -179,10 +179,18 @@ const onConfirmExport = async (ok: boolean) => {
     formData.append("cuenta", cuenta === "Otra (introducir)" ? cuentaOtra : cuenta || "");
     formData.append("usuario", usuario);
 
-    const fileSes = fileSesionesRef.current?.files?.[0];
-    const fileCon = fileContactosRef.current?.files?.[0];
+const fileSes = fileSesionesRef.current?.files?.[0];
+const fileCon = fileContactosRef.current?.files?.[0];
 
-    if (!fileSes || !fileCon) throw new Error("Faltan archivos: sesiones y/o contactos.");
+console.log("📂 Sesiones ref:", fileSesionesRef.current);
+console.log("📂 Contactos ref:", fileContactosRef.current);
+console.log("📄 Sesiones file:", fileSes);
+console.log("📄 Contactos file:", fileCon);
+
+if (!fileSes || !fileCon) {
+  alert("⚠️ No se han seleccionado correctamente los ficheros de sesiones y/o contactos.");
+  throw new Error("Faltan archivos: sesiones y/o contactos.");
+}
 
     formData.append("ficheroSesiones", fileSes);
     formData.append("ficheroContactos", fileCon);
