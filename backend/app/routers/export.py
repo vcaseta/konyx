@@ -16,6 +16,18 @@ TEMP_INPUTS = "./app/temp_inputs"
 os.makedirs(EXPORT_DIR, exist_ok=True)
 os.makedirs(TEMP_INPUTS, exist_ok=True)
 
+@router.post("/debug_form")
+async def debug_form(request: Request):
+    form = await request.form()
+    print("🧾 Campos recibidos en el formulario:")
+    for k, v in form.items():
+        if hasattr(v, "filename"):
+            print(f" - {k}: [Archivo] {v.filename}")
+        else:
+            print(f" - {k}: {v}")
+    return {"fields": list(form.keys())}
+
+
 # ============================================================
 # 🔄 PROGRESO SSE
 # ============================================================
