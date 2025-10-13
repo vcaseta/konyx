@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useEffect, useState } from "react";
 
 const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || "http://192.168.1.51:8000";
 
@@ -52,7 +52,25 @@ export const PanelConfig: React.FC<PanelConfigProps> = ({
   setApiGroqNuevo,
   setApiGroqVigente,
 }) => {
-  // 🔒 Cambiar contraseña (valida con backend)
+  const [fileCount, setFileCount] = useState<number | null>(null);
+
+  // 🧹 Consultar número de archivos al cargar
+  useEffect(() => {
+    const fetchFileCount = async () => {
+      try {
+        const res = await fetch(`${BACKEND}/export/cleanup`);
+        if (res.ok) {
+          const data = await res.json();
+          setFileCount(data.total ?? 0);
+        }
+      } catch (err) {
+        console.error("Error obteniendo conteo de archivos:", err);
+      }
+    };
+    fetchFileCount();
+  }, []);
+
+  // 🔒 Cambiar contraseña
   const handlePasswordChange = async () => {
     setPassMsg(null);
 
@@ -72,22 +90,8 @@ export const PanelConfig: React.FC<PanelConfigProps> = ({
         }),
       });
 
-      let data: any;
-      try {
-        data = await res.json();
-      } catch {
-        throw new Error("Respuesta no válida del servidor");
-      }
-
-      // Manejo robusto de errores (evita [object Object])
-      if (!res.ok) {
-        const detail = Array.isArray(data.detail)
-          ? data.detail.map((d: any) => d.msg).join(", ")
-          : data.detail || data.error || data.message || "Error al cambiar la contraseña";
-
-        console.warn("⚠️ Error al cambiar la contraseña:", data);
-        throw new Error(detail);
-      }
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.detail || "Error al cambiar la contraseña");
 
       setPassMsg({ type: "ok", text: data.message || "Contraseña actualizada correctamente" });
       setPasswordGlobal(data.password);
@@ -95,18 +99,13 @@ export const PanelConfig: React.FC<PanelConfigProps> = ({
       setPassActual("");
       setPassNueva("");
       setPassConfirma("");
-      console.log("✅ Contraseña actualizada correctamente");
     } catch (err: any) {
-      console.warn("❌ Error en handlePasswordChange:", err);
       setPassMsg({ type: "err", text: err.message || "Error inesperado" });
     }
   };
 
-  // ⚙️ Cambiar APIs y guardar en backend
-  const handleApiChange = async (
-    tipo: "kissoro" | "enplural" | "groq",
-    nueva: string
-  ) => {
+  // ⚙️ Cambiar APIs
+  const handleApiChange = async (tipo: "kissoro" | "enplural" | "groq", nueva: string) => {
     setPassMsg(null);
     if (!nueva.trim()) {
       setPassMsg({ type: "err", text: "Introduce una API válida" });
@@ -125,12 +124,9 @@ export const PanelConfig: React.FC<PanelConfigProps> = ({
         body: JSON.stringify(body),
       });
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.detail || "Error al actualizar API");
-      }
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.detail || "Error al actualizar API");
 
-      const data = await res.json();
       setPassMsg({ type: "ok", text: "API actualizada correctamente" });
 
       if (tipo === "kissoro") {
@@ -146,18 +142,38 @@ export const PanelConfig: React.FC<PanelConfigProps> = ({
         localStorage.setItem("apiGroq", data.apiGroq || nueva);
       }
     } catch (err: any) {
-      console.warn("❌ Error en handleApiChange:", err);
       setPassMsg({ type: "err", text: err.message || "Error inesperado" });
     }
   };
 
+  // 🧹 Limpieza manual de archivos
+  const handleCleanup = async () => {
+    if (!confirm("¿Seguro que quieres borrar todos los archivos generados y de entrada?")) return;
+
+    try {
+      const res = await fetch(`${BACKEND}/export/cleanup`, { method: "POST" });
+      const data = await res.json();
+      alert(data.message || "Limpieza completada");
+
+      // 🔁 Actualizar contador tras limpiar
+      const check = await fetch(`${BACKEND}/export/cleanup`);
+      const info = await check.json();
+      setFileCount(info.total ?? 0);
+    } catch (err) {
+      alert("Error al borrar archivos");
+      console.error(err);
+    }
+  };
+
+  // --------------------------------------------------------------
+  // Render
+  // --------------------------------------------------------------
   return (
     <div className="bg-white/80 rounded-2xl shadow-lg p-6 backdrop-blur-sm space-y-6">
       <h3 className="text-xl font-bold text-indigo-700 text-center mb-2">
         Configuración del sistema
       </h3>
 
-      {/* Mensaje de estado */}
       {passMsg && (
         <p
           className={`text-center font-semibold ${
@@ -194,9 +210,7 @@ export const PanelConfig: React.FC<PanelConfigProps> = ({
         />
         <button
           onClick={handlePasswordChange}
-          className="text-sm bg-indigo-700 text-white font-semibold px-4 py-1 rounded-lg 
-                     hover:bg-indigo-800 hover:scale-105 hover:shadow-md 
-                     transition-all duration-200 ease-in-out whitespace-nowrap"
+          className="text-sm bg-indigo-700 text-white font-semibold px-4 py-1 rounded-lg hover:bg-indigo-800 hover:scale-105 hover:shadow-md transition-all duration-200 ease-in-out whitespace-nowrap"
         >
           Cambiar
         </button>
@@ -221,9 +235,7 @@ export const PanelConfig: React.FC<PanelConfigProps> = ({
         />
         <button
           onClick={() => handleApiChange("kissoro", apiKissoroNuevo)}
-          className="text-sm bg-indigo-700 text-white font-semibold px-4 py-1 rounded-lg 
-                     hover:bg-indigo-800 hover:scale-105 hover:shadow-md 
-                     transition-all duration-200 ease-in-out whitespace-nowrap"
+          className="text-sm bg-indigo-700 text-white font-semibold px-4 py-1 rounded-lg hover:bg-indigo-800 hover:scale-105 hover:shadow-md transition-all duration-200 ease-in-out whitespace-nowrap"
         >
           Cambiar
         </button>
@@ -248,16 +260,14 @@ export const PanelConfig: React.FC<PanelConfigProps> = ({
         />
         <button
           onClick={() => handleApiChange("enplural", apiEnPluralNuevo)}
-          className="text-sm bg-indigo-700 text-white font-semibold px-4 py-1 rounded-lg 
-                     hover:bg-indigo-800 hover:scale-105 hover:shadow-md 
-                     transition-all duration-200 ease-in-out whitespace-nowrap"
+          className="text-sm bg-indigo-700 text-white font-semibold px-4 py-1 rounded-lg hover:bg-indigo-800 hover:scale-105 hover:shadow-md transition-all duration-200 ease-in-out whitespace-nowrap"
         >
           Cambiar
         </button>
       </div>
 
       {/* ---- API GROQ ---- */}
-      <div className="flex flex-col sm:flex-row items-center gap-2">
+      <div className="flex flex-col sm:flex-row items-center gap-2 border-b border-indigo-100 pb-4">
         <label className="text-gray-700 font-medium w-32">API Groq:</label>
         <input
           type="text"
@@ -275,11 +285,26 @@ export const PanelConfig: React.FC<PanelConfigProps> = ({
         />
         <button
           onClick={() => handleApiChange("groq", apiGroqNuevo)}
-          className="text-sm bg-indigo-700 text-white font-semibold px-4 py-1 rounded-lg 
-                     hover:bg-indigo-800 hover:scale-105 hover:shadow-md 
-                     transition-all duration-200 ease-in-out whitespace-nowrap"
+          className="text-sm bg-indigo-700 text-white font-semibold px-4 py-1 rounded-lg hover:bg-indigo-800 hover:scale-105 hover:shadow-md transition-all duration-200 ease-in-out whitespace-nowrap"
         >
           Cambiar
+        </button>
+      </div>
+
+      {/* 🧹 LIMPIEZA MANUAL */}
+      <div className="mt-6 text-center border-t pt-4">
+        <p className="text-gray-700 mb-2">
+          Archivos pendientes (entrada y salida):{" "}
+          <span className="font-bold text-indigo-700">
+            {fileCount === null ? "Cargando..." : fileCount}
+          </span>
+        </p>
+
+        <button
+          onClick={handleCleanup}
+          className="bg-red-600 text-white px-4 py-2 rounded-lg shadow hover:bg-red-700 transition"
+        >
+          🧹 Borrar archivos temporales
         </button>
       </div>
     </div>
