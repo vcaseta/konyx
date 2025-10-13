@@ -29,7 +29,7 @@ export function PanelAbout() {
             </a>
           </p>
           <p>
-            <strong>Versión:</strong> 2.1.1
+            <strong>Versión:</strong> 2.1.3
           </p>
           <p>
             <strong>Fecha de creación:</strong> Octubre 2025
