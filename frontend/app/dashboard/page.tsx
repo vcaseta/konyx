@@ -141,7 +141,7 @@ export default function DashboardPage() {
       const usuario = sessionStorage.getItem("konyx_user") || "desconocido";
 
       if (!ficheroSesiones) {
-        alert("⚠️ No se ha seleccionado el fichero de sesiones.");
+        alert("No se ha seleccionado el fichero de sesiones.");
         return;
       }
 
@@ -157,7 +157,9 @@ export default function DashboardPage() {
         method: "POST",
         body: formUpload,
       });
+
       if (!uploadRes.ok) throw new Error("Error al subir archivos.");
+
       const uploadData = await uploadRes.json();
       console.log("✅ Archivos subidos:", uploadData);
 
@@ -171,7 +173,7 @@ export default function DashboardPage() {
       formExport.append("cuenta", cuenta === "Otra (introducir)" ? cuentaOtra : cuenta || "");
       formExport.append("usuario", usuario);
       formExport.append("pathSesiones", uploadData.sesiones);
-      formExport.append("pathContactos", uploadData.contactos);
+      formExport.append("pathContactos", uploadData.contactos || "");
 
       console.log("🚀 Iniciando exportación...");
       const res = await fetch(`${BACKEND}/export/start`, {
@@ -205,7 +207,10 @@ export default function DashboardPage() {
   // RENDER
   // ---------------------------
   return (
-    <main className="min-h-screen bg-no-repeat bg-center bg-cover p-4" style={{ backgroundImage: "url(/fondo.png)", backgroundSize: "100% 100%" }}>
+    <main
+      className="min-h-screen bg-no-repeat bg-center bg-cover p-4"
+      style={{ backgroundImage: "url(/fondo.png)", backgroundSize: "100% 100%" }}
+    >
       <div className="mx-auto max-w-7xl grid grid-cols-1 md:grid-cols-[260px_1fr] gap-6">
         {/* Sidebar */}
         <aside className="md:sticky md:top-6">
@@ -256,13 +261,14 @@ export default function DashboardPage() {
                     : "Cerrar Sesión"}
                 </Item>
               ))}
+
               <button
                 className={`w-full text-left px-3 py-2 rounded-lg font-semibold border transition ${
                   exportReady
                     ? "border-indigo-600 text-indigo-700 bg-white/90 shadow hover:bg-indigo-200 hover:text-indigo-800"
                     : "border-gray-300 text-gray-300 cursor-not-allowed"
                 }`}
-                onClick={() => exportReady && setMenu("exportar")}
+                onClick={() => exportReady && onConfirmExport(true)}
               >
                 Exportar
               </button>
