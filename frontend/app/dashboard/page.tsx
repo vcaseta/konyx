@@ -132,45 +132,59 @@ export default function DashboardPage() {
   // ---------------------------
   // EXPORTAR
   // ---------------------------
-  const handleExport = async () => {
-    if (!exportReady) return alert("⚠️ Faltan datos o ficheros por seleccionar.");
+const onConfirmExport = async (ok: boolean) => {
+  if (!ok) return setMenu("formatoImport");
 
-    try {
-      const usuario = sessionStorage.getItem("konyx_user") || "desconocido";
-      const formData = new FormData();
-      formData.append("formatoImport", formatoImport || "");
-      formData.append("formatoExport", formatoExport || "");
-      formData.append("empresa", empresa || "");
-      formData.append("fechaFactura", fechaFactura || "");
-      formData.append("proyecto", proyecto || "");
-      formData.append("cuenta", cuenta === "Otra (introducir)" ? cuentaOtra : cuenta || "");
-      formData.append("usuario", usuario);
+  try {
+    const usuario = sessionStorage.getItem("konyx_user") || "desconocido";
 
-      const fileSes = fileSesionesRef.current?.files?.[0];
-      const fileCon = fileContactosRef.current?.files?.[0];
-      if (!fileSes || !fileCon) {
-        alert("⚠️ No se han seleccionado correctamente los ficheros de sesiones y/o contactos.");
-        return;
-      }
+    // 1️⃣ Subir archivos primero
+    const formUpload = new FormData();
+    formUpload.append("usuario", usuario);
+    formUpload.append("ficheroSesiones", ficheroSesiones as File);
+    formUpload.append("ficheroContactos", ficheroContactos as File);
 
-      formData.append("ficheroSesiones", fileSes);
-      formData.append("ficheroContactos", fileCon);
+    console.log("📤 Subiendo ficheros al backend...");
+    const uploadRes = await fetch(`${BACKEND}/export/upload`, {
+      method: "POST",
+      body: formUpload,
+    });
+    if (!uploadRes.ok) throw new Error("Error al subir archivos.");
+    const uploadData = await uploadRes.json();
+    console.log("✅ Archivos subidos:", uploadData);
 
-      console.log("📤 Enviando exportación a backend...");
-      const res = await fetch(`${BACKEND}/export/start`, { method: "POST", body: formData });
-      if (!res.ok) {
-        const msg = await res.text().catch(() => "");
-        throw new Error(msg || "Error al iniciar exportación");
-      }
+    // 2️⃣ Iniciar exportación
+    const formExport = new FormData();
+    formExport.append("formatoImport", formatoImport || "");
+    formExport.append("formatoExport", formatoExport || "");
+    formExport.append("empresa", empresa || "");
+    formExport.append("fechaFactura", fechaFactura || "");
+    formExport.append("proyecto", proyecto || "");
+    formExport.append("cuenta", cuenta === "Otra (introducir)" ? cuentaOtra : cuenta || "");
+    formExport.append("usuario", usuario);
+    formExport.append("pathSesiones", uploadData.sesiones);
+    formExport.append("pathContactos", uploadData.contactos);
 
-      console.log("✅ Exportación iniciada correctamente");
-      setMenu("exportar");
-      await refreshStats();
-    } catch (err) {
-      console.error("❌ Error en handleExport:", err);
-      alert("Error iniciando exportación. Revisa la consola.");
+    console.log("🚀 Iniciando exportación...");
+    const res = await fetch(`${BACKEND}/export/start`, {
+      method: "POST",
+      body: formExport,
+    });
+
+    if (!res.ok) {
+      const msg = await res.text();
+      throw new Error(`Error al iniciar exportación: ${msg}`);
     }
-  };
+
+    console.log("✅ Exportación iniciada correctamente");
+    setMenu("exportar");
+    await refreshStats();
+  } catch (e: any) {
+    console.error("❌ Error en onConfirmExport:", e);
+    alert("Error iniciando exportación: " + (e?.message || e));
+  }
+};
+
 
   // ---------------------------
   // LOGOUT
