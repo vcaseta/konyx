@@ -1,51 +1,65 @@
 "use client";
 
-interface PanelFileProps {
+import React from "react";
+
+interface PanelFileContactosProps {
   value: string;
   onPickFileClick: () => void;
   onPickFile: (e: React.ChangeEvent<HTMLInputElement>) => void;
   fileInputRef: React.RefObject<HTMLInputElement>;
-  className?: string;
+  disabled?: boolean;
 }
 
-export function PanelFileContactos({
+export const PanelFileContactos: React.FC<PanelFileContactosProps> = ({
   value,
   onPickFileClick,
   onPickFile,
   fileInputRef,
-  className,
-}: PanelFileProps) {
+  disabled = false,
+}) => {
   return (
-    <div
-      className={`bg-white/70 backdrop-blur-md rounded-2xl p-6 shadow-lg ${
-        className || ""
-      }`}
-    >
-      <h3 className="text-xl font-bold mb-4">Fichero de contactos</h3>
+    <div className="bg-white/70 backdrop-blur-md rounded-2xl shadow-lg p-6 transition">
+      <h2 className="text-2xl font-semibold text-indigo-800 mb-4">
+        Fichero de contactos
+      </h2>
 
-      <button
-        type="button"
-        onClick={onPickFileClick}
-        className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 shadow transition"
-      >
-        Seleccionar fichero de contactos
-      </button>
+      <div className="space-y-3">
+        <button
+          onClick={!disabled ? onPickFileClick : undefined}
+          className={`w-full px-4 py-2 rounded-lg font-medium border transition ${
+            disabled
+              ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
+              : "bg-white/90 border-indigo-500 text-indigo-700 hover:bg-indigo-100 hover:text-indigo-900"
+          }`}
+        >
+          {disabled ? "Deshabilitado (usando último guardado)" : "Seleccionar archivo"}
+        </button>
 
-      {/* ✅ Añadimos name + id para estabilidad y compatibilidad */}
-      <input
-        type="file"
-        id="ficheroContactos"
-        name="ficheroContactos"
-        className="hidden"
-        ref={fileInputRef}
-        onChange={onPickFile}
-      />
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".xlsx,.xls,.csv"
+          onChange={!disabled ? onPickFile : undefined}
+          disabled={disabled}
+          className="hidden"
+        />
 
-      {value && (
-        <p className="mt-2 text-gray-700">
-          📇 Archivo seleccionado: <b>{value}</b>
-        </p>
-      )}
+        <div
+          className={`text-sm mt-1 ${
+            value
+              ? "text-gray-700"
+              : disabled
+              ? "text-gray-400 italic"
+              : "text-gray-400"
+          }`}
+        >
+          {disabled
+            ? "Se reutilizará el último fichero guardado en el backend"
+            : value
+            ? `Archivo seleccionado: ${value}`
+            : "Ningún archivo seleccionado"}
+        </div>
+      </div>
     </div>
   );
-}
+};
