@@ -60,7 +60,68 @@ export default function DashboardPage() {
   const [formatoExport, setFormatoExport] = useState<string | null>(null);
   const [empresa, setEmpresa] = useState<string | null>(null);
   const [fechaFactura, setFechaFactura] = useState("");
+  const [proyecto, se const [menu, setMenu] = useState<MenuKey>("formatoImport");
+  const [formatoImport, setFormatoImport] = useState<string | null>(null);
+  const [formatoExport, setFormatoExport] = useState<string | null>(null);
+  const [empresa, setEmpresa] = useState<string | null>(null);
+  const [fechaFactura, setFechaFactura] = useState("");
   const [proyecto, setProyecto] = useState<string | null>(null);
+  const [cuenta, setCuenta] = useState<string | null>(null);
+  const [cuentaOtra, setCuentaOtra] = useState("");
+
+  // 🗂️ Ficheros (tipados correctamente)
+  const [ficheroSesiones, setFicheroSesiones] = useState<File | null>(null);
+  const [ficheroContactos, setFicheroContactos] = useState<File | null>(null);
+  const fileSesionesRef = useRef<HTMLInputElement>(null);
+  const fileContactosRef = useRef<HTMLInputElement>(null);
+
+  // 🔐 Configuración y APIs
+  const [passActual, setPassActual] = useState("");
+  const [passNueva, setPassNueva] = useState("");
+  const [passConfirma, setPassConfirma] = useState("");
+  const [passMsg, setPassMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+  const [passwordGlobal, setPasswordGlobal] = useState(() => sessionStorage.getItem("konyx_password") || "1234");
+  const [apiKissoroVigente, setApiKissoroVigente] = useState(() => localStorage.getItem("apiKissoro") || "");
+  const [apiKissoroNuevo, setApiKissoroNuevo] = useState("");
+  const [apiEnPluralVigente, setApiEnPluralVigente] = useState(() => localStorage.getItem("apiEnPlural") || "");
+  const [apiEnPluralNuevo, setApiEnPluralNuevo] = useState("");
+  const [apiGroqVigente, setApiGroqVigente] = useState(() => localStorage.getItem("apiGroq") || "");
+  const [apiGroqNuevo, setApiGroqNuevo] = useState("");
+
+  // 🧩 Debug
+  const [ultimoExport, setUltimoExport] = useState("-");
+  const [totalExportaciones, setTotalExportaciones] = useState(0);
+  const [totalExportacionesFallidas, setTotalExportacionesFallidas] = useState(0);
+  const [intentosLoginFallidos, setIntentosLoginFallidos] = useState(0);
+  const [totalLogins, setTotalLogins] = useState(0);
+  const [tokenActual] = useState(token || "konyx_token_demo");
+
+  // ---------------------------
+  // HELPERS
+  // ---------------------------
+  const cuentaOk = cuenta === "Otra (introducir)" ? cuentaOtra.trim().length > 0 : !!cuenta;
+  const exportReady =
+    !!formatoImport &&
+    !!formatoExport &&
+    !!empresa &&
+    !!fechaFactura &&
+    !!proyecto &&
+    cuentaOk &&
+    ficheroSesiones !== null &&
+    ficheroContactos !== null;
+
+  const onPickSesionesClick = () => fileSesionesRef.current?.click();
+  const onPickContactosClick = () => fileContactosRef.current?.click();
+
+  const onPickSesiones = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    setFicheroSesiones(file);
+  };
+
+  const onPickContactos = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    setFicheroContactos(file);
+  };tProyecto] = useState<string | null>(null);
   const [cuenta, setCuenta] = useState<string | null>(null);
   const [cuentaOtra, setCuentaOtra] = useState("");
 
@@ -132,59 +193,63 @@ export default function DashboardPage() {
   // ---------------------------
   // EXPORTAR
   // ---------------------------
-const onConfirmExport = async (ok: boolean) => {
-  if (!ok) return setMenu("formatoImport");
+ const onConfirmExport = async (ok: boolean) => {
+    if (!ok) return setMenu("formatoImport");
 
-  try {
-    const usuario = sessionStorage.getItem("konyx_user") || "desconocido";
+    try {
+      const usuario = sessionStorage.getItem("konyx_user") || "desconocido";
 
-    // 1️⃣ Subir archivos primero
-    const formUpload = new FormData();
-    formUpload.append("usuario", usuario);
-    formUpload.append("ficheroSesiones", ficheroSesiones as File);
-    formUpload.append("ficheroContactos", ficheroContactos as File);
+      if (!ficheroSesiones || !ficheroContactos) {
+        alert("⚠️ No se han seleccionado correctamente los ficheros de sesiones y/o contactos.");
+        return;
+      }
 
-    console.log("📤 Subiendo ficheros al backend...");
-    const uploadRes = await fetch(`${BACKEND}/export/upload`, {
-      method: "POST",
-      body: formUpload,
-    });
-    if (!uploadRes.ok) throw new Error("Error al subir archivos.");
-    const uploadData = await uploadRes.json();
-    console.log("✅ Archivos subidos:", uploadData);
+      // 1️⃣ Subir archivos primero
+      const formUpload = new FormData();
+      formUpload.append("usuario", usuario);
+      formUpload.append("ficheroSesiones", ficheroSesiones);
+      formUpload.append("ficheroContactos", ficheroContactos);
 
-    // 2️⃣ Iniciar exportación
-    const formExport = new FormData();
-    formExport.append("formatoImport", formatoImport || "");
-    formExport.append("formatoExport", formatoExport || "");
-    formExport.append("empresa", empresa || "");
-    formExport.append("fechaFactura", fechaFactura || "");
-    formExport.append("proyecto", proyecto || "");
-    formExport.append("cuenta", cuenta === "Otra (introducir)" ? cuentaOtra : cuenta || "");
-    formExport.append("usuario", usuario);
-    formExport.append("pathSesiones", uploadData.sesiones);
-    formExport.append("pathContactos", uploadData.contactos);
+      console.log("📤 Subiendo ficheros al backend...");
+      const uploadRes = await fetch(`${BACKEND}/export/upload`, {
+        method: "POST",
+        body: formUpload,
+      });
+      if (!uploadRes.ok) throw new Error("Error al subir archivos.");
+      const uploadData = await uploadRes.json();
+      console.log("✅ Archivos subidos:", uploadData);
 
-    console.log("🚀 Iniciando exportación...");
-    const res = await fetch(`${BACKEND}/export/start`, {
-      method: "POST",
-      body: formExport,
-    });
+      // 2️⃣ Iniciar exportación
+      const formExport = new FormData();
+      formExport.append("formatoImport", formatoImport || "");
+      formExport.append("formatoExport", formatoExport || "");
+      formExport.append("empresa", empresa || "");
+      formExport.append("fechaFactura", fechaFactura || "");
+      formExport.append("proyecto", proyecto || "");
+      formExport.append("cuenta", cuenta === "Otra (introducir)" ? cuentaOtra : cuenta || "");
+      formExport.append("usuario", usuario);
+      formExport.append("pathSesiones", uploadData.sesiones);
+      formExport.append("pathContactos", uploadData.contactos);
 
-    if (!res.ok) {
-      const msg = await res.text();
-      throw new Error(`Error al iniciar exportación: ${msg}`);
+      console.log("🚀 Iniciando exportación...");
+      const res = await fetch(`${BACKEND}/export/start`, {
+        method: "POST",
+        body: formExport,
+      });
+
+      if (!res.ok) {
+        const msg = await res.text();
+        throw new Error(`Error al iniciar exportación: ${msg}`);
+      }
+
+      console.log("✅ Exportación iniciada correctamente");
+      setMenu("exportar");
+      await refreshStats();
+    } catch (e: any) {
+      console.error("❌ Error en onConfirmExport:", e);
+      alert("Error iniciando exportación: " + (e?.message || e));
     }
-
-    console.log("✅ Exportación iniciada correctamente");
-    setMenu("exportar");
-    await refreshStats();
-  } catch (e: any) {
-    console.error("❌ Error en onConfirmExport:", e);
-    alert("Error iniciando exportación: " + (e?.message || e));
-  }
-};
-
+  };
 
   // ---------------------------
   // LOGOUT
