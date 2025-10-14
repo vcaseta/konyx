@@ -60,18 +60,14 @@ export default function DashboardPage() {
   const [formatoExport, setFormatoExport] = useState<string | null>(null);
   const [empresa, setEmpresa] = useState<string | null>(null);
   const [fechaFactura, setFechaFactura] = useState("");
-  const [proyecto, se const [menu, setMenu] = useState<MenuKey>("formatoImport");
-  const [formatoImport, setFormatoImport] = useState<string | null>(null);
-  const [formatoExport, setFormatoExport] = useState<string | null>(null);
-  const [empresa, setEmpresa] = useState<string | null>(null);
-  const [fechaFactura, setFechaFactura] = useState("");
   const [proyecto, setProyecto] = useState<string | null>(null);
   const [cuenta, setCuenta] = useState<string | null>(null);
   const [cuentaOtra, setCuentaOtra] = useState("");
 
-  // 🗂️ Ficheros (tipados correctamente)
+  // 🗂️ Ficheros
   const [ficheroSesiones, setFicheroSesiones] = useState<File | null>(null);
   const [ficheroContactos, setFicheroContactos] = useState<File | null>(null);
+  const [usarUltimoContactos, setUsarUltimoContactos] = useState(false);
   const fileSesionesRef = useRef<HTMLInputElement>(null);
   const fileContactosRef = useRef<HTMLInputElement>(null);
 
@@ -108,71 +104,16 @@ export default function DashboardPage() {
     !!proyecto &&
     cuentaOk &&
     ficheroSesiones !== null &&
-    ficheroContactos !== null;
-
-  const onPickSesionesClick = () => fileSesionesRef.current?.click();
-  const onPickContactosClick = () => fileContactosRef.current?.click();
-
-  const onPickSesiones = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0] || null;
-    setFicheroSesiones(file);
-  };
-
-  const onPickContactos = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0] || null;
-    setFicheroContactos(file);
-  };tProyecto] = useState<string | null>(null);
-  const [cuenta, setCuenta] = useState<string | null>(null);
-  const [cuentaOtra, setCuentaOtra] = useState("");
-
-  // Ficheros
-  const [ficheroSesiones, setFicheroSesiones] = useState("");
-  const [ficheroContactos, setFicheroContactos] = useState("");
-  const fileSesionesRef = useRef<HTMLInputElement>(null);
-  const fileContactosRef = useRef<HTMLInputElement>(null);
-
-  // Configuración y APIs
-  const [passActual, setPassActual] = useState("");
-  const [passNueva, setPassNueva] = useState("");
-  const [passConfirma, setPassConfirma] = useState("");
-  const [passMsg, setPassMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
-  const [passwordGlobal, setPasswordGlobal] = useState(() => sessionStorage.getItem("konyx_password") || "1234");
-  const [apiKissoroVigente, setApiKissoroVigente] = useState(() => localStorage.getItem("apiKissoro") || "");
-  const [apiKissoroNuevo, setApiKissoroNuevo] = useState("");
-  const [apiEnPluralVigente, setApiEnPluralVigente] = useState(() => localStorage.getItem("apiEnPlural") || "");
-  const [apiEnPluralNuevo, setApiEnPluralNuevo] = useState("");
-  const [apiGroqVigente, setApiGroqVigente] = useState(() => localStorage.getItem("apiGroq") || "");
-  const [apiGroqNuevo, setApiGroqNuevo] = useState("");
-
-  // Debug
-  const [ultimoExport, setUltimoExport] = useState("-");
-  const [totalExportaciones, setTotalExportaciones] = useState(0);
-  const [totalExportacionesFallidas, setTotalExportacionesFallidas] = useState(0);
-  const [intentosLoginFallidos, setIntentosLoginFallidos] = useState(0);
-  const [totalLogins, setTotalLogins] = useState(0);
-  const [tokenActual] = useState(token || "konyx_token_demo");
-
-  // ---------------------------
-  // HELPERS
-  // ---------------------------
-  const cuentaOk = cuenta === "Otra (introducir)" ? cuentaOtra.trim().length > 0 : !!cuenta;
-  const exportReady =
-    !!formatoImport &&
-    !!formatoExport &&
-    !!empresa &&
-    !!fechaFactura &&
-    !!proyecto &&
-    cuentaOk &&
-    !!ficheroSesiones &&
-    !!ficheroContactos;
+    (usarUltimoContactos || ficheroContactos !== null);
 
   const onPickSesionesClick = () => fileSesionesRef.current?.click();
   const onPickContactosClick = () => fileContactosRef.current?.click();
 
   const onPickSesiones = (e: React.ChangeEvent<HTMLInputElement>) =>
-    setFicheroSesiones(e.target.files?.[0]?.name || "");
+    setFicheroSesiones(e.target.files?.[0] || null);
+
   const onPickContactos = (e: React.ChangeEvent<HTMLInputElement>) =>
-    setFicheroContactos(e.target.files?.[0]?.name || "");
+    setFicheroContactos(e.target.files?.[0] || null);
 
   // ---------------------------
   // REFRESCAR ESTADÍSTICAS
@@ -193,22 +134,23 @@ export default function DashboardPage() {
   // ---------------------------
   // EXPORTAR
   // ---------------------------
- const onConfirmExport = async (ok: boolean) => {
+  const onConfirmExport = async (ok: boolean) => {
     if (!ok) return setMenu("formatoImport");
 
     try {
       const usuario = sessionStorage.getItem("konyx_user") || "desconocido";
 
-      if (!ficheroSesiones || !ficheroContactos) {
-        alert("⚠️ No se han seleccionado correctamente los ficheros de sesiones y/o contactos.");
+      if (!ficheroSesiones) {
+        alert("⚠️ No se ha seleccionado el fichero de sesiones.");
         return;
       }
 
-      // 1️⃣ Subir archivos primero
+      // 1️⃣ Subir archivos (contactos opcional)
       const formUpload = new FormData();
-      formUpload.append("usuario", usuario);
       formUpload.append("ficheroSesiones", ficheroSesiones);
-      formUpload.append("ficheroContactos", ficheroContactos);
+      if (!usarUltimoContactos && ficheroContactos) {
+        formUpload.append("ficheroContactos", ficheroContactos);
+      }
 
       console.log("📤 Subiendo ficheros al backend...");
       const uploadRes = await fetch(`${BACKEND}/export/upload`, {
@@ -263,10 +205,7 @@ export default function DashboardPage() {
   // RENDER
   // ---------------------------
   return (
-    <main
-      className="min-h-screen bg-no-repeat bg-center bg-cover p-4"
-      style={{ backgroundImage: "url(/fondo.png)", backgroundSize: "100% 100%" }}
-    >
+    <main className="min-h-screen bg-no-repeat bg-center bg-cover p-4" style={{ backgroundImage: "url(/fondo.png)", backgroundSize: "100% 100%" }}>
       <div className="mx-auto max-w-7xl grid grid-cols-1 md:grid-cols-[260px_1fr] gap-6">
         {/* Sidebar */}
         <aside className="md:sticky md:top-6">
@@ -317,14 +256,13 @@ export default function DashboardPage() {
                     : "Cerrar Sesión"}
                 </Item>
               ))}
-
               <button
                 className={`w-full text-left px-3 py-2 rounded-lg font-semibold border transition ${
                   exportReady
                     ? "border-indigo-600 text-indigo-700 bg-white/90 shadow hover:bg-indigo-200 hover:text-indigo-800"
                     : "border-gray-300 text-gray-300 cursor-not-allowed"
                 }`}
-                onClick={handleExport}
+                onClick={() => exportReady && setMenu("exportar")}
               >
                 Exportar
               </button>
@@ -353,10 +291,36 @@ export default function DashboardPage() {
           )}
           {menu === "fecha" && <PanelDate title="Fecha factura" value={fechaFactura} onChange={setFechaFactura} />}
           {menu === "ficheroSesiones" && (
-            <PanelFile value={ficheroSesiones} onPickFileClick={onPickSesionesClick} onPickFile={onPickSesiones} fileInputRef={fileSesionesRef} />
+            <PanelFile value={ficheroSesiones?.name || ""} onPickFileClick={onPickSesionesClick} onPickFile={onPickSesiones} fileInputRef={fileSesionesRef} />
           )}
           {menu === "ficheroContactos" && (
-            <PanelFileContactos value={ficheroContactos} onPickFileClick={onPickContactosClick} onPickFile={onPickContactos} fileInputRef={fileContactosRef} />
+            <div className="space-y-4">
+              <PanelFileContactos
+                value={ficheroContactos?.name || ""}
+                onPickFileClick={onPickContactosClick}
+                onPickFile={onPickContactos}
+                fileInputRef={fileContactosRef}
+                disabled={usarUltimoContactos}
+              />
+              <div className="flex items-center gap-2 mt-2">
+                <input
+                  id="usarUltimoContactos"
+                  type="checkbox"
+                  checked={usarUltimoContactos}
+                  onChange={(e) => {
+                    setUsarUltimoContactos(e.target.checked);
+                    if (e.target.checked) {
+                      setFicheroContactos(null);
+                      if (fileContactosRef.current) fileContactosRef.current.value = "";
+                    }
+                  }}
+                  className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                />
+                <label htmlFor="usarUltimoContactos" className="text-sm text-gray-700">
+                  Usar último fichero de contactos guardado
+                </label>
+              </div>
+            </div>
           )}
 
           {menu === "config" && (
@@ -398,7 +362,7 @@ export default function DashboardPage() {
           )}
 
           {menu === "about" && <PanelAbout />}
-          {menu === "exportar" && <PanelExport onReset={() => setMenu("formatoImport")} />}
+          {menu === "exportar" && <PanelExport onConfirm={onConfirmExport} onReset={() => setMenu("formatoImport")} />}
           {menu === "cerrar" && <PanelCerrar onConfirm={logout} onCancel={() => setMenu("formatoImport")} />}
 
           {/* Panel resumen */}
@@ -411,8 +375,8 @@ export default function DashboardPage() {
               proyecto={proyecto}
               cuenta={cuenta}
               cuentaOtra={cuentaOtra}
-              ficheroSesiones={ficheroSesiones}
-              ficheroContactos={ficheroContactos}
+              ficheroSesiones={ficheroSesiones?.name || ""}
+              ficheroContactos={usarUltimoContactos ? "(último guardado)" : ficheroContactos?.name || ""}
             />
           )}
         </section>
