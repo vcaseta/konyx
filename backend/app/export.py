@@ -4,16 +4,18 @@ import pandas as pd
 import asyncio, time, os, io, json, re
 
 router = APIRouter(prefix="/export", tags=["export"])
+
 EXPORT_DIR = "/app/exports"
 os.makedirs(EXPORT_DIR, exist_ok=True)
 
-# 🧠 Cola de progreso (logs SSE)
+# 🧠 Cola de progreso (para SSE)
 progress_queue = asyncio.Queue()
 
 
-async def log(msg: str):
-    """Encola un mensaje para el flujo SSE, compatible con asyncio."""
-    await progress_queue.put(json.dumps({"type": "log", "step": msg}))
+def log(msg: str):
+    """Encola un mensaje de log para el SSE."""
+    print(msg)  # también en consola
+    asyncio.create_task(progress_queue.put(json.dumps({"type": "log", "step": msg})))
 
 
 # 🧹 Resetear la cola de progreso
@@ -27,21 +29,7 @@ async def reset_progress():
         return JSONResponse({"status": "error", "detail": str(e)})
 
 
-# 🚀 Iniciar exportación
-print("📥 Campos recibidos desde frontend (depuración):")
-print({
-    "formatoImport": formatoImport,
-    "formatoExport": formatoExport,
-    "empresa": empresa,
-    "fechaFactura": fechaFactura,
-    "proyecto": proyecto,
-    "cuenta": cuenta,
-    "usuario": usuario,
-    "ficheroSesiones": ficheroSesiones.filename if ficheroSesiones else None,
-    "ficheroContactos": ficheroContactos.filename if ficheroContactos else None,
-})
-
-
+# 🧩 Endpoint principal de exportación
 @router.post("/start")
 async def start_export(
     formatoImport: str = Form(...),
@@ -54,24 +42,39 @@ async def start_export(
     ficheroSesiones: UploadFile = None,
     ficheroContactos: UploadFile = None
 ):
-    await log("⏳ Iniciando exportación... preparando archivos...")
+    # 🔍 Depuración inicial
+    print("📥 Campos recibidos desde frontend:")
+    print({
+        "formatoImport": formatoImport,
+        "formatoExport": formatoExport,
+        "empresa": empresa,
+        "fechaFactura": fechaFactura,
+        "proyecto": proyecto,
+        "cuenta": cuenta,
+        "usuario": usuario,
+        "ficheroSesiones": ficheroSesiones.filename if ficheroSesiones else None,
+        "ficheroContactos": ficheroContactos.filename if ficheroContactos else None,
+    })
+
+    # Limpieza de cola de progreso anterior
+    while not progress_queue.empty():
+        progress_queue.get_nowait()
+
+    log(f"🚀 Exportación iniciada por {usuario} ({empresa})")
+    log(f"Formato import: {formatoImport} / export: {formatoExport}")
 
     if not ficheroSesiones or not ficheroContactos:
-        await log("❌ Faltan ficheros de entrada.")
-        return {"error": "Ficheros no enviados"}
-
-    await log(f"🚀 Exportación iniciada por {usuario} ({empresa})")
-    await log(f"Formato import: {formatoImport} / export: {formatoExport}")
+        log("❌ Faltan ficheros de entrada.")
+        return JSONResponse({"error": "Ficheros no enviados"}, status_code=400)
 
     try:
         df_ses = pd.read_excel(io.BytesIO(await ficheroSesiones.read()))
         df_con = pd.read_excel(io.BytesIO(await ficheroContactos.read()))
-        await log("📄 Archivos cargados correctamente.")
+        log("📄 Archivos cargados correctamente.")
     except Exception as e:
-        await log(f"❌ Error leyendo los ficheros: {e}")
-        return {"error": str(e)}
+        log(f"❌ Error leyendo los ficheros: {e}")
+        return JSONResponse({"error": str(e)}, status_code=400)
 
-    # Limpieza de nombres para el archivo final
     def sanitize(text: str) -> str:
         return re.sub(r'[^A-Za-z0-9_-]+', '_', text.strip())
 
@@ -83,7 +86,7 @@ async def start_export(
     # 🧾 Exportación HOLDed CSV
     # -------------------------------
     if formatoExport.lower() == "holded":
-        await log("🧮 Procesando datos para Holded...")
+        log("🧮 Procesando datos para Holded...")
 
         df_ses.columns = [c.strip().lower() for c in df_ses.columns]
         df_con.columns = [c.strip().lower() for c in df_con.columns]
@@ -125,7 +128,7 @@ async def start_export(
         filepath = os.path.join(EXPORT_DIR, filename)
         facturas_df.to_csv(filepath, index=False, sep=";")
 
-        await log(f"✅ CSV generado correctamente: {filename}")
+        log(f"✅ CSV generado correctamente: {filename}")
         await progress_queue.put(json.dumps({"type": "end", "file": filename}))
         return {"status": "ok", "file": filename}
 
@@ -133,28 +136,29 @@ async def start_export(
     # 🧾 Exportación Gestoría
     # -------------------------------
     elif formatoExport.lower() == "gestoria":
-        await log("📦 Generando CSV tipo Gestoría...")
+        log("📦 Generando CSV tipo Gestoría...")
         await asyncio.sleep(1)
         merged = df_ses.merge(df_con, how="left", on="nombre", suffixes=("_ses", "_con"))
         filename = f"{empresa_safe}_{formato_safe}_{fecha_safe}.csv"
         filepath = os.path.join(EXPORT_DIR, filename)
         merged.to_csv(filepath, index=False, sep=";")
-        await log(f"✅ Archivo CSV generado: {filename}")
+        log(f"✅ Archivo CSV generado: {filename}")
         await progress_queue.put(json.dumps({"type": "end", "file": filename}))
         return {"status": "ok", "file": filename}
 
+    # -------------------------------
+    # ❌ Formato no reconocido
+    # -------------------------------
     else:
-        await log(f"❌ Formato de exportación desconocido: {formatoExport}")
+        log(f"❌ Formato de exportación desconocido: {formatoExport}")
         await progress_queue.put(json.dumps({"type": "end"}))
-        return {"error": "Formato desconocido"}
+        return JSONResponse({"error": "Formato desconocido"}, status_code=400)
 
 
 # 🟢 SSE de progreso
 @router.get("/progress")
 async def export_progress():
     async def event_stream():
-        # Enviamos un mensaje inicial al conectar
-        yield "data: {\"type\":\"log\",\"step\":\"👋 Conectado al flujo de progreso.\"}\n\n"
         while True:
             data = await progress_queue.get()
             yield f"data: {data}\n\n"
@@ -163,11 +167,12 @@ async def export_progress():
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 
-# 🟢 Descarga
+# 🟢 Descarga del archivo generado
 @router.get("/download/{filename}")
 async def download_file(filename: str):
     filepath = os.path.join(EXPORT_DIR, filename)
     if not os.path.exists(filepath):
-        return {"error": "Archivo no encontrado"}
+        return JSONResponse({"error": "Archivo no encontrado"}, status_code=404)
     return FileResponse(filepath, filename=filename)
+
 
