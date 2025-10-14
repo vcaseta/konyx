@@ -132,8 +132,8 @@ export default function DashboardPage() {
   // ---------------------------
   // EXPORTAR
   // ---------------------------
-  const onConfirmExport = async (ok: boolean) => {
-    if (!ok) return setMenu("formatoImport");
+  const handleExport = async () => {
+    if (!exportReady) return alert("⚠️ Faltan datos o ficheros por seleccionar.");
 
     try {
       const usuario = sessionStorage.getItem("konyx_user") || "desconocido";
@@ -148,7 +148,6 @@ export default function DashboardPage() {
 
       const fileSes = fileSesionesRef.current?.files?.[0];
       const fileCon = fileContactosRef.current?.files?.[0];
-
       if (!fileSes || !fileCon) {
         alert("⚠️ No se han seleccionado correctamente los ficheros de sesiones y/o contactos.");
         return;
@@ -157,15 +156,19 @@ export default function DashboardPage() {
       formData.append("ficheroSesiones", fileSes);
       formData.append("ficheroContactos", fileCon);
 
-      console.log("🚀 Enviando exportación...");
-      await fetch(`${BACKEND}/export/start`, { method: "POST", body: formData });
+      console.log("📤 Enviando exportación a backend...");
+      const res = await fetch(`${BACKEND}/export/start`, { method: "POST", body: formData });
+      if (!res.ok) {
+        const msg = await res.text().catch(() => "");
+        throw new Error(msg || "Error al iniciar exportación");
+      }
 
-      // Cambiamos al panel de progreso
+      console.log("✅ Exportación iniciada correctamente");
       setMenu("exportar");
       await refreshStats();
-    } catch (e) {
-      console.error("❌ Error en onConfirmExport:", e);
-      alert("Error iniciando exportación.");
+    } catch (err) {
+      console.error("❌ Error en handleExport:", err);
+      alert("Error iniciando exportación. Revisa la consola.");
     }
   };
 
@@ -181,7 +184,10 @@ export default function DashboardPage() {
   // RENDER
   // ---------------------------
   return (
-    <main className="min-h-screen bg-no-repeat bg-center bg-cover p-4" style={{ backgroundImage: "url(/fondo.png)", backgroundSize: "100% 100%" }}>
+    <main
+      className="min-h-screen bg-no-repeat bg-center bg-cover p-4"
+      style={{ backgroundImage: "url(/fondo.png)", backgroundSize: "100% 100%" }}
+    >
       <div className="mx-auto max-w-7xl grid grid-cols-1 md:grid-cols-[260px_1fr] gap-6">
         {/* Sidebar */}
         <aside className="md:sticky md:top-6">
@@ -232,13 +238,14 @@ export default function DashboardPage() {
                     : "Cerrar Sesión"}
                 </Item>
               ))}
+
               <button
                 className={`w-full text-left px-3 py-2 rounded-lg font-semibold border transition ${
                   exportReady
                     ? "border-indigo-600 text-indigo-700 bg-white/90 shadow hover:bg-indigo-200 hover:text-indigo-800"
                     : "border-gray-300 text-gray-300 cursor-not-allowed"
                 }`}
-                onClick={() => exportReady && setMenu("exportar")}
+                onClick={handleExport}
               >
                 Exportar
               </button>
@@ -312,7 +319,7 @@ export default function DashboardPage() {
           )}
 
           {menu === "about" && <PanelAbout />}
-          {menu === "exportar" && <PanelExport onConfirm={onConfirmExport} onReset={() => setMenu("formatoImport")} />}
+          {menu === "exportar" && <PanelExport onReset={() => setMenu("formatoImport")} />}
           {menu === "cerrar" && <PanelCerrar onConfirm={logout} onCancel={() => setMenu("formatoImport")} />}
 
           {/* Panel resumen */}
@@ -334,3 +341,4 @@ export default function DashboardPage() {
     </main>
   );
 }
+
