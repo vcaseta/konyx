@@ -1,63 +1,64 @@
-from fastapi import APIRouter, UploadFile, Form, File
+from fastapi import APIRouter, UploadFile, Form
 from fastapi.responses import StreamingResponse, FileResponse, JSONResponse
 import pandas as pd
-import asyncio, os, io, json, re, time, shutil
+import asyncio, os, io, json, re, time
 
 router = APIRouter(prefix="/export", tags=["export"])
 
-UPLOAD_DIR = "/app/uploads"
 EXPORT_DIR = "/app/exports"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(EXPORT_DIR, exist_ok=True)
 
 progress_queue = asyncio.Queue()
 
-
 def log(msg: str):
-    print(msg)
+    """Encola un mensaje para el flujo SSE."""
+    print(msg)  # para debug directo en logs
     asyncio.create_task(progress_queue.put(json.dumps({"type": "log", "step": msg})))
 
 
-# 🧹 Resetear la cola de progreso
+# 🧹 Resetear progreso
 @router.post("/reset")
 async def reset_progress():
-    while not progress_queue.empty():
-        progress_queue.get_nowait()
-    return {"status": "ok"}
+    try:
+        while not progress_queue.empty():
+            progress_queue.get_nowait()
+        return {"status": "ok"}
+    except Exception as e:
+        return {"status": "error", "detail": str(e)}
 
 
-# 🧩 Paso 1: Subida de archivos
+# 🗂️ Subida de ficheros
 @router.post("/upload")
 async def upload_files(
-    usuario: str = Form(...),
-    ficheroSesiones: UploadFile = File(...),
-    ficheroContactos: UploadFile = File(...)
+    ficheroSesiones: UploadFile,
+    ficheroContactos: UploadFile = None
 ):
-    """Guarda temporalmente los ficheros de sesiones y contactos."""
-    user_dir = os.path.join(UPLOAD_DIR, usuario)
-    os.makedirs(user_dir, exist_ok=True)
+    try:
+        sesiones_path = os.path.join(EXPORT_DIR, "sesiones.xlsx")
+        with open(sesiones_path, "wb") as f:
+            f.write(await ficheroSesiones.read())
+        log("📂 Fichero de sesiones recibido correctamente.")
 
-    sesiones_path = os.path.join(user_dir, f"s_{int(time.time())}_{ficheroSesiones.filename}")
-    contactos_path = os.path.join(user_dir, f"c_{int(time.time())}_{ficheroContactos.filename}")
+        contactos_path = os.path.join(EXPORT_DIR, "contactos.xlsx")
+        if ficheroContactos:
+            with open(contactos_path, "wb") as f:
+                f.write(await ficheroContactos.read())
+            log("📂 Fichero de contactos recibido correctamente.")
+        else:
+            log("ℹ️ No se envió fichero de contactos. Se usará el último guardado.")
 
-    with open(sesiones_path, "wb") as f:
-        shutil.copyfileobj(ficheroSesiones.file, f)
+        return {
+            "status": "ok",
+            "sesiones": sesiones_path,
+            "contactos": contactos_path if os.path.exists(contactos_path) else ""
+        }
 
-    with open(contactos_path, "wb") as f:
-        shutil.copyfileobj(ficheroContactos.file, f)
-
-    print(f"📥 Archivos subidos para {usuario}:")
-    print("  Sesiones:", sesiones_path)
-    print("  Contactos:", contactos_path)
-
-    return {
-        "status": "ok",
-        "sesiones": sesiones_path,
-        "contactos": contactos_path
-    }
+    except Exception as e:
+        log(f"❌ Error subiendo ficheros: {e}")
+        return {"error": str(e)}
 
 
-# 🧩 Paso 2: Iniciar exportación
+# 🚀 Iniciar exportación
 @router.post("/start")
 async def start_export(
     formatoImport: str = Form(...),
@@ -68,44 +69,47 @@ async def start_export(
     cuenta: str = Form(...),
     usuario: str = Form(...),
     pathSesiones: str = Form(...),
-    pathContactos: str = Form(...)
+    pathContactos: str = Form(""),
 ):
     log(f"🚀 Exportación iniciada por {usuario} ({empresa})")
     log(f"Formato import: {formatoImport} / export: {formatoExport}")
 
-    if not os.path.exists(pathSesiones) or not os.path.exists(pathContactos):
-        log("❌ No se encontraron los archivos subidos.")
-        return JSONResponse({"error": "Ficheros no encontrados en servidor."}, status_code=400)
+    if not os.path.exists(pathSesiones):
+        log("❌ No se encuentra el fichero de sesiones.")
+        return {"error": "Fichero de sesiones no encontrado"}
 
+    if not pathContactos or not os.path.exists(pathContactos):
+        pathContactos = os.path.join(EXPORT_DIR, "contactos.xlsx")
+        if not os.path.exists(pathContactos):
+            log("❌ No hay fichero de contactos disponible.")
+            return {"error": "No hay fichero de contactos guardado"}
+
+    # 📄 Leer ficheros
     try:
         df_ses = pd.read_excel(pathSesiones)
         df_con = pd.read_excel(pathContactos)
-        log("✅ Archivos cargados correctamente.")
+        log("📄 Archivos cargados correctamente.")
     except Exception as e:
-        log(f"❌ Error leyendo ficheros: {e}")
-        return JSONResponse({"error": str(e)}, status_code=400)
+        log(f"❌ Error leyendo los ficheros: {e}")
+        return {"error": str(e)}
 
-    def sanitize(text: str) -> str:
-        return re.sub(r'[^A-Za-z0-9_-]+', '_', text.strip())
+    # Normalizar nombres de columnas
+    df_ses.columns = [c.strip().lower() for c in df_ses.columns]
+    df_con.columns = [c.strip().lower() for c in df_con.columns]
 
-    empresa_safe = sanitize(empresa)
-    formato_safe = sanitize(formatoExport)
-    fecha_safe = sanitize(fechaFactura)
+    # 🧾 Generar exportación
+    empresa_safe = re.sub(r'[^A-Za-z0-9_-]+', '_', empresa.strip())
+    formato_safe = re.sub(r'[^A-Za-z0-9_-]+', '_', formatoExport.strip())
+    fecha_safe = re.sub(r'[^A-Za-z0-9_-]+', '_', fechaFactura.strip())
 
     try:
-        # -------------------------------
-        # 🧾 Exportación Holded
-        # -------------------------------
         if formatoExport.lower() == "holded":
             log("🧮 Procesando datos para Holded...")
 
-            df_ses.columns = [c.strip().lower() for c in df_ses.columns]
-            df_con.columns = [c.strip().lower() for c in df_con.columns]
-
             merged = df_ses.merge(df_con, how="left", left_on="paciente", right_on="nombre")
-
             facturas = []
             contador = 1
+
             for paciente, grupo in merged.groupby("paciente"):
                 total = grupo.get("total", grupo.get("importe", 0)).sum()
                 numero = f"F{time.strftime('%y%m')}{contador:04d}"
@@ -128,7 +132,7 @@ async def start_export(
                     "Población": grupo.get("poblacion", [""])[0] if "poblacion" in grupo else "",
                     "Provincia": grupo.get("provincia", [""])[0] if "provincia" in grupo else "",
                     "País": "España",
-                    "Tags": "#paciente"
+                    "Tags": "#paciente",
                 }
                 facturas.append(factura)
                 contador += 1
@@ -144,7 +148,6 @@ async def start_export(
 
         elif formatoExport.lower() == "gestoria":
             log("📦 Generando CSV tipo Gestoría...")
-            await asyncio.sleep(1)
             merged = df_ses.merge(df_con, how="left", on="nombre", suffixes=("_ses", "_con"))
             filename = f"{empresa_safe}_{formato_safe}_{fecha_safe}.csv"
             filepath = os.path.join(EXPORT_DIR, filename)
@@ -152,21 +155,18 @@ async def start_export(
             log(f"✅ Archivo CSV generado: {filename}")
             await progress_queue.put(json.dumps({"type": "end", "file": filename}))
             return {"status": "ok", "file": filename}
+
         else:
-            log(f"❌ Formato de exportación desconocido: {formatoExport}")
+            log(f"❌ Formato desconocido: {formatoExport}")
             await progress_queue.put(json.dumps({"type": "end"}))
-            return JSONResponse({"error": "Formato desconocido"}, status_code=400)
+            return {"error": "Formato desconocido"}
 
-    finally:
-        try:
-            os.remove(pathSesiones)
-            os.remove(pathContactos)
-            log("🧹 Archivos temporales eliminados.")
-        except Exception as e:
-            log(f"⚠️ No se pudieron borrar archivos: {e}")
+    except Exception as e:
+        log(f"❌ Error en exportación: {e}")
+        return {"error": str(e)}
 
 
-# 🟢 SSE Progreso
+# 🟢 SSE de progreso
 @router.get("/progress")
 async def export_progress():
     async def event_stream():
@@ -178,11 +178,11 @@ async def export_progress():
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 
-# 🟢 Descarga del archivo generado
+# 🟢 Descarga de archivo
 @router.get("/download/{filename}")
 async def download_file(filename: str):
     filepath = os.path.join(EXPORT_DIR, filename)
     if not os.path.exists(filepath):
-        return JSONResponse({"error": "Archivo no encontrado"}, status_code=404)
+        return {"error": "Archivo no encontrado"}
     return FileResponse(filepath, filename=filename)
 
