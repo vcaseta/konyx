@@ -12,18 +12,35 @@ export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) 
   const [isExporting, setIsExporting] = useState(false);
   const [done, setDone] = useState(false);
   const [downloadFile, setDownloadFile] = useState<string | null>(null);
+  const [duration, setDuration] = useState<number | null>(null);
 
   useEffect(() => {
-    const evtSource = new EventSource(`${process.env.NEXT_PUBLIC_BACKEND_URL || "http://192.168.1.51:8000"}/export/progress`);
+    const startTime = Date.now();
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://192.168.1.51:8000";
+    const evtSource = new EventSource(`${backendUrl}/export/progress`);
 
     evtSource.onmessage = (e) => {
       try {
         const data = JSON.parse(e.data);
+
         if (data.type === "log") {
           setLogs((prev) => [...prev, data.step]);
+        } else if (data.type === "changes") {
+          setLogs((prev) => [...prev, `Cambios detectados (${data.changes.length})`]);
         } else if (data.type === "end") {
+          const endTime = Date.now();
+          setDuration((endTime - startTime) / 1000);
+
           setDone(true);
-          if (data.file) setDownloadFile(data.file);
+          if (data.file && typeof data.file === "string" && data.file.endsWith(".csv")) {
+            setDownloadFile(data.file);
+          } else {
+            // Fallback: buscar el nombre del archivo en los logs
+            const lastCsv = logs.find((l) => l.includes("export_") && l.endsWith(".csv"));
+            if (lastCsv) {
+              setDownloadFile(lastCsv.trim());
+            }
+          }
           evtSource.close();
         }
       } catch (err) {
@@ -49,7 +66,9 @@ export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) 
 
   return (
     <div className="bg-white/70 backdrop-blur-md rounded-2xl shadow-lg p-6 space-y-4">
-      <h2 className="text-2xl font-semibold text-indigo-800 mb-2">Exportación en curso</h2>
+      <h2 className="text-2xl font-semibold text-indigo-800 mb-2">
+        Exportación en curso
+      </h2>
 
       <div className="bg-gray-50 rounded-lg border border-gray-200 p-3 h-64 overflow-y-auto text-sm font-mono whitespace-pre-line">
         {logs.length > 0 ? (
@@ -65,7 +84,16 @@ export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) 
 
       {done && (
         <div className="space-y-3 pt-3 border-t border-gray-200">
-          <div className="text-green-700 font-medium">✅ Exportación finalizada correctamente.</div>
+          <div className="text-green-700 font-medium">
+            Exportación finalizada correctamente.
+          </div>
+
+          {duration !== null && (
+            <div className="text-sm text-gray-600">
+              Duración total: {duration.toFixed(1)} segundos
+            </div>
+          )}
+
           {downloadFile && (
             <button
               onClick={handleDownload}
@@ -79,7 +107,9 @@ export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) 
 
       {!done && isExporting && (
         <div className="flex justify-center py-2">
-          <span className="animate-pulse text-indigo-600 font-medium">Procesando...</span>
+          <span className="animate-pulse text-indigo-600 font-medium">
+            Procesando...
+          </span>
         </div>
       )}
 
@@ -94,6 +124,8 @@ export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) 
           onClick={() => {
             setLogs([]);
             setDone(false);
+            setDownloadFile(null);
+            setDuration(null);
             onReset();
           }}
           className="px-4 py-2 rounded-lg bg-indigo-500 text-white hover:bg-indigo-600 transition"
