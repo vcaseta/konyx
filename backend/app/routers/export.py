@@ -16,17 +16,6 @@ TEMP_INPUTS = "./app/temp_inputs"
 os.makedirs(EXPORT_DIR, exist_ok=True)
 os.makedirs(TEMP_INPUTS, exist_ok=True)
 
-@router.post("/debug_form")
-async def debug_form(request: Request):
-    form = await request.form()
-    print("🧾 Campos recibidos en el formulario:")
-    for k, v in form.items():
-        if hasattr(v, "filename"):
-            print(f" - {k}: [Archivo] {v.filename}")
-        else:
-            print(f" - {k}: {v}")
-    return {"fields": list(form.keys())}
-
 
 # ============================================================
 # 🔄 PROGRESO SSE
@@ -62,45 +51,62 @@ async def start_export(
     cuenta: str = Form(...),
     usuario: str = Form(...),
     ficheroSesiones: UploadFile = File(...),
-    ficheroContactos: UploadFile = File(...),
+    ficheroContactos: UploadFile = File(None),
 ):
-    """Procesa sesiones y contactos, genera CSV conciliado."""
+    """Procesa sesiones y contactos, guarda temporalmente los archivos y genera CSV conciliado."""
     try:
-        # 🧠 DEBUG: mostrar qué llega desde frontend
-        print("📦 Campos recibidos desde frontend:")
-        print({
-            "formatoImport": formatoImport,
-            "formatoExport": formatoExport,
-            "empresa": empresa,
-            "fechaFactura": fechaFactura,
-            "proyecto": proyecto,
-            "cuenta": cuenta,
-            "usuario": usuario,
-            "ficheroSesiones": ficheroSesiones.filename if ficheroSesiones else None,
-            "ficheroContactos": ficheroContactos.filename if ficheroContactos else None,
-        })
+        print("\n" + "=" * 80)
+        print("📦 NUEVA EXPORTACIÓN INICIADA")
+        print(f"👤 Usuario: {usuario}")
+        print(f"📁 Formato import: {formatoImport} | Export: {formatoExport}")
+        print(f"🏢 Empresa: {empresa} | 📅 Fecha factura: {fechaFactura}")
+        print(f"🧾 Proyecto: {proyecto} | 💼 Cuenta: {cuenta}")
+        print("-" * 80)
 
         progress_steps.clear()
         changes_detected.clear()
         progress_steps.append("✅ Iniciando proceso de exportación...")
         progress_steps.append("📁 Cargando archivos...")
 
-        # Guardar temporalmente los archivos subidos
+        # ====================================================
+        # GUARDAR ARCHIVOS TEMPORALES
+        # ====================================================
         sesiones_path = os.path.join(TEMP_INPUTS, f"{usuario}_sesiones.xlsx")
         contactos_path = os.path.join(TEMP_INPUTS, f"{usuario}_contactos.xlsx")
 
+        # Guardar sesiones
         with open(sesiones_path, "wb") as f:
-            f.write(await ficheroSesiones.read())
-        with open(contactos_path, "wb") as f:
-            f.write(await ficheroContactos.read())
+            contenido = await ficheroSesiones.read()
+            f.write(contenido)
+        print(f"📥 Guardado fichero de SESIONES en: {sesiones_path} ({len(contenido)} bytes)")
 
-        # Leer directamente en memoria
+        # Guardar contactos (si llega)
+        if ficheroContactos:
+            with open(contactos_path, "wb") as f:
+                contenido = await ficheroContactos.read()
+                f.write(contenido)
+            print(f"📥 Guardado fichero de CONTACTOS en: {contactos_path} ({len(contenido)} bytes)")
+        else:
+            print("⚠️ No se subió fichero de contactos. Se usará el último guardado si existe.")
+            if not os.path.exists(contactos_path):
+                raise HTTPException(status_code=400, detail="No se encontró fichero de contactos previo para reutilizar.")
+
+        # ====================================================
+        # LEER EXCELS
+        # ====================================================
+        progress_steps.append("📊 Archivos cargados correctamente. Leyendo datos...")
+        print("📖 Leyendo ficheros Excel...")
+
         df_ses = pd.read_excel(sesiones_path)
         df_con = pd.read_excel(contactos_path)
 
-        progress_steps.append("📊 Archivos cargados correctamente.")
-        progress_steps.append("🔍 Conciliando datos entre sesiones y contactos...")
+        print(f"   ✔ Sesiones: {len(df_ses)} filas, {len(df_ses.columns)} columnas")
+        print(f"   ✔ Contactos: {len(df_con)} filas, {len(df_con.columns)} columnas")
 
+        # ====================================================
+        # FUSIÓN Y PROCESAMIENTO
+        # ====================================================
+        progress_steps.append("🔍 Conciliando datos entre sesiones y contactos...")
         df_ses.columns = [c.strip().lower() for c in df_ses.columns]
         df_con.columns = [c.strip().lower() for c in df_con.columns]
 
@@ -112,7 +118,9 @@ async def start_export(
             right_on="nombre" if "nombre" in df_con.columns else df_con.columns[0],
         )
 
-        progress_steps.append("🧠 Aplicando correcciones automáticas con Groq...")
+        print(f"🤝 Fusión completada: {len(merged)} filas combinadas")
+
+        progress_steps.append("🧠 Aplicando correcciones automáticas con Groq (simulado)...")
 
         # Simulación de corrección IA
         for i in range(min(3, len(merged))):
@@ -125,7 +133,11 @@ async def start_export(
                     "valor_original": "(vacío)",
                     "valor_corregido": corrected,
                 })
+                print(f"🔧 Corregido NIF vacío para '{original}' → '{corrected}'")
 
+        # ====================================================
+        # GENERAR CSV FINAL
+        # ====================================================
         progress_steps.append("💾 Generando archivo CSV final...")
 
         merged.fillna("", inplace=True)
@@ -138,12 +150,20 @@ async def start_export(
         out_path = os.path.join(EXPORT_DIR, out_name)
         merged.to_csv(out_path, index=False, encoding="utf-8-sig")
 
-        # Actualiza métricas persistentes
+        print(f"📤 Archivo exportado: {out_path}")
+        print(f"📊 Total filas: {len(merged)}")
+
+        # ====================================================
+        # ACTUALIZAR MÉTRICAS
+        # ====================================================
         data = load_data()
         data["ultimoExport"] = datetime.now().strftime("%d/%m/%Y")
         data["totalExportaciones"] = data.get("totalExportaciones", 0) + 1
         data["archivo_generado"] = out_name
         save_data(data)
+
+        print("✅ Exportación finalizada correctamente.")
+        print("=" * 80 + "\n")
 
         progress_steps.append("✅ Exportación completada correctamente")
 
@@ -155,6 +175,7 @@ async def start_export(
         }
 
     except Exception as e:
+        print(f"❌ ERROR durante exportación: {e}")
         data = load_data()
         data["totalExportacionesFallidas"] = data.get("totalExportacionesFallidas", 0) + 1
         save_data(data)
@@ -170,6 +191,7 @@ async def download_csv(filename: str):
     path = os.path.join(EXPORT_DIR, filename)
     if not os.path.exists(path):
         raise HTTPException(status_code=404, detail="Archivo no encontrado")
+    print(f"⬇️ Descargando archivo: {filename}")
     return FileResponse(path, media_type="text/csv", filename=filename)
 
 
@@ -213,3 +235,4 @@ async def cleanup_exports():
         return JSONResponse({"status": "ok", "message": msg, "removed": removed})
     except Exception as e:
         return JSONResponse({"status": "error", "detail": str(e)})
+
