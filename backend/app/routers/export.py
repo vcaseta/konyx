@@ -28,7 +28,7 @@ def progress_stream():
         time.sleep(1)
     if changes_detected:
         yield f"data: {json.dumps({'type': 'changes', 'changes': changes_detected})}\n\n"
-    yield "event: end\ndata: {}\n\n"
+    yield f"data: {json.dumps({'type': 'end', 'file': progress_steps[-1] if progress_steps else None})}\n\n"
 
 
 @router.get("/progress")
@@ -68,19 +68,14 @@ async def start_export(
         progress_steps.append("✅ Iniciando proceso de exportación...")
         progress_steps.append("📁 Cargando archivos...")
 
-        # ====================================================
-        # GUARDAR ARCHIVOS TEMPORALES
-        # ====================================================
         sesiones_path = os.path.join(TEMP_INPUTS, f"{usuario}_sesiones.xlsx")
         contactos_path = os.path.join(TEMP_INPUTS, f"{usuario}_contactos.xlsx")
 
-        # Guardar sesiones
         with open(sesiones_path, "wb") as f:
             contenido = await ficheroSesiones.read()
             f.write(contenido)
         print(f"📥 Guardado fichero de SESIONES en: {sesiones_path} ({len(contenido)} bytes)")
 
-        # Guardar contactos (si llega)
         if ficheroContactos:
             with open(contactos_path, "wb") as f:
                 contenido = await ficheroContactos.read()
@@ -91,11 +86,7 @@ async def start_export(
             if not os.path.exists(contactos_path):
                 raise HTTPException(status_code=400, detail="No se encontró fichero de contactos previo para reutilizar.")
 
-        # ====================================================
-        # LEER EXCELS
-        # ====================================================
         progress_steps.append("📊 Archivos cargados correctamente. Leyendo datos...")
-        print("📖 Leyendo ficheros Excel...")
 
         df_ses = pd.read_excel(sesiones_path)
         df_con = pd.read_excel(contactos_path)
@@ -103,10 +94,8 @@ async def start_export(
         print(f"   ✔ Sesiones: {len(df_ses)} filas, {len(df_ses.columns)} columnas")
         print(f"   ✔ Contactos: {len(df_con)} filas, {len(df_con.columns)} columnas")
 
-        # ====================================================
-        # FUSIÓN Y PROCESAMIENTO
-        # ====================================================
         progress_steps.append("🔍 Conciliando datos entre sesiones y contactos...")
+
         df_ses.columns = [c.strip().lower() for c in df_ses.columns]
         df_con.columns = [c.strip().lower() for c in df_con.columns]
 
@@ -122,7 +111,6 @@ async def start_export(
 
         progress_steps.append("🧠 Aplicando correcciones automáticas con Groq (simulado)...")
 
-        # Simulación de corrección IA
         for i in range(min(3, len(merged))):
             if "nif" in merged.columns and merged.iloc[i]["nif"] == "":
                 original = merged.iloc[i]["nombre"]
@@ -135,12 +123,11 @@ async def start_export(
                 })
                 print(f"🔧 Corregido NIF vacío para '{original}' → '{corrected}'")
 
-        # ====================================================
-        # GENERAR CSV FINAL
-        # ====================================================
         progress_steps.append("💾 Generando archivo CSV final...")
 
-        merged.fillna("", inplace=True)
+        # ✅ CORREGIDO: evitar FutureWarning
+        merged = merged.astype(str).fillna("")
+
         merged["fecha factura"] = fechaFactura
         merged["empresa"] = empresa
         merged["proyecto"] = proyecto
@@ -153,9 +140,6 @@ async def start_export(
         print(f"📤 Archivo exportado: {out_path}")
         print(f"📊 Total filas: {len(merged)}")
 
-        # ====================================================
-        # ACTUALIZAR MÉTRICAS
-        # ====================================================
         data = load_data()
         data["ultimoExport"] = datetime.now().strftime("%d/%m/%Y")
         data["totalExportaciones"] = data.get("totalExportaciones", 0) + 1
@@ -165,11 +149,12 @@ async def start_export(
         print("✅ Exportación finalizada correctamente.")
         print("=" * 80 + "\n")
 
-        progress_steps.append("✅ Exportación completada correctamente")
+        progress_steps.append(f"{out_name}")  # nombre del archivo al final
 
         return {
             "message": "Exportación finalizada correctamente",
             "archivo_generado": out_name,
+            "file": out_name,
             "ultimoExport": data["ultimoExport"],
             "totalExportaciones": data["totalExportaciones"],
         }
@@ -193,46 +178,4 @@ async def download_csv(filename: str):
         raise HTTPException(status_code=404, detail="Archivo no encontrado")
     print(f"⬇️ Descargando archivo: {filename}")
     return FileResponse(path, media_type="text/csv", filename=filename)
-
-
-# ============================================================
-# 🧹 LIMPIEZA DE ARCHIVOS (entradas + salidas)
-# ============================================================
-
-@router.get("/cleanup")
-async def get_export_files():
-    """Devuelve cuántos archivos hay en export y temp_inputs"""
-    try:
-        exp_files = [f for f in os.listdir(EXPORT_DIR) if os.path.isfile(os.path.join(EXPORT_DIR, f))]
-        inp_files = [f for f in os.listdir(TEMP_INPUTS) if os.path.isfile(os.path.join(TEMP_INPUTS, f))]
-
-        return {
-            "status": "ok",
-            "exports_count": len(exp_files),
-            "inputs_count": len(inp_files),
-            "total": len(exp_files) + len(inp_files),
-            "exports": exp_files,
-            "inputs": inp_files,
-        }
-    except Exception as e:
-        return {"status": "error", "detail": str(e)}
-
-
-@router.post("/cleanup")
-async def cleanup_exports():
-    """Elimina todos los archivos de exportación e input temporal"""
-    try:
-        removed = 0
-        for folder in [EXPORT_DIR, TEMP_INPUTS]:
-            for f in os.listdir(folder):
-                path = os.path.join(folder, f)
-                if os.path.isfile(path):
-                    os.remove(path)
-                    removed += 1
-
-        msg = f"🧹 Limpieza completada ({removed} archivos eliminados de export + temp_inputs)"
-        print(msg)
-        return JSONResponse({"status": "ok", "message": msg, "removed": removed})
-    except Exception as e:
-        return JSONResponse({"status": "error", "detail": str(e)})
 
