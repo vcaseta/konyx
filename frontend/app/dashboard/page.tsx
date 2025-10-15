@@ -145,25 +145,6 @@ export default function DashboardPage() {
         return;
       }
 
-      // 1️⃣ Subir archivos (contactos opcional)
-      const formUpload = new FormData();
-      formUpload.append("ficheroSesiones", ficheroSesiones);
-      if (!usarUltimoContactos && ficheroContactos) {
-        formUpload.append("ficheroContactos", ficheroContactos);
-      }
-
-      console.log("📤 Subiendo ficheros al backend...");
-      const uploadRes = await fetch(`${BACKEND}/export/upload`, {
-        method: "POST",
-        body: formUpload,
-      });
-
-      if (!uploadRes.ok) throw new Error("Error al subir archivos.");
-
-      const uploadData = await uploadRes.json();
-      console.log("✅ Archivos subidos:", uploadData);
-
-      // 2️⃣ Iniciar exportación
       const formExport = new FormData();
       formExport.append("formatoImport", formatoImport || "");
       formExport.append("formatoExport", formatoExport || "");
@@ -172,10 +153,12 @@ export default function DashboardPage() {
       formExport.append("proyecto", proyecto || "");
       formExport.append("cuenta", cuenta === "Otra (introducir)" ? cuentaOtra : cuenta || "");
       formExport.append("usuario", usuario);
-      formExport.append("pathSesiones", uploadData.sesiones);
-      formExport.append("pathContactos", uploadData.contactos || "");
+      formExport.append("ficheroSesiones", ficheroSesiones);
+      if (!usarUltimoContactos && ficheroContactos) {
+        formExport.append("ficheroContactos", ficheroContactos);
+      }
 
-      console.log("🚀 Iniciando exportación...");
+      console.log("🚀 Enviando ficheros y datos al backend...");
       const res = await fetch(`${BACKEND}/export/start`, {
         method: "POST",
         body: formExport,
@@ -296,11 +279,23 @@ export default function DashboardPage() {
             </PanelOption>
           )}
           {menu === "fecha" && <PanelDate title="Fecha factura" value={fechaFactura} onChange={setFechaFactura} />}
+
+          {/* FICHEROS */}
           {menu === "ficheroSesiones" && (
-            <PanelFile value={ficheroSesiones?.name || ""} onPickFileClick={onPickSesionesClick} onPickFile={onPickSesiones} fileInputRef={fileSesionesRef} />
+            <div className="border border-indigo-300 bg-indigo-50 rounded-xl p-4 shadow-sm">
+              <h3 className="text-lg font-semibold text-indigo-800 mb-3">Fichero de sesiones</h3>
+              <PanelFile
+                value={ficheroSesiones?.name || ""}
+                onPickFileClick={onPickSesionesClick}
+                onPickFile={onPickSesiones}
+                fileInputRef={fileSesionesRef}
+              />
+            </div>
           )}
+
           {menu === "ficheroContactos" && (
-            <div className="space-y-4">
+            <div className="border border-indigo-300 bg-indigo-50 rounded-xl p-4 shadow-sm space-y-4">
+              <h3 className="text-lg font-semibold text-indigo-800 mb-3">Fichero de contactos</h3>
               <PanelFileContactos
                 value={ficheroContactos?.name || ""}
                 onPickFileClick={onPickContactosClick}
@@ -308,7 +303,7 @@ export default function DashboardPage() {
                 fileInputRef={fileContactosRef}
                 disabled={usarUltimoContactos}
               />
-              <div className="flex items-center gap-2 mt-2">
+              <div className="flex items-center gap-2 bg-white rounded-lg border border-indigo-200 p-3">
                 <input
                   id="usarUltimoContactos"
                   type="checkbox"
@@ -322,7 +317,7 @@ export default function DashboardPage() {
                   }}
                   className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
                 />
-                <label htmlFor="usarUltimoContactos" className="text-sm text-gray-700">
+                <label htmlFor="usarUltimoContactos" className="text-sm font-medium text-indigo-800">
                   Usar último fichero de contactos guardado
                 </label>
               </div>
