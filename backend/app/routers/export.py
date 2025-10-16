@@ -1,12 +1,14 @@
-from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Request
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from fastapi.responses import FileResponse, StreamingResponse, JSONResponse
 from datetime import datetime
 from app.core.persistence import load_data, save_data
 from app.core.validators.common import ensure_not_empty
 from app.core.validators.holded import validate_holded_template
 from app.core.validators.eholo import validate_eholo_template
+from app.core.exporters.holded import build_holded_csv
+from app.core.exporters.gestoria import build_gestoria_csv
 import pandas as pd
-import io, time, json, os
+import time, json, os
 
 router = APIRouter(prefix="/export", tags=["export"])
 
@@ -25,18 +27,16 @@ os.makedirs(TEMP_INPUTS, exist_ok=True)
 # ============================================================
 
 def progress_stream():
-    """Genera eventos SSE en tiempo real"""
+    """Genera eventos SSE en tiempo real."""
     for step in progress_steps:
         yield f"data: {json.dumps({'type': 'log', 'step': step})}\n\n"
         time.sleep(1)
-    if changes_detected:
-        yield f"data: {json.dumps({'type': 'changes', 'changes': changes_detected})}\n\n"
     yield f"data: {json.dumps({'type': 'end'})}\n\n"
 
 
 @router.get("/progress")
 async def export_progress():
-    """Stream SSE de progreso"""
+    """Stream SSE de progreso."""
     return StreamingResponse(progress_stream(), media_type="text/event-stream")
 
 
@@ -56,23 +56,21 @@ async def start_export(
     ficheroSesiones: UploadFile = File(...),
     ficheroContactos: UploadFile = File(...),
 ):
-    """Procesa sesiones y contactos, genera CSV conciliado."""
+    """Procesa sesiones y contactos, valida y genera CSV final."""
     try:
-        # 🧠 DEBUG: mostrar qué llega desde frontend
-        print("\n" + "="*80)
+        print("\n" + "=" * 80)
         print("📦 NUEVA EXPORTACIÓN INICIADA")
         print(f"👤 Usuario: {usuario}")
         print(f"📁 Formato import: {formatoImport} | Export: {formatoExport}")
         print(f"🏢 Empresa: {empresa} | 📅 Fecha factura: {fechaFactura}")
         print(f"🧾 Proyecto: {proyecto} | 💼 Cuenta: {cuenta}")
-        print("-"*80)
+        print("-" * 80)
 
         progress_steps.clear()
-        changes_detected.clear()
         progress_steps.append("Iniciando proceso de exportación...")
         progress_steps.append("Guardando archivos temporales...")
 
-        # Guardar los archivos subidos
+        # Guardar archivos subidos
         sesiones_path = os.path.join(TEMP_INPUTS, f"{usuario}_sesiones.xlsx")
         contactos_path = os.path.join(TEMP_INPUTS, f"{usuario}_contactos.xlsx")
 
@@ -81,29 +79,34 @@ async def start_export(
         with open(contactos_path, "wb") as f:
             f.write(await ficheroContactos.read())
 
-        print(f"📥 Guardado fichero de SESIONES en: {sesiones_path}")
-        print(f"📥 Guardado fichero de CONTACTOS en: {contactos_path}")
+        print(f"📥 SESIONES guardado en: {sesiones_path}")
+        print(f"📥 CONTACTOS guardado en: {contactos_path}")
 
-        # Leer en memoria
+        # Leer Excel
         df_ses = pd.read_excel(sesiones_path)
         df_con = pd.read_excel(contactos_path)
 
-        # Validaciones base
         ensure_not_empty(df_ses, ficheroSesiones.filename)
         ensure_not_empty(df_con, ficheroContactos.filename)
 
-        # Validación específica según formato
+        # =====================================================
+        # 🔍 VALIDACIÓN SEGÚN FORMATO IMPORT
+        # =====================================================
         if formatoImport.lower() == "holded":
-            print("🔍 Validando estructura Holded...")
+            progress_steps.append("Validando estructura Holded...")
             validate_holded_template(df_ses)
+            print("✔ Validación Holded completada.")
         elif formatoImport.lower() == "eholo":
-            print("🔍 Validando estructura Eholo...")
+            progress_steps.append("Validando estructura Eholo...")
             validate_eholo_template(df_ses)
+            print("✔ Validación Eholo completada.")
+        else:
+            progress_steps.append(f"Formato import desconocido: {formatoImport}")
 
-        progress_steps.append("Archivos validados correctamente.")
-
-        # Limpieza básica y fusión
-        progress_steps.append("Leyendo ficheros Excel...")
+        # =====================================================
+        # 🧩 FUSIÓN DE DATOS
+        # =====================================================
+        progress_steps.append("Conciliando datos entre sesiones y contactos...")
         df_ses.columns = [c.strip().lower() for c in df_ses.columns]
         df_con.columns = [c.strip().lower() for c in df_con.columns]
 
@@ -115,33 +118,35 @@ async def start_export(
             right_on="nombre" if "nombre" in df_con.columns else df_con.columns[0],
         )
 
-        progress_steps.append(f"Fusión completada: {len(merged)} filas combinadas.")
         merged.fillna("", inplace=True)
+        progress_steps.append(f"Fusión completada: {len(merged)} filas combinadas.")
 
-        # Generar archivo CSV final
-      from app.core.exporters.holded import build_holded_csv
+        # =====================================================
+        # 💾 GENERAR ARCHIVO FINAL
+        # =====================================================
+        progress_steps.append("Generando archivo CSV final...")
 
-progress_steps.append("Generando archivo CSV final...")
+        if formatoExport.lower() == "holded":
+            out_name = build_holded_csv(merged, empresa, fechaFactura, proyecto, cuenta, EXPORT_DIR)
+        elif formatoExport.lower() == "gestoria":
+            out_name = build_gestoria_csv(merged, empresa, fechaFactura, proyecto, cuenta, EXPORT_DIR)
+        else:
+            out_name = f"export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+            out_path = os.path.join(EXPORT_DIR, out_name)
+            merged.to_csv(out_path, index=False, encoding="utf-8-sig")
 
-if formatoExport.lower() == "holded":
-    out_name = build_holded_csv(merged, empresa, fechaFactura, proyecto, cuenta, EXPORT_DIR)
-else:
-    # Export genérico si no se especifica formato
-    out_name = f"export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
-    out_path = os.path.join(EXPORT_DIR, out_name)
-    merged.to_csv(out_path, index=False, encoding="utf-8-sig")
+        progress_steps.append(f"Archivo generado: {out_name}")
+        progress_steps.append("Exportación finalizada correctamente.")
+        print(f"📤 Archivo generado: {out_name}")
 
-
-        # Actualiza métricas persistentes
+        # =====================================================
+        # 📊 ACTUALIZAR MÉTRICAS
+        # =====================================================
         data = load_data()
         data["ultimoExport"] = datetime.now().strftime("%d/%m/%Y")
         data["totalExportaciones"] = data.get("totalExportaciones", 0) + 1
         data["archivo_generado"] = out_name
         save_data(data)
-
-        progress_steps.append(f"Archivo exportado: {out_name}")
-        progress_steps.append("Exportación finalizada correctamente.")
-        print(f"📤 Archivo exportado: {out_path}")
 
         return {"status": "ok", "file": out_name}
 
@@ -176,8 +181,9 @@ async def cleanup_info():
     return {
         "exports": exp_files,
         "inputs": inp_files,
-        "total": len(exp_files) + len(inp_files)
+        "total": len(exp_files) + len(inp_files),
     }
+
 
 @router.post("/cleanup")
 async def cleanup_files():
@@ -191,4 +197,5 @@ async def cleanup_files():
     msg = f"Limpieza completada ({removed} archivos eliminados)"
     print(msg)
     return {"status": "ok", "message": msg}
+
 
