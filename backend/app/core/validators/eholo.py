@@ -2,61 +2,85 @@ import pandas as pd
 from fastapi import HTTPException
 
 # ============================================================
-# 🔍 VALIDACIÓN DE PLANTILLA EHolo (Sesiones)
+# 🔍 VALIDACIÓN DE PLANTILLAS EHolo (sesiones + contactos)
 # ============================================================
 
-EXPECTED_COLUMNS_EHOLO = [
-    "profesional",
-    "paciente",
-    "dni",
-    "comunicación",
-    "tipo",
-    "fecha",
-    "precio",
-    "comisión centro",
-    "comisión profesional",
-    "bonos",
-    "estado",
-    "método de pago",
-    "fecha de pago",
+EXPECTED_COLUMNS_SESIONES_EHOLO = [
+    "Nombre",
+    "Fecha",
+    "Importe",
+    "Terapeuta",
+    "Tipo",
+    "Pagado",
+    "Factura",
+    "Notas",
+]
+
+EXPECTED_COLUMNS_CONTACTOS_EHOLO = [
+    "Nombre",
+    "Teléfono",
+    "Email",
+    "Dirección",
+    "Código Postal",
+    "Población",
+    "Provincia",
+    "País",
+    "NIF",
 ]
 
 def normalize(col: str) -> str:
-    """Normaliza el nombre de una columna para comparación."""
-    return col.strip().lower().replace("á", "a").replace("é", "e").replace("í", "i").replace("ó", "o").replace("ú", "u")
+    """Normaliza columnas eliminando tildes y espacios extra."""
+    return (
+        col.strip()
+        .lower()
+        .replace("á", "a")
+        .replace("é", "e")
+        .replace("í", "i")
+        .replace("ó", "o")
+        .replace("ú", "u")
+    )
 
-def validate_eholo_template(df: pd.DataFrame):
-    """
-    Verifica que el DataFrame subido cumpla la estructura exacta de Eholo.
-    Si faltan o sobran columnas, se lanza una excepción HTTP 400.
-    """
+def validate_eholo_sesiones(df: pd.DataFrame):
     cols = [normalize(c) for c in df.columns if not c.lower().startswith("unnamed")]
-    expected = [normalize(c) for c in EXPECTED_COLUMNS_EHOLO]
+    expected = [normalize(c) for c in EXPECTED_COLUMNS_SESIONES_EHOLO]
 
-    missing = [c for c in expected if c not in cols]
-    extra = [c for c in cols if c not in expected]
+    print("🧾 Columnas SESIONES detectadas:", cols)
+    print("🎯 Columnas SESIONES esperadas:", expected)
 
-    print("🧾 Columnas encontradas:", cols)
-    print("🎯 Columnas esperadas:", expected)
-
-    if missing:
+    if len(cols) != len(expected):
         raise HTTPException(
             status_code=400,
-            detail=f"El archivo de sesiones Eholo no tiene todas las columnas requeridas. Faltan: {', '.join(missing)}"
+            detail=f"El archivo de sesiones no tiene el número correcto de columnas ({len(cols)} en lugar de {len(expected)})."
         )
 
-    if extra:
-        raise HTTPException(
-            status_code=400,
-            detail=f"El archivo de sesiones Eholo tiene columnas no esperadas: {', '.join(extra)}"
-        )
-
-    # Validación estricta: orden exacto
     if cols != expected:
         raise HTTPException(
             status_code=400,
-            detail="El orden de las columnas no coincide exactamente con la plantilla Eholo."
+            detail="Las columnas del archivo de sesiones no coinciden con la plantilla Eholo (orden o nombres distintos)."
         )
 
-    print("✅ Validación Eholo completada correctamente.")
+    print("✅ Validación de sesiones Eholo correcta.")
+    return True
+
+
+def validate_eholo_contactos(df: pd.DataFrame):
+    cols = [normalize(c) for c in df.columns if not c.lower().startswith("unnamed")]
+    expected = [normalize(c) for c in EXPECTED_COLUMNS_CONTACTOS_EHOLO]
+
+    print("🧾 Columnas CONTACTOS detectadas:", cols)
+    print("🎯 Columnas CONTACTOS esperadas:", expected)
+
+    if len(cols) != len(expected):
+        raise HTTPException(
+            status_code=400,
+            detail=f"El archivo de contactos no tiene el número correcto de columnas ({len(cols)} en lugar de {len(expected)})."
+        )
+
+    if cols != expected:
+        raise HTTPException(
+            status_code=400,
+            detail="Las columnas del archivo de contactos no coinciden con la plantilla Eholo (orden o nombres distintos)."
+        )
+
+    print("✅ Validación de contactos Eholo correcta.")
     return True
