@@ -119,10 +119,18 @@ async def start_export(
         merged.fillna("", inplace=True)
 
         # Generar archivo CSV final
-        progress_steps.append("Generando archivo CSV final...")
-        out_name = f"export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
-        out_path = os.path.join(EXPORT_DIR, out_name)
-        merged.to_csv(out_path, index=False, encoding="utf-8-sig")
+      from app.core.exporters.holded import build_holded_csv
+
+progress_steps.append("Generando archivo CSV final...")
+
+if formatoExport.lower() == "holded":
+    out_name = build_holded_csv(merged, empresa, fechaFactura, proyecto, cuenta, EXPORT_DIR)
+else:
+    # Export genérico si no se especifica formato
+    out_name = f"export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+    out_path = os.path.join(EXPORT_DIR, out_name)
+    merged.to_csv(out_path, index=False, encoding="utf-8-sig")
+
 
         # Actualiza métricas persistentes
         data = load_data()
