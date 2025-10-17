@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from fastapi.responses import FileResponse, StreamingResponse, JSONResponse
 from datetime import datetime
 import pandas as pd
-import os, io, json, time, re
+import os, json, time, re
 
 # Core imports
 from app.core.persistence import load_data, save_data
@@ -16,7 +16,7 @@ TEMP_INPUTS = "./app/temp_inputs"
 os.makedirs(EXPORT_DIR, exist_ok=True)
 os.makedirs(TEMP_INPUTS, exist_ok=True)
 
-# Cola para eventos SSE
+# Cola de progreso SSE
 progress_queue = []
 
 
@@ -24,7 +24,7 @@ progress_queue = []
 # 🧠 FUNCIONES AUXILIARES
 # ============================================================
 def log_step(msg: str):
-    """Añade un mensaje al log de progreso y a la consola."""
+    """Añade un mensaje al log de progreso y al flujo SSE."""
     progress_queue.append(msg)
     print(msg)
 
@@ -70,12 +70,12 @@ async def start_export(
         log_step(f"👤 Usuario: {usuario} | Empresa: {empresa} | Fecha: {fechaFactura}")
 
         # ------------------------------------------------------------
-        # 🔢 CÁLCULO DE NUMERACIÓN AUTOMÁTICA
+        # 🔢 NUMERACIÓN AUTOMÁTICA
         # ------------------------------------------------------------
         use_auto = use_auto_numbering.lower() == "true"
-        next_number = ""
+        next_number = None
 
-        if use_auto and last_invoice_number:
+        if use_auto and last_invoice_number.strip():
             match = re.search(r"(\d+)$", last_invoice_number)
             if match:
                 prefix = last_invoice_number[: match.start(1)]
@@ -85,10 +85,10 @@ async def start_export(
             else:
                 log_step("⚠️ No se detectó número al final del valor proporcionado.")
         else:
-            log_step("🔢 Numeración automática desactivada. Holded asignará número.")
+            log_step("🔢 Numeración automática desactivada. Holded asignará número en borrador.")
 
         # ------------------------------------------------------------
-        # 🧾 GUARDAR ARCHIVOS TEMPORALES
+        # 📂 GUARDAR ARCHIVOS TEMPORALES
         # ------------------------------------------------------------
         sesiones_path = os.path.join(TEMP_INPUTS, f"{usuario}_sesiones.xlsx")
         contactos_path = os.path.join(TEMP_INPUTS, f"{usuario}_contactos.xlsx")
@@ -103,7 +103,7 @@ async def start_export(
         log_step("📁 Archivos guardados correctamente.")
 
         # ------------------------------------------------------------
-        # 📊 CARGAR EN PANDAS
+        # 📊 CARGAR DATOS EN PANDAS
         # ------------------------------------------------------------
         df_ses = pd.read_excel(sesiones_path)
         df_con = pd.read_excel(contactos_path) if ficheroContactos else pd.DataFrame()
@@ -159,21 +159,20 @@ async def start_export(
         save_data(data)
 
         # ------------------------------------------------------------
-        # 📡 ENVIAR EVENTO FINAL AL FRONTEND
+        # 📡 EVENTO FINAL AL FRONTEND
         # ------------------------------------------------------------
-        end_event = {
+        progress_queue.append({
             "type": "end",
             "file": filename,
             "autoNumbering": use_auto,
-            "nextNumber": next_number,
-        }
-        progress_queue.append(end_event)
+            "nextNumber": next_number or "",
+        })
 
         return {
             "status": "ok",
             "file": filename,
             "autoNumbering": use_auto,
-            "nextNumber": next_number,
+            "nextNumber": next_number or "",
         }
 
     except HTTPException as e:
