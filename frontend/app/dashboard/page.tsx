@@ -129,6 +129,17 @@ export default function DashboardPage() {
     }
   };
 
+  
+// ---------------------------
+// ACTUALIZAR DEBUG AL ENTRAR EN CONFIG
+// ---------------------------
+useEffect(() => {
+  if (menu === "config") {
+    refreshStats(); // 🔁 Refresca estadísticas al entrar al panel de configuración
+  }
+}, [menu]);
+
+  
   // ---------------------------
   // EXPORTAR
   // ---------------------------
