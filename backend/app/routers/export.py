@@ -4,7 +4,6 @@ from datetime import datetime
 import pandas as pd
 import os, io, json, time, re
 
-# Core imports
 from app.core.persistence import load_data, save_data
 from app.core.validators.sesiones_gestoria import validate_sesiones_gestoria_template
 from app.core.validators.eholo import validate_eholo_sesiones, validate_eholo_contactos
@@ -16,47 +15,21 @@ TEMP_INPUTS = "./app/temp_inputs"
 os.makedirs(EXPORT_DIR, exist_ok=True)
 os.makedirs(TEMP_INPUTS, exist_ok=True)
 
-# 🧠 Cola de progreso SSE
 progress_queue = []
 
-
-# ============================================================
-# 🧾 FUNCIONES AUXILIARES
-# ============================================================
-
 def log_step(msg: str):
-    """Añade un mensaje al log de progreso y a la consola."""
     progress_queue.append(msg)
     print(msg)
 
-
 def stream_progress():
-    """Genera eventos SSE con el progreso en tiempo real."""
     for step in progress_queue:
         yield f"data: {json.dumps({'type': 'log', 'step': step})}\n\n"
         time.sleep(0.8)
     yield f"data: {json.dumps({'type': 'end'})}\n\n"
 
-
-def increment_invoice_number(num: str) -> str:
-    """Incrementa el número de factura conservando letras y ceros a la izquierda."""
-    match = re.match(r"([A-Za-z]*)(\d+)", num)
-    if not match:
-        return num  # fallback
-    prefix, number = match.groups()
-    next_number = str(int(number) + 1).zfill(len(number))
-    return f"{prefix}{next_number}"
-
-
 @router.get("/progress")
 async def export_progress():
-    """Stream SSE de progreso."""
     return StreamingResponse(stream_progress(), media_type="text/event-stream")
-
-
-# ============================================================
-# 🚀 INICIAR EXPORTACIÓN
-# ============================================================
 
 @router.post("/start")
 async def start_export(
@@ -68,110 +41,94 @@ async def start_export(
     cuenta: str = Form(...),
     usuario: str = Form(...),
     ficheroSesiones: UploadFile = File(...),
-    ficheroContactos: UploadFile = File(...),
-    use_auto_numbering: str = Form("true"),  # "true" o "false"
+    ficheroContactos: UploadFile = File(None),
+    use_auto_numbering: str = Form("true"),
     last_invoice_number: str = Form(""),
 ):
     try:
         progress_queue.clear()
         log_step("✅ Iniciando proceso de exportación...")
         log_step(f"📦 Formato import: {formatoImport} | export: {formatoExport}")
-        log_step(f"👤 Usuario: {usuario} | Empresa: {empresa} | Fecha: {fechaFactura}")
 
-        # -------------------------------
-        # Numeración automática
-        # -------------------------------
         use_auto = use_auto_numbering.lower() == "true"
-        if use_auto:
-            log_step(f"🔢 Numeración automática activada (último número: {last_invoice_number})")
-            next_number = increment_invoice_number(last_invoice_number) if last_invoice_number else None
-        else:
-            log_step("🔢 Numeración automática desactivada — se omitirá el número de factura")
-            next_number = None
+        next_number = ""
 
-        # Guardar ficheros temporalmente
+        if use_auto and last_invoice_number:
+            m = re.search(r"(\d+)$", last_invoice_number)
+            if m:
+                prefix = last_invoice_number[: m.start(1)]
+                num = int(m.group(1)) + 1
+                next_number = f"{prefix}{num:0{len(m.group(1))}d}"
+                log_step(f"🧾 Numeración automática activa. Siguiente número: {next_number}")
+            else:
+                log_step("⚠️ No se detectó número al final del campo proporcionado.")
+
+        else:
+            log_step("🔢 Numeración automática desactivada. Holded asignará número.")
+
         sesiones_path = os.path.join(TEMP_INPUTS, f"{usuario}_sesiones.xlsx")
         contactos_path = os.path.join(TEMP_INPUTS, f"{usuario}_contactos.xlsx")
 
         with open(sesiones_path, "wb") as f:
             f.write(await ficheroSesiones.read())
-        with open(contactos_path, "wb") as f:
-            f.write(await ficheroContactos.read())
 
-        log_step(f"📁 Archivos guardados en {TEMP_INPUTS}")
+        if ficheroContactos:
+            with open(contactos_path, "wb") as f:
+                f.write(await ficheroContactos.read())
 
-        # Cargar en pandas
+        log_step("📁 Archivos guardados.")
+
         df_ses = pd.read_excel(sesiones_path)
-        df_con = pd.read_excel(contactos_path)
-        log_step(f"📊 Sesiones: {len(df_ses)} filas | Contactos: {len(df_con)} filas")
+        df_con = pd.read_excel(contactos_path) if ficheroContactos else pd.DataFrame()
+        log_step(f"📊 Sesiones: {len(df_ses)} | Contactos: {len(df_con)}")
 
-        # =====================================================
-        # 🔍 VALIDACIÓN SEGÚN FORMATO IMPORTADO
-        # =====================================================
         if formatoImport.lower() == "gestoria":
-            log_step("🧩 Validando estructura Gestoría (sesiones)...")
             validate_sesiones_gestoria_template(df_ses)
-            log_step("✅ Estructura Gestoría válida.")
-
+            log_step("✅ Validación Gestoría correcta.")
         elif formatoImport.lower() == "eholo":
-            log_step("🧩 Validando estructura Eholo (sesiones)...")
             validate_eholo_sesiones(df_ses)
-            log_step("✅ Sesiones Eholo válidas.")
-            log_step("🧩 Validando estructura Eholo (contactos)...")
             validate_eholo_contactos(df_con)
-            log_step("✅ Contactos Eholo válidos.")
-
+            log_step("✅ Validación Eholo correcta.")
         else:
             raise HTTPException(status_code=400, detail=f"Formato de importación desconocido: {formatoImport}")
 
-        # =====================================================
-        # 🔗 PROCESAMIENTO Y EXPORTACIÓN
-        # =====================================================
-        log_step("🔁 Combinando datos de sesiones y contactos...")
-        merged = df_ses.merge(
-            df_con,
-            how="left",
-            left_on="Nombre" if "Nombre" in df_ses.columns else df_ses.columns[0],
-            right_on="Nombre" if "Nombre" in df_con.columns else df_con.columns[0],
-            suffixes=("", "_contacto"),
-        )
+        merged = df_ses.copy()
+        if not df_con.empty:
+            merged = merged.merge(
+                df_con,
+                how="left",
+                left_on="Nombre",
+                right_on="Nombre",
+                suffixes=("", "_contacto"),
+            )
         merged.fillna("", inplace=True)
 
-        # =====================================================
-        # 🧾 APLICAR NUMERACIÓN Y MODO BORRADOR
-        # =====================================================
-        if use_auto and next_number:
-            merged.insert(0, "Número de factura", next_number)
-            log_step(f"🧾 Asignado número de factura: {next_number}")
-        else:
-            merged.insert(0, "Número de factura", "")
-            log_step("📄 Sin numeración (modo borrador)")
-
-        merged["Estado"] = "Borrador"
-
-        # =====================================================
-        # 📤 EXPORTACIÓN CSV
-        # =====================================================
         filename = f"export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
         filepath = os.path.join(EXPORT_DIR, filename)
         merged.to_csv(filepath, index=False, sep=";", encoding="utf-8-sig")
 
         log_step(f"💾 Archivo exportado: {filename}")
-        log_step(f"📤 Total filas combinadas: {len(merged)}")
         log_step("✅ Exportación finalizada correctamente.")
 
-        # =====================================================
-        # 📈 ACTUALIZAR MÉTRICAS
-        # =====================================================
         data = load_data()
         data["ultimoExport"] = datetime.now().strftime("%d/%m/%Y")
         data["totalExportaciones"] = data.get("totalExportaciones", 0) + 1
         save_data(data)
 
-        # Enviar evento final
-        progress_queue.append(json.dumps({"type": "end", "file": filename}))
+        end_event = {
+            "type": "end",
+            "file": filename,
+            "autoNumbering": use_auto,
+            "nextNumber": next_number,
+        }
+        progress_queue.append(json.dumps(end_event))
 
-        return {"status": "ok", "file": filename, "autoNumbering": use_auto, "nextNumber": next_number}
+        return {
+            "status": "ok",
+            "file": filename,
+            "autoNumbering": use_auto,
+            "nextNumber": next_number,
+        }
 
     except HTTPException as e:
         log_step(f"❌ Error de validación: {e.detail}")
