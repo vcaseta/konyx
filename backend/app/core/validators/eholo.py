@@ -1,86 +1,52 @@
 import pandas as pd
 from fastapi import HTTPException
 
-# ============================================================
-# 🔍 VALIDACIÓN DE PLANTILLAS EHolo (sesiones + contactos)
-# ============================================================
-
-EXPECTED_COLUMNS_SESIONES_EHOLO = [
-    "Nombre",
-    "Fecha",
-    "Importe",
-    "Terapeuta",
-    "Tipo",
-    "Pagado",
-    "Factura",
-    "Notas",
-]
-
-EXPECTED_COLUMNS_CONTACTOS_EHOLO = [
-    "Nombre",
-    "Teléfono",
-    "Email",
-    "Dirección",
-    "Código Postal",
-    "Población",
-    "Provincia",
-    "País",
-    "NIF",
-]
-
-def normalize(col: str) -> str:
-    """Normaliza columnas eliminando tildes y espacios extra."""
-    return (
-        col.strip()
-        .lower()
-        .replace("á", "a")
-        .replace("é", "e")
-        .replace("í", "i")
-        .replace("ó", "o")
-        .replace("ú", "u")
-    )
-
 def validate_eholo_sesiones(df: pd.DataFrame):
-    cols = [normalize(c) for c in df.columns if not c.lower().startswith("unnamed")]
-    expected = [normalize(c) for c in EXPECTED_COLUMNS_SESIONES_EHOLO]
+    """
+    Valida que el fichero de sesiones de Eholo tenga exactamente
+    las columnas esperadas, en el orden correcto y con los nombres exactos.
+    """
 
-    print("🧾 Columnas SESIONES detectadas:", cols)
-    print("🎯 Columnas SESIONES esperadas:", expected)
+    expected_columns = [
+        "Profesional",
+        "Paciente",
+        "DNI",
+        "Comunicación",
+        "Tipo",
+        "Fecha",
+        "Precio",
+        "Comisión centro",
+        "Comisión profesional",
+        "Bonos",
+        "Estado",
+        "Método de pago",
+        "Fecha de pago",
+    ]
 
-    if len(cols) != len(expected):
+    actual_columns = df.columns.tolist()
+
+    # Comparar longitud
+    if len(actual_columns) != len(expected_columns):
         raise HTTPException(
             status_code=400,
-            detail=f"El archivo de sesiones no tiene el número correcto de columnas ({len(cols)} en lugar de {len(expected)})."
+            detail=(
+                f"El archivo de sesiones no tiene el número correcto de columnas "
+                f"({len(actual_columns)} en lugar de {len(expected_columns)})."
+            ),
         )
 
-    if cols != expected:
+    # Comparar nombres exactos y orden
+    if actual_columns != expected_columns:
+        diffs = [
+            f"Esperado '{exp}' pero encontrado '{act}'"
+            for exp, act in zip(expected_columns, actual_columns)
+            if exp != act
+        ]
         raise HTTPException(
             status_code=400,
-            detail="Las columnas del archivo de sesiones no coinciden con la plantilla Eholo (orden o nombres distintos)."
+            detail="Las columnas del archivo de sesiones no coinciden con el formato Eholo esperado. "
+                   f"Diferencias: {', '.join(diffs)}",
         )
 
-    print("✅ Validación de sesiones Eholo correcta.")
     return True
 
-
-def validate_eholo_contactos(df: pd.DataFrame):
-    cols = [normalize(c) for c in df.columns if not c.lower().startswith("unnamed")]
-    expected = [normalize(c) for c in EXPECTED_COLUMNS_CONTACTOS_EHOLO]
-
-    print("🧾 Columnas CONTACTOS detectadas:", cols)
-    print("🎯 Columnas CONTACTOS esperadas:", expected)
-
-    if len(cols) != len(expected):
-        raise HTTPException(
-            status_code=400,
-            detail=f"El archivo de contactos no tiene el número correcto de columnas ({len(cols)} en lugar de {len(expected)})."
-        )
-
-    if cols != expected:
-        raise HTTPException(
-            status_code=400,
-            detail="Las columnas del archivo de contactos no coinciden con la plantilla Eholo (orden o nombres distintos)."
-        )
-
-    print("✅ Validación de contactos Eholo correcta.")
-    return True
