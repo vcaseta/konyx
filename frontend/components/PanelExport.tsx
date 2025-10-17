@@ -9,8 +9,8 @@ export interface PanelExportProps {
 
 interface EndEventData {
   type: string;
-  step?: string; // 🆕 soporte para logs
-  changes?: any[]; // 🆕 soporte para eventos "changes"
+  step?: string; // para logs
+  changes?: any[]; // para eventos de cambios
   file?: string;
   autoNumbering?: boolean;
   nextNumber?: string;
@@ -27,7 +27,8 @@ export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) 
 
   useEffect(() => {
     const startTime = Date.now();
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://192.168.1.51:8000";
+    const backendUrl =
+      process.env.NEXT_PUBLIC_BACKEND_URL || "http://192.168.1.51:8000";
     const evtSource = new EventSource(`${backendUrl}/export/progress`);
 
     setIsExporting(true);
@@ -45,7 +46,7 @@ export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) 
         else if (data.type === "changes" && data.changes) {
           setLogs((prev) => [
             ...prev,
-            `Cambios detectados (${data.changes.length})`,
+            `Cambios detectados (${data.changes!.length})`,
           ]);
         }
 
@@ -199,3 +200,4 @@ export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) 
     </div>
   );
 };
+
