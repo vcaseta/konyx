@@ -174,7 +174,7 @@ export default function DashboardPage() {
 
       console.log("✅ Exportación iniciada correctamente");
       setMenu("exportar");
-      await refreshStats(); // ✅ ya existe
+      await refreshStats();
     } catch (e: any) {
       console.error("❌ Error en onConfirmExport:", e);
       alert("Error iniciando exportación: " + (e?.message || e));
@@ -381,7 +381,30 @@ export default function DashboardPage() {
           )}
 
           {menu === "about" && <PanelAbout />}
-          {menu === "exportar" && <PanelExport onConfirm={onConfirmExport} onReset={() => setMenu("formatoImport")} />}
+
+          {/* ✅ Exportación con reset completo */}
+          {menu === "exportar" && (
+            <PanelExport
+              onConfirm={onConfirmExport}
+              onReset={() => {
+                console.log("🔄 Reiniciando todos los datos para nueva exportación...");
+                setFormatoImport(null);
+                setFormatoExport(null);
+                setEmpresa(null);
+                setFechaFactura("");
+                setNumeroFacturaInicio("");
+                setUseAutoNumbering(true);
+                setProyecto(null);
+                setCuenta(null);
+                setCuentaOtra("");
+                setFicheroSesiones(null);
+                setFicheroContactos(null);
+                setUsarUltimoContactos(false);
+                setMenu("formatoImport");
+              }}
+            />
+          )}
+
           {menu === "cerrar" && <PanelCerrar onConfirm={logout} onCancel={() => setMenu("formatoImport")} />}
         </section>
       </div>
