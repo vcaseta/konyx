@@ -14,7 +14,7 @@ import { PanelCerrar } from "../../components/PanelCerrar";
 import { PanelDebug } from "../../components/PanelDebug";
 import { PanelAbout } from "../../components/PanelAbout";
 import { PanelNumeroFactura } from "../../components/PanelNumeroFactura";
-import { PanelResumen } from "../../components/PanelResumen"; // ✅ Import añadido
+import { PanelResumen } from "../../components/PanelResumen";
 import { Item } from "../../components/Item";
 
 const FORMATO_IMPORT_OPTS = ["Eholo", "Gestoria"] as const;
@@ -80,12 +80,20 @@ export default function DashboardPage() {
   const [passNueva, setPassNueva] = useState("");
   const [passConfirma, setPassConfirma] = useState("");
   const [passMsg, setPassMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
-  const [passwordGlobal, setPasswordGlobal] = useState(() => sessionStorage.getItem("konyx_password") || "1234");
-  const [apiKissoroVigente, setApiKissoroVigente] = useState(() => localStorage.getItem("apiKissoro") || "");
+  const [passwordGlobal, setPasswordGlobal] = useState(
+    () => sessionStorage.getItem("konyx_password") || "1234"
+  );
+  const [apiKissoroVigente, setApiKissoroVigente] = useState(
+    () => localStorage.getItem("apiKissoro") || ""
+  );
   const [apiKissoroNuevo, setApiKissoroNuevo] = useState("");
-  const [apiEnPluralVigente, setApiEnPluralVigente] = useState(() => localStorage.getItem("apiEnPlural") || "");
+  const [apiEnPluralVigente, setApiEnPluralVigente] = useState(
+    () => localStorage.getItem("apiEnPlural") || ""
+  );
   const [apiEnPluralNuevo, setApiEnPluralNuevo] = useState("");
-  const [apiGroqVigente, setApiGroqVigente] = useState(() => localStorage.getItem("apiGroq") || "");
+  const [apiGroqVigente, setApiGroqVigente] = useState(
+    () => localStorage.getItem("apiGroq") || ""
+  );
   const [apiGroqNuevo, setApiGroqNuevo] = useState("");
 
   // 🧩 Debug
@@ -129,17 +137,15 @@ export default function DashboardPage() {
     }
   };
 
-  
-// ---------------------------
-// ACTUALIZAR DEBUG AL ENTRAR EN CONFIG
-// ---------------------------
-useEffect(() => {
-  if (menu === "config") {
-    refreshStats(); // 🔁 Refresca estadísticas al entrar al panel de configuración
-  }
-}, [menu]);
+  // ---------------------------
+  // ACTUALIZAR DEBUG AL ENTRAR EN CONFIG
+  // ---------------------------
+  useEffect(() => {
+    if (menu === "config") {
+      refreshStats();
+    }
+  }, [menu]);
 
-  
   // ---------------------------
   // EXPORTAR
   // ---------------------------
@@ -162,12 +168,8 @@ useEffect(() => {
       formExport.append("proyecto", proyecto || "");
       formExport.append("cuenta", cuenta === "Otra (introducir)" ? cuentaOtra : cuenta || "");
       formExport.append("usuario", usuario);
-
-      // 🧾 Numeración automática
       formExport.append("use_auto_numbering", useAutoNumbering ? "true" : "false");
       formExport.append("last_invoice_number", numeroFacturaInicio || "");
-
-      // 🗂️ Archivos
       formExport.append("ficheroSesiones", ficheroSesiones);
       if (!usarUltimoContactos && ficheroContactos) {
         formExport.append("ficheroContactos", ficheroContactos);
@@ -280,10 +282,20 @@ useEffect(() => {
         {/* Contenido */}
         <section className="flex flex-col space-y-6">
           {menu === "formatoImport" && (
-            <PanelOption title="Formato Importación" options={FORMATO_IMPORT_OPTS} value={formatoImport} onChange={setFormatoImport} />
+            <PanelOption
+              title="Formato Importación"
+              options={FORMATO_IMPORT_OPTS}
+              value={formatoImport}
+              onChange={setFormatoImport}
+            />
           )}
           {menu === "formatoExport" && (
-            <PanelOption title="Formato Exportación" options={FORMATO_EXPORT_OPTS} value={formatoExport} onChange={setFormatoExport} />
+            <PanelOption
+              title="Formato Exportación"
+              options={FORMATO_EXPORT_OPTS}
+              value={formatoExport}
+              onChange={setFormatoExport}
+            />
           )}
           {menu === "empresa" && <PanelOption title="Empresa" options={EMPRESAS} value={empresa} onChange={setEmpresa} />}
           {menu === "fecha" && <PanelDate title="Fecha factura" value={fechaFactura} onChange={setFechaFactura} />}
@@ -394,7 +406,6 @@ useEffect(() => {
 
           {menu === "about" && <PanelAbout />}
 
-          {/* ✅ Exportación con reset completo */}
           {menu === "exportar" && (
             <PanelExport
               onConfirm={onConfirmExport}
@@ -419,29 +430,20 @@ useEffect(() => {
 
           {menu === "cerrar" && <PanelCerrar onConfirm={logout} onCancel={() => setMenu("formatoImport")} />}
 
-          {/* 🧾 Panel de resumen — visible siempre excepto en Config, About y Export */}
-         {menu !== "config" &&
-  menu !== "about" &&
-  menu !== "exportar" &&
-  menu !== "cerrar" && (
-    <PanelResumen
-      formatoImport={formatoImport}
-      formatoExport={formatoExport}
-      empresa={empresa}
-      fechaFactura={fechaFactura}
-      numeroFacturaInicio={numeroFacturaInicio}
-      proyecto={proyecto}
-      cuenta={cuenta}
-      cuentaOtra={cuentaOtra}
-      ficheroSesiones={ficheroSesiones?.name || ""}
-      ficheroContactos={
-        usarUltimoContactos
-          ? "Usando último fichero guardado"
-          : ficheroContactos?.name || ""
-      }
-    />
-)}
-
+          {/* 🧾 Panel de resumen — visible siempre excepto en Config, About, Exportar y Cerrar */}
+          {menu !== "config" && menu !== "about" && menu !== "exportar" && menu !== "cerrar" && (
+            <PanelResumen
+              formatoImport={formatoImport}
+              formatoExport={formatoExport}
+              empresa={empresa}
+              fechaFactura={fechaFactura}
+              numeroFacturaInicio={numeroFacturaInicio}
+              proyecto={proyecto}
+              cuenta={cuenta}
+              cuentaOtra={cuentaOtra}
+              ficheroSesiones={ficheroSesiones?.name || ""}
+              ficheroContactos={
+                usarUltimoContactos ? "Usando último fichero guardado" : ficheroContactos?.name || ""
               }
             />
           )}
