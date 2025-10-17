@@ -63,7 +63,7 @@ export default function DashboardPage() {
   const [empresa, setEmpresa] = useState<string | null>(null);
   const [fechaFactura, setFechaFactura] = useState("");
   const [numeroFacturaInicio, setNumeroFacturaInicio] = useState("");
-  const [useAutoNumbering, setUseAutoNumbering] = useState(true); // 🆕
+  const [useAutoNumbering, setUseAutoNumbering] = useState(true);
   const [proyecto, setProyecto] = useState<string | null>(null);
   const [cuenta, setCuenta] = useState<string | null>(null);
   const [cuentaOtra, setCuentaOtra] = useState("");
@@ -105,36 +105,11 @@ export default function DashboardPage() {
     !!formatoExport &&
     !!empresa &&
     !!fechaFactura &&
-    (!!numeroFacturaInicio || !useAutoNumbering) && // 🆕 si desactiva numeración, no se exige número
+    (!!numeroFacturaInicio || !useAutoNumbering) &&
     !!proyecto &&
     cuentaOk &&
     ficheroSesiones !== null &&
     (usarUltimoContactos || ficheroContactos !== null);
-
-  const onPickSesionesClick = () => fileSesionesRef.current?.click();
-  const onPickContactosClick = () => fileContactosRef.current?.click();
-
-  const onPickSesiones = (e: React.ChangeEvent<HTMLInputElement>) =>
-    setFicheroSesiones(e.target.files?.[0] || null);
-
-  const onPickContactos = (e: React.ChangeEvent<HTMLInputElement>) =>
-    setFicheroContactos(e.target.files?.[0] || null);
-
-  // ---------------------------
-  // REFRESCAR ESTADÍSTICAS
-  // ---------------------------
-  const refreshStats = async () => {
-    try {
-      const res = await fetch(`${BACKEND}/auth/status`);
-      if (!res.ok) return;
-      const s = await res.json();
-      setUltimoExport(s.ultimoExport || "-");
-      setTotalExportaciones(s.totalExportaciones || 0);
-      setTotalExportacionesFallidas(s.totalExportacionesFallidas || 0);
-      setIntentosLoginFallidos(s.intentosLoginFallidos || 0);
-      setTotalLogins(s.totalLogins || 0);
-    } catch {}
-  };
 
   // ---------------------------
   // EXPORTAR
@@ -159,8 +134,6 @@ export default function DashboardPage() {
       formExport.append("cuenta", cuenta === "Otra (introducir)" ? cuentaOtra : cuenta || "");
       formExport.append("usuario", usuario);
       formExport.append("ficheroSesiones", ficheroSesiones);
-
-      // 🆕 Añadimos parámetros de numeración
       formExport.append("use_auto_numbering", useAutoNumbering ? "true" : "false");
       formExport.append("last_invoice_number", numeroFacturaInicio || "");
 
@@ -188,9 +161,19 @@ export default function DashboardPage() {
     }
   };
 
-  // ---------------------------
-  // LOGOUT
-  // ---------------------------
+  const refreshStats = async () => {
+    try {
+      const res = await fetch(`${BACKEND}/auth/status`);
+      if (!res.ok) return;
+      const s = await res.json();
+      setUltimoExport(s.ultimoExport || "-");
+      setTotalExportaciones(s.totalExportaciones || 0);
+      setTotalExportacionesFallidas(s.totalExportacionesFallidas || 0);
+      setIntentosLoginFallidos(s.intentosLoginFallidos || 0);
+      setTotalLogins(s.totalLogins || 0);
+    } catch {}
+  };
+
   const logout = () => {
     sessionStorage.removeItem("konyx_token");
     router.replace("/");
@@ -311,8 +294,8 @@ export default function DashboardPage() {
               <h3 className="text-lg font-semibold text-indigo-800 mb-3">Fichero de sesiones</h3>
               <PanelFile
                 value={ficheroSesiones?.name || ""}
-                onPickFileClick={onPickSesionesClick}
-                onPickFile={onPickSesiones}
+                onPickFileClick={() => fileSesionesRef.current?.click()}
+                onPickFile={(e) => setFicheroSesiones(e.target.files?.[0] || null)}
                 fileInputRef={fileSesionesRef}
               />
             </div>
@@ -323,8 +306,8 @@ export default function DashboardPage() {
               <h3 className="text-lg font-semibold text-indigo-800 mb-3">Fichero de contactos</h3>
               <PanelFileContactos
                 value={ficheroContactos?.name || ""}
-                onPickFileClick={onPickContactosClick}
-                onPickFile={onPickContactos}
+                onPickFileClick={() => fileContactosRef.current?.click()}
+                onPickFile={(e) => setFicheroContactos(e.target.files?.[0] || null)}
                 fileInputRef={fileContactosRef}
                 disabled={usarUltimoContactos}
               />
@@ -390,22 +373,6 @@ export default function DashboardPage() {
           {menu === "about" && <PanelAbout />}
           {menu === "exportar" && <PanelExport onConfirm={onConfirmExport} onReset={() => setMenu("formatoImport")} />}
           {menu === "cerrar" && <PanelCerrar onConfirm={logout} onCancel={() => setMenu("formatoImport")} />}
-
-          {/* Panel resumen */}
-          {menu !== "config" && menu !== "exportar" && menu !== "about" && menu !== "cerrar" && (
-            <PanelResumen
-              formatoImport={formatoImport}
-              formatoExport={formatoExport}
-              empresa={empresa}
-              fechaFactura={fechaFactura}
-              numeroFacturaInicio={numeroFacturaInicio}
-              proyecto={proyecto}
-              cuenta={cuenta}
-              cuentaOtra={cuentaOtra}
-              ficheroSesiones={ficheroSesiones?.name || ""}
-              ficheroContactos={usarUltimoContactos ? "(último guardado)" : ficheroContactos?.name || ""}
-            />
-          )}
         </section>
       </div>
     </main>
