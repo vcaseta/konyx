@@ -7,21 +7,32 @@ export interface PanelExportProps {
   onReset: () => void;
 }
 
+interface EndEventData {
+  type: string;
+  file?: string;
+  autoNumbering?: boolean;
+  nextNumber?: string;
+}
+
 export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) => {
   const [logs, setLogs] = useState<string[]>([]);
   const [isExporting, setIsExporting] = useState(false);
   const [done, setDone] = useState(false);
   const [downloadFile, setDownloadFile] = useState<string | null>(null);
   const [duration, setDuration] = useState<number | null>(null);
+  const [autoNumbering, setAutoNumbering] = useState<boolean | null>(null); // 🆕
+  const [nextNumber, setNextNumber] = useState<string | null>(null); // 🆕
 
   useEffect(() => {
     const startTime = Date.now();
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://192.168.1.51:8000";
     const evtSource = new EventSource(`${backendUrl}/export/progress`);
 
+    setIsExporting(true);
+
     evtSource.onmessage = (e) => {
       try {
-        const data = JSON.parse(e.data);
+        const data = JSON.parse(e.data) as EndEventData;
 
         if (data.type === "log") {
           setLogs((prev) => [...prev, data.step]);
@@ -30,17 +41,25 @@ export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) 
         } else if (data.type === "end") {
           const endTime = Date.now();
           setDuration((endTime - startTime) / 1000);
-
           setDone(true);
+
+          // 🆕 Nuevo: mostrar numeración automática y siguiente número
+          if (typeof data.autoNumbering === "boolean") {
+            setAutoNumbering(data.autoNumbering);
+          }
+          if (data.nextNumber) {
+            setNextNumber(data.nextNumber);
+          }
+
+          // Fichero final
           if (data.file && typeof data.file === "string" && data.file.endsWith(".csv")) {
             setDownloadFile(data.file);
           } else {
-            // Fallback: buscar el nombre del archivo en los logs
+            // Fallback: buscar nombre de archivo en logs
             const lastCsv = logs.find((l) => l.includes("export_") && l.endsWith(".csv"));
-            if (lastCsv) {
-              setDownloadFile(lastCsv.trim());
-            }
+            if (lastCsv) setDownloadFile(lastCsv.trim());
           }
+
           evtSource.close();
         }
       } catch (err) {
@@ -48,12 +67,11 @@ export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) 
       }
     };
 
-    evtSource.onerror = () => {
-      console.error("SSE connection error");
+    evtSource.onerror = (err) => {
+      console.error("❌ SSE connection error", err);
       evtSource.close();
     };
 
-    setIsExporting(true);
     return () => evtSource.close();
   }, []);
 
@@ -85,12 +103,27 @@ export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) 
       {done && (
         <div className="space-y-3 pt-3 border-t border-gray-200">
           <div className="text-green-700 font-medium">
-            Exportación finalizada correctamente.
+            ✅ Exportación finalizada correctamente.
           </div>
 
           {duration !== null && (
             <div className="text-sm text-gray-600">
               Duración total: {duration.toFixed(1)} segundos
+            </div>
+          )}
+
+          {/* 🆕 Mostrar información de numeración */}
+          {autoNumbering !== null && (
+            <div className="text-sm text-gray-700">
+              Numeración automática:{" "}
+              <span className={autoNumbering ? "text-green-600" : "text-orange-600"}>
+                {autoNumbering ? "Activada" : "Desactivada"}
+              </span>
+              {autoNumbering && nextNumber && (
+                <span className="ml-2 text-gray-700">
+                  (Siguiente número: <strong>{nextNumber}</strong>)
+                </span>
+              )}
             </div>
           )}
 
@@ -126,6 +159,8 @@ export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) 
             setDone(false);
             setDownloadFile(null);
             setDuration(null);
+            setAutoNumbering(null);
+            setNextNumber(null);
             onReset();
           }}
           className="px-4 py-2 rounded-lg bg-indigo-500 text-white hover:bg-indigo-600 transition"
