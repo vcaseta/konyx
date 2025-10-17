@@ -111,73 +111,59 @@ export default function DashboardPage() {
     ficheroSesiones !== null &&
     (usarUltimoContactos || ficheroContactos !== null);
 
-  // ---------------------------
-  // EXPORTAR
-  // ---------------------------
-  const onConfirmExport = async (ok: boolean) => {
-    if (!ok) return setMenu("formatoImport");
+// ---------------------------
+// EXPORTAR
+// ---------------------------
+const onConfirmExport = async (ok: boolean) => {
+  if (!ok) return setMenu("formatoImport");
 
-    try {
-      const usuario = sessionStorage.getItem("konyx_user") || "desconocido";
+  try {
+    const usuario = sessionStorage.getItem("konyx_user") || "desconocido";
 
-      if (!ficheroSesiones) {
-        alert("No se ha seleccionado el fichero de sesiones.");
-        return;
-      }
-
-      const formExport = new FormData();
-      formExport.append("formatoImport", formatoImport || "");
-      formExport.append("formatoExport", formatoExport || "");
-      formExport.append("empresa", empresa || "");
-      formExport.append("fechaFactura", fechaFactura || "");
-      formExport.append("proyecto", proyecto || "");
-      formExport.append("cuenta", cuenta === "Otra (introducir)" ? cuentaOtra : cuenta || "");
-      formExport.append("usuario", usuario);
-      formExport.append("ficheroSesiones", ficheroSesiones);
-      formExport.append("use_auto_numbering", useAutoNumbering ? "true" : "false");
-      formExport.append("last_invoice_number", numeroFacturaInicio || "");
-
-      if (!usarUltimoContactos && ficheroContactos) {
-        formExport.append("ficheroContactos", ficheroContactos);
-      }
-
-      console.log("🚀 Enviando ficheros y datos al backend...");
-      const res = await fetch(`${BACKEND}/export/start`, {
-        method: "POST",
-        body: formExport,
-      });
-
-      if (!res.ok) {
-        const msg = await res.text();
-        throw new Error(`Error al iniciar exportación: ${msg}`);
-      }
-
-      console.log("✅ Exportación iniciada correctamente");
-      setMenu("exportar");
-      await refreshStats();
-    } catch (e: any) {
-      console.error("❌ Error en onConfirmExport:", e);
-      alert("Error iniciando exportación: " + (e?.message || e));
+    if (!ficheroSesiones) {
+      alert("No se ha seleccionado el fichero de sesiones.");
+      return;
     }
-  };
 
-  const refreshStats = async () => {
-    try {
-      const res = await fetch(`${BACKEND}/auth/status`);
-      if (!res.ok) return;
-      const s = await res.json();
-      setUltimoExport(s.ultimoExport || "-");
-      setTotalExportaciones(s.totalExportaciones || 0);
-      setTotalExportacionesFallidas(s.totalExportacionesFallidas || 0);
-      setIntentosLoginFallidos(s.intentosLoginFallidos || 0);
-      setTotalLogins(s.totalLogins || 0);
-    } catch {}
-  };
+    const formExport = new FormData();
+    formExport.append("formatoImport", formatoImport || "");
+    formExport.append("formatoExport", formatoExport || "");
+    formExport.append("empresa", empresa || "");
+    formExport.append("fechaFactura", fechaFactura || "");
+    formExport.append("proyecto", proyecto || "");
+    formExport.append("cuenta", cuenta === "Otra (introducir)" ? cuentaOtra : cuenta || "");
+    formExport.append("usuario", usuario);
 
-  const logout = () => {
-    sessionStorage.removeItem("konyx_token");
-    router.replace("/");
-  };
+    // 🧾 Numeración automática (solo se envía si existe)
+    formExport.append("use_auto_numbering", useAutoNumbering ? "true" : "false");
+    formExport.append("last_invoice_number", numeroFacturaInicio || "");
+
+    // 🗂️ Archivos de sesiones y contactos
+    formExport.append("ficheroSesiones", ficheroSesiones);
+    if (!usarUltimoContactos && ficheroContactos) {
+      formExport.append("ficheroContactos", ficheroContactos);
+    }
+
+    console.log("🚀 Enviando ficheros y datos al backend...");
+    const res = await fetch(`${BACKEND}/export/start`, {
+      method: "POST",
+      body: formExport,
+    });
+
+    if (!res.ok) {
+      const msg = await res.text();
+      throw new Error(`Error al iniciar exportación: ${msg}`);
+    }
+
+    console.log("✅ Exportación iniciada correctamente");
+    setMenu("exportar");
+    await refreshStats();
+  } catch (e: any) {
+    console.error("❌ Error en onConfirmExport:", e);
+    alert("Error iniciando exportación: " + (e?.message || e));
+  }
+};
+
 
   // ---------------------------
   // RENDER
