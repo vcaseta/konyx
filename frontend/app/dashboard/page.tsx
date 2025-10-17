@@ -14,6 +14,7 @@ import { PanelCerrar } from "../../components/PanelCerrar";
 import { PanelDebug } from "../../components/PanelDebug";
 import { PanelAbout } from "../../components/PanelAbout";
 import { PanelNumeroFactura } from "../../components/PanelNumeroFactura";
+import { PanelResumen } from "../../components/PanelResumen"; // ✅ Import añadido
 import { Item } from "../../components/Item";
 
 const FORMATO_IMPORT_OPTS = ["Eholo", "Gestoria"] as const;
@@ -406,6 +407,26 @@ export default function DashboardPage() {
           )}
 
           {menu === "cerrar" && <PanelCerrar onConfirm={logout} onCancel={() => setMenu("formatoImport")} />}
+
+          {/* 🧾 Panel de resumen — visible siempre excepto en Config, About y Export */}
+          {menu !== "config" && menu !== "about" && menu !== "exportar" && (
+            <PanelResumen
+              formatoImport={formatoImport}
+              formatoExport={formatoExport}
+              empresa={empresa}
+              fechaFactura={fechaFactura}
+              numeroFacturaInicio={numeroFacturaInicio}
+              proyecto={proyecto}
+              cuenta={cuenta}
+              cuentaOtra={cuentaOtra}
+              ficheroSesiones={ficheroSesiones?.name || ""}
+              ficheroContactos={
+                usarUltimoContactos
+                  ? "Usando último fichero guardado"
+                  : ficheroContactos?.name || ""
+              }
+            />
+          )}
         </section>
       </div>
     </main>
