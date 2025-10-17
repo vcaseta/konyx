@@ -181,7 +181,7 @@ async def start_export(
     # ------------------------------------------------------------
     except HTTPException as e:
         log_step(f"❌ Error de validación: {e.detail}")
-        register_failed_export()
+        # ❌ No registrar aquí; ya se hace en los bloques específicos
         raise
 
     except Exception as e:
