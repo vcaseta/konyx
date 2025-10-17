@@ -31,6 +31,17 @@ def log_step(msg: str):
     print(msg)
 
 
+def register_failed_export():
+    """Suma +1 al contador de exportaciones fallidas."""
+    try:
+        data = load_data()
+        data["totalExportacionesFallidas"] = data.get("totalExportacionesFallidas", 0) + 1
+        save_data(data)
+        log_step("📉 Exportación fallida registrada.")
+    except Exception as e:
+        log_step(f"⚠️ No se pudo registrar la exportación fallida: {e}")
+
+
 # ============================================================
 # 🚀 INICIO DE EXPORTACIÓN
 # ============================================================
@@ -98,15 +109,27 @@ async def start_export(
         # ------------------------------------------------------------
         if formatoImport.lower() == "eholo":
             log_step("🧩 Validando estructura Eholo...")
-            validate_eholo_sesiones(df_ses)
-            if not df_con.empty:
-                validate_eholo_contactos(df_con)
-            log_step("✅ Validación Eholo correcta.")
+            try:
+                validate_eholo_sesiones(df_ses)
+                if not df_con.empty:
+                    validate_eholo_contactos(df_con)
+                log_step("✅ Validación Eholo correcta.")
+            except Exception as e:
+                log_step(f"❌ Error de validación Eholo: {str(e)}")
+                register_failed_export()
+                raise HTTPException(status_code=400, detail=f"Error en validación Eholo: {str(e)}")
+
         elif formatoImport.lower() == "gestoria":
             log_step("🧩 Validando estructura Gestoría...")
-            validate_sesiones_gestoria_template(df_ses)
-            log_step("✅ Validación Gestoría correcta.")
+            try:
+                validate_sesiones_gestoria_template(df_ses)
+                log_step("✅ Validación Gestoría correcta.")
+            except Exception as e:
+                log_step(f"❌ Error de validación Gestoría: {str(e)}")
+                register_failed_export()
+                raise HTTPException(status_code=400, detail=f"Error en validación Gestoría: {str(e)}")
         else:
+            register_failed_export()
             raise HTTPException(status_code=400, detail=f"Formato de importación desconocido: {formatoImport}")
 
         # ------------------------------------------------------------
@@ -154,20 +177,16 @@ async def start_export(
         return JSONResponse({"status": "ok", "file": filename})
 
     # ------------------------------------------------------------
-    # ❌ Manejo de errores
+    # ❌ Manejo de errores generales
     # ------------------------------------------------------------
     except HTTPException as e:
         log_step(f"❌ Error de validación: {e.detail}")
-        data = load_data()
-        data["totalExportacionesFallidas"] = data.get("totalExportacionesFallidas", 0) + 1
-        save_data(data)
+        register_failed_export()
         raise
 
     except Exception as e:
         log_step(f"❌ Error inesperado: {e}")
-        data = load_data()
-        data["totalExportacionesFallidas"] = data.get("totalExportacionesFallidas", 0) + 1
-        save_data(data)
+        register_failed_export()
         raise HTTPException(status_code=500, detail=str(e))
 
 
