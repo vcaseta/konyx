@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from fastapi.responses import FileResponse, StreamingResponse, JSONResponse
 from datetime import datetime
 import pandas as pd
-import os, io, json, time
+import os, io, json, time, re
 
 # Core imports
 from app.core.persistence import load_data, save_data
@@ -38,6 +38,16 @@ def stream_progress():
     yield f"data: {json.dumps({'type': 'end'})}\n\n"
 
 
+def increment_invoice_number(num: str) -> str:
+    """Incrementa el número de factura conservando letras y ceros a la izquierda."""
+    match = re.match(r"([A-Za-z]*)(\d+)", num)
+    if not match:
+        return num  # fallback
+    prefix, number = match.groups()
+    next_number = str(int(number) + 1).zfill(len(number))
+    return f"{prefix}{next_number}"
+
+
 @router.get("/progress")
 async def export_progress():
     """Stream SSE de progreso."""
@@ -59,12 +69,25 @@ async def start_export(
     usuario: str = Form(...),
     ficheroSesiones: UploadFile = File(...),
     ficheroContactos: UploadFile = File(...),
+    use_auto_numbering: str = Form("true"),  # "true" o "false"
+    last_invoice_number: str = Form(""),
 ):
     try:
         progress_queue.clear()
         log_step("✅ Iniciando proceso de exportación...")
         log_step(f"📦 Formato import: {formatoImport} | export: {formatoExport}")
         log_step(f"👤 Usuario: {usuario} | Empresa: {empresa} | Fecha: {fechaFactura}")
+
+        # -------------------------------
+        # Numeración automática
+        # -------------------------------
+        use_auto = use_auto_numbering.lower() == "true"
+        if use_auto:
+            log_step(f"🔢 Numeración automática activada (último número: {last_invoice_number})")
+            next_number = increment_invoice_number(last_invoice_number) if last_invoice_number else None
+        else:
+            log_step("🔢 Numeración automática desactivada — se omitirá el número de factura")
+            next_number = None
 
         # Guardar ficheros temporalmente
         sesiones_path = os.path.join(TEMP_INPUTS, f"{usuario}_sesiones.xlsx")
@@ -114,6 +137,21 @@ async def start_export(
         )
         merged.fillna("", inplace=True)
 
+        # =====================================================
+        # 🧾 APLICAR NUMERACIÓN Y MODO BORRADOR
+        # =====================================================
+        if use_auto and next_number:
+            merged.insert(0, "Número de factura", next_number)
+            log_step(f"🧾 Asignado número de factura: {next_number}")
+        else:
+            merged.insert(0, "Número de factura", "")
+            log_step("📄 Sin numeración (modo borrador)")
+
+        merged["Estado"] = "Borrador"
+
+        # =====================================================
+        # 📤 EXPORTACIÓN CSV
+        # =====================================================
         filename = f"export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
         filepath = os.path.join(EXPORT_DIR, filename)
         merged.to_csv(filepath, index=False, sep=";", encoding="utf-8-sig")
@@ -133,7 +171,7 @@ async def start_export(
         # Enviar evento final
         progress_queue.append(json.dumps({"type": "end", "file": filename}))
 
-        return {"status": "ok", "file": filename}
+        return {"status": "ok", "file": filename, "autoNumbering": use_auto, "nextNumber": next_number}
 
     except HTTPException as e:
         log_step(f"❌ Error de validación: {e.detail}")
@@ -141,56 +179,3 @@ async def start_export(
     except Exception as e:
         log_step(f"❌ Error inesperado: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-
-
-# ============================================================
-# ⬇️ DESCARGA DE CSV
-# ============================================================
-
-@router.get("/download/{filename}")
-async def download_csv(filename: str):
-    """Permite descargar el CSV generado."""
-    path = os.path.join(EXPORT_DIR, filename)
-    if not os.path.exists(path):
-        raise HTTPException(status_code=404, detail="Archivo no encontrado")
-    return FileResponse(path, media_type="text/csv", filename=filename)
-
-
-# ============================================================
-# 🧹 LIMPIEZA DE ARCHIVOS
-# ============================================================
-
-@router.get("/cleanup")
-async def get_export_files():
-    """Devuelve el número de archivos presentes en export y temp_inputs."""
-    try:
-        exp_files = [f for f in os.listdir(EXPORT_DIR) if os.path.isfile(os.path.join(EXPORT_DIR, f))]
-        inp_files = [f for f in os.listdir(TEMP_INPUTS) if os.path.isfile(os.path.join(TEMP_INPUTS, f))]
-        return {
-            "status": "ok",
-            "exports_count": len(exp_files),
-            "inputs_count": len(inp_files),
-            "exports": exp_files,
-            "inputs": inp_files,
-        }
-    except Exception as e:
-        return {"status": "error", "detail": str(e)}
-
-
-@router.post("/cleanup")
-async def cleanup_exports():
-    """Elimina los archivos de exportación e inputs temporales."""
-    try:
-        removed = 0
-        for folder in [EXPORT_DIR, TEMP_INPUTS]:
-            for f in os.listdir(folder):
-                path = os.path.join(folder, f)
-                if os.path.isfile(path):
-                    os.remove(path)
-                    removed += 1
-        msg = f"🧹 Limpieza completada ({removed} archivos eliminados)"
-        print(msg)
-        return JSONResponse({"status": "ok", "message": msg, "removed": removed})
-    except Exception as e:
-        return JSONResponse({"status": "error", "detail": str(e)})
-
