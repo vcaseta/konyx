@@ -155,10 +155,12 @@ export const PanelConfig: React.FC<PanelConfigProps> = ({
       const data = await res.json();
       alert(data.message || "Limpieza completada");
 
-      // 🔁 Actualizar contador tras limpiar
-      const check = await fetch(`${BACKEND}/export/cleanup`);
-      const info = await check.json();
-      setFileCount(info.total ?? 0);
+      // 🔁 Actualizar contador tras limpiar (espera 0.5s para sincronizar)
+      setTimeout(async () => {
+        const check = await fetch(`${BACKEND}/export/cleanup`);
+        const info = await check.json();
+        setFileCount(info.total ?? 0);
+      }, 500);
     } catch (err) {
       alert("Error al borrar archivos");
       console.error(err);
@@ -310,3 +312,4 @@ export const PanelConfig: React.FC<PanelConfigProps> = ({
     </div>
   );
 };
+
