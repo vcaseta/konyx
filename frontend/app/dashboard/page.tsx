@@ -14,7 +14,7 @@ import { PanelCerrar } from "../../components/PanelCerrar";
 import { PanelDebug } from "../../components/PanelDebug";
 import { PanelAbout } from "../../components/PanelAbout";
 import { PanelResumen } from "../../components/PanelResumen";
-import { PanelNumeroFactura } from "../../components/PanelNumeroFactura"; // 🆕 importado
+import { PanelNumeroFactura } from "../../components/PanelNumeroFactura";
 import { Item } from "../../components/Item";
 
 const FORMATO_IMPORT_OPTS = ["Eholo", "Gestoria"] as const;
@@ -62,7 +62,8 @@ export default function DashboardPage() {
   const [formatoExport, setFormatoExport] = useState<string | null>(null);
   const [empresa, setEmpresa] = useState<string | null>(null);
   const [fechaFactura, setFechaFactura] = useState("");
-  const [numeroFacturaInicio, setNumeroFacturaInicio] = useState(""); // 🆕
+  const [numeroFacturaInicio, setNumeroFacturaInicio] = useState("");
+  const [useAutoNumbering, setUseAutoNumbering] = useState(true); // 🆕
   const [proyecto, setProyecto] = useState<string | null>(null);
   const [cuenta, setCuenta] = useState<string | null>(null);
   const [cuentaOtra, setCuentaOtra] = useState("");
@@ -104,7 +105,7 @@ export default function DashboardPage() {
     !!formatoExport &&
     !!empresa &&
     !!fechaFactura &&
-    !!numeroFacturaInicio &&
+    (!!numeroFacturaInicio || !useAutoNumbering) && // 🆕 si desactiva numeración, no se exige número
     !!proyecto &&
     cuentaOk &&
     ficheroSesiones !== null &&
@@ -154,11 +155,15 @@ export default function DashboardPage() {
       formExport.append("formatoExport", formatoExport || "");
       formExport.append("empresa", empresa || "");
       formExport.append("fechaFactura", fechaFactura || "");
-      formExport.append("numeroFacturaInicio", numeroFacturaInicio || ""); // 🆕
       formExport.append("proyecto", proyecto || "");
       formExport.append("cuenta", cuenta === "Otra (introducir)" ? cuentaOtra : cuenta || "");
       formExport.append("usuario", usuario);
       formExport.append("ficheroSesiones", ficheroSesiones);
+
+      // 🆕 Añadimos parámetros de numeración
+      formExport.append("use_auto_numbering", useAutoNumbering ? "true" : "false");
+      formExport.append("last_invoice_number", numeroFacturaInicio || "");
+
       if (!usarUltimoContactos && ficheroContactos) {
         formExport.append("ficheroContactos", ficheroContactos);
       }
@@ -278,7 +283,12 @@ export default function DashboardPage() {
           {menu === "empresa" && <PanelOption title="Empresa" options={EMPRESAS} value={empresa} onChange={setEmpresa} />}
           {menu === "fecha" && <PanelDate title="Fecha factura" value={fechaFactura} onChange={setFechaFactura} />}
           {menu === "numeroFacturaInicio" && (
-            <PanelNumeroFactura value={numeroFacturaInicio} onChange={setNumeroFacturaInicio} />
+            <PanelNumeroFactura
+              value={numeroFacturaInicio}
+              onChange={setNumeroFacturaInicio}
+              useAutoNumbering={useAutoNumbering}
+              onToggleAutoNumbering={setUseAutoNumbering}
+            />
           )}
           {menu === "proyecto" && <PanelOption title="Proyecto" options={PROYECTOS} value={proyecto} onChange={setProyecto} />}
           {menu === "cuenta" && (
@@ -295,7 +305,7 @@ export default function DashboardPage() {
             </PanelOption>
           )}
 
-          {/* FICHEROS */}
+          {/* Ficheros */}
           {menu === "ficheroSesiones" && (
             <div className="border border-indigo-300 bg-indigo-50 rounded-xl p-4 shadow-sm">
               <h3 className="text-lg font-semibold text-indigo-800 mb-3">Fichero de sesiones</h3>
