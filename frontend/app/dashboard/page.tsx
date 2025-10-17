@@ -33,6 +33,7 @@ type MenuKey =
   | "formatoExport"
   | "empresa"
   | "fecha"
+  | "numeroFacturaInicio"
   | "proyecto"
   | "cuenta"
   | "ficheroSesiones"
@@ -60,6 +61,7 @@ export default function DashboardPage() {
   const [formatoExport, setFormatoExport] = useState<string | null>(null);
   const [empresa, setEmpresa] = useState<string | null>(null);
   const [fechaFactura, setFechaFactura] = useState("");
+  const [numeroFacturaInicio, setNumeroFacturaInicio] = useState(""); // 🆕
   const [proyecto, setProyecto] = useState<string | null>(null);
   const [cuenta, setCuenta] = useState<string | null>(null);
   const [cuentaOtra, setCuentaOtra] = useState("");
@@ -76,12 +78,20 @@ export default function DashboardPage() {
   const [passNueva, setPassNueva] = useState("");
   const [passConfirma, setPassConfirma] = useState("");
   const [passMsg, setPassMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
-  const [passwordGlobal, setPasswordGlobal] = useState(() => sessionStorage.getItem("konyx_password") || "1234");
-  const [apiKissoroVigente, setApiKissoroVigente] = useState(() => localStorage.getItem("apiKissoro") || "");
+  const [passwordGlobal, setPasswordGlobal] = useState(
+    () => sessionStorage.getItem("konyx_password") || "1234"
+  );
+  const [apiKissoroVigente, setApiKissoroVigente] = useState(
+    () => localStorage.getItem("apiKissoro") || ""
+  );
   const [apiKissoroNuevo, setApiKissoroNuevo] = useState("");
-  const [apiEnPluralVigente, setApiEnPluralVigente] = useState(() => localStorage.getItem("apiEnPlural") || "");
+  const [apiEnPluralVigente, setApiEnPluralVigente] = useState(
+    () => localStorage.getItem("apiEnPlural") || ""
+  );
   const [apiEnPluralNuevo, setApiEnPluralNuevo] = useState("");
-  const [apiGroqVigente, setApiGroqVigente] = useState(() => localStorage.getItem("apiGroq") || "");
+  const [apiGroqVigente, setApiGroqVigente] = useState(
+    () => localStorage.getItem("apiGroq") || ""
+  );
   const [apiGroqNuevo, setApiGroqNuevo] = useState("");
 
   // 🧩 Debug
@@ -101,6 +111,7 @@ export default function DashboardPage() {
     !!formatoExport &&
     !!empresa &&
     !!fechaFactura &&
+    !!numeroFacturaInicio && // 🆕 requerido
     !!proyecto &&
     cuentaOk &&
     ficheroSesiones !== null &&
@@ -150,6 +161,7 @@ export default function DashboardPage() {
       formExport.append("formatoExport", formatoExport || "");
       formExport.append("empresa", empresa || "");
       formExport.append("fechaFactura", fechaFactura || "");
+      formExport.append("numeroFacturaInicio", numeroFacturaInicio || ""); // 🆕
       formExport.append("proyecto", proyecto || "");
       formExport.append("cuenta", cuenta === "Otra (introducir)" ? cuentaOtra : cuenta || "");
       formExport.append("usuario", usuario);
@@ -207,6 +219,7 @@ export default function DashboardPage() {
                 "formatoExport",
                 "empresa",
                 "fecha",
+                "numeroFacturaInicio",
                 "proyecto",
                 "cuenta",
                 "ficheroSesiones",
@@ -221,7 +234,9 @@ export default function DashboardPage() {
                   onClick={() => setMenu(mk as MenuKey)}
                   className="hover:bg-indigo-200 hover:text-indigo-800 transition"
                 >
-                  {mk === "formatoImport"
+                  {mk === "numeroFacturaInicio"
+                    ? "Nº factura inicial"
+                    : mk === "formatoImport"
                     ? "Formato Importación"
                     : mk === "formatoExport"
                     ? "Formato Exportación"
@@ -261,10 +276,33 @@ export default function DashboardPage() {
 
         {/* Contenido */}
         <section className="flex flex-col space-y-6">
-          {menu === "formatoImport" && <PanelOption title="Formato Importación" options={FORMATO_IMPORT_OPTS} value={formatoImport} onChange={setFormatoImport} />}
-          {menu === "formatoExport" && <PanelOption title="Formato Exportación" options={FORMATO_EXPORT_OPTS} value={formatoExport} onChange={setFormatoExport} />}
-          {menu === "empresa" && <PanelOption title="Empresa" options={EMPRESAS} value={empresa} onChange={setEmpresa} />}
-          {menu === "proyecto" && <PanelOption title="Proyecto" options={PROYECTOS} value={proyecto} onChange={setProyecto} />}
+          {menu === "formatoImport" && (
+            <PanelOption
+              title="Formato Importación"
+              options={FORMATO_IMPORT_OPTS}
+              value={formatoImport}
+              onChange={setFormatoImport}
+            />
+          )}
+          {menu === "formatoExport" && (
+            <PanelOption
+              title="Formato Exportación"
+              options={FORMATO_EXPORT_OPTS}
+              value={formatoExport}
+              onChange={setFormatoExport}
+            />
+          )}
+          {menu === "empresa" && (
+            <PanelOption title="Empresa" options={EMPRESAS} value={empresa} onChange={setEmpresa} />
+          )}
+          {menu === "proyecto" && (
+            <PanelOption
+              title="Proyecto"
+              options={PROYECTOS}
+              value={proyecto}
+              onChange={setProyecto}
+            />
+          )}
           {menu === "cuenta" && (
             <PanelOption title="Cuenta contable" options={CUENTAS} value={cuenta} onChange={setCuenta}>
               {cuenta === "Otra (introducir)" && (
@@ -278,7 +316,27 @@ export default function DashboardPage() {
               )}
             </PanelOption>
           )}
-          {menu === "fecha" && <PanelDate title="Fecha factura" value={fechaFactura} onChange={setFechaFactura} />}
+          {menu === "fecha" && (
+            <PanelDate title="Fecha factura" value={fechaFactura} onChange={setFechaFactura} />
+          )}
+
+          {/* Nº FACTURA INICIAL */}
+          {menu === "numeroFacturaInicio" && (
+            <div className="border border-indigo-300 bg-indigo-50 rounded-xl p-4 shadow-sm">
+              <h3 className="text-lg font-semibold text-indigo-800 mb-3">Número de factura inicial</h3>
+              <input
+                type="number"
+                min="1"
+                value={numeroFacturaInicio}
+                onChange={(e) => setNumeroFacturaInicio(e.target.value)}
+                placeholder="Ejemplo: 125"
+                className="w-full rounded-lg border border-indigo-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              <p className="text-sm text-indigo-700 mt-2">
+                Las facturas se numerarán correlativamente a partir de este número.
+              </p>
+            </div>
+          )}
 
           {/* FICHEROS */}
           {menu === "ficheroSesiones" && (
@@ -363,8 +421,12 @@ export default function DashboardPage() {
           )}
 
           {menu === "about" && <PanelAbout />}
-          {menu === "exportar" && <PanelExport onConfirm={onConfirmExport} onReset={() => setMenu("formatoImport")} />}
-          {menu === "cerrar" && <PanelCerrar onConfirm={logout} onCancel={() => setMenu("formatoImport")} />}
+          {menu === "exportar" && (
+            <PanelExport onConfirm={onConfirmExport} onReset={() => setMenu("formatoImport")} />
+          )}
+          {menu === "cerrar" && (
+            <PanelCerrar onConfirm={logout} onCancel={() => setMenu("formatoImport")} />
+          )}
 
           {/* Panel resumen */}
           {menu !== "config" && menu !== "exportar" && menu !== "about" && menu !== "cerrar" && (
@@ -373,11 +435,14 @@ export default function DashboardPage() {
               formatoExport={formatoExport}
               empresa={empresa}
               fechaFactura={fechaFactura}
+              numeroFacturaInicio={numeroFacturaInicio} // 🆕
               proyecto={proyecto}
               cuenta={cuenta}
               cuentaOtra={cuentaOtra}
               ficheroSesiones={ficheroSesiones?.name || ""}
-              ficheroContactos={usarUltimoContactos ? "(último guardado)" : ficheroContactos?.name || ""}
+              ficheroContactos={
+                usarUltimoContactos ? "(último guardado)" : ficheroContactos?.name || ""
+              }
             />
           )}
         </section>
