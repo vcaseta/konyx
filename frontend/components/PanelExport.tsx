@@ -9,13 +9,12 @@ export interface PanelExportProps {
 
 interface EndEventData {
   type: string;
-  step?: string; // 🆕 añade soporte para logs
-  changes?: any[]; // 🆕 añade soporte para eventos "changes"
+  step?: string; // 🆕 soporte para logs
+  changes?: any[]; // 🆕 soporte para eventos "changes"
   file?: string;
   autoNumbering?: boolean;
   nextNumber?: string;
 }
-
 
 export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) => {
   const [logs, setLogs] = useState<string[]>([]);
@@ -23,8 +22,8 @@ export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) 
   const [done, setDone] = useState(false);
   const [downloadFile, setDownloadFile] = useState<string | null>(null);
   const [duration, setDuration] = useState<number | null>(null);
-  const [autoNumbering, setAutoNumbering] = useState<boolean | null>(null); // 🆕
-  const [nextNumber, setNextNumber] = useState<string | null>(null); // 🆕
+  const [autoNumbering, setAutoNumbering] = useState<boolean | null>(null);
+  const [nextNumber, setNextNumber] = useState<string | null>(null);
 
   useEffect(() => {
     const startTime = Date.now();
@@ -37,16 +36,26 @@ export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) 
       try {
         const data = JSON.parse(e.data) as EndEventData;
 
-        if (data.type === "log") {
-          setLogs((prev) => [...prev, data.step]);
-        } else if (data.type === "changes") {
-          setLogs((prev) => [...prev, `Cambios detectados (${data.changes.length})`]);
-        } else if (data.type === "end") {
+        // 🧩 Mensajes de log normales
+        if (data.type === "log" && data.step) {
+          setLogs((prev) => [...prev, data.step!]);
+        }
+
+        // 🧩 Mensajes con cambios detectados
+        else if (data.type === "changes" && data.changes) {
+          setLogs((prev) => [
+            ...prev,
+            `Cambios detectados (${data.changes.length})`,
+          ]);
+        }
+
+        // 🧩 Evento final
+        else if (data.type === "end") {
           const endTime = Date.now();
           setDuration((endTime - startTime) / 1000);
           setDone(true);
 
-          // 🆕 Nuevo: mostrar numeración automática y siguiente número
+          // 🧾 Numeración automática
           if (typeof data.autoNumbering === "boolean") {
             setAutoNumbering(data.autoNumbering);
           }
@@ -54,12 +63,17 @@ export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) 
             setNextNumber(data.nextNumber);
           }
 
-          // Fichero final
-          if (data.file && typeof data.file === "string" && data.file.endsWith(".csv")) {
+          // 🗃️ Archivo final
+          if (
+            data.file &&
+            typeof data.file === "string" &&
+            data.file.endsWith(".csv")
+          ) {
             setDownloadFile(data.file);
           } else {
-            // Fallback: buscar nombre de archivo en logs
-            const lastCsv = logs.find((l) => l.includes("export_") && l.endsWith(".csv"));
+            const lastCsv = logs.find(
+              (l) => l.includes("export_") && l.endsWith(".csv")
+            );
             if (lastCsv) setDownloadFile(lastCsv.trim());
           }
 
@@ -80,7 +94,9 @@ export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) 
 
   const handleDownload = () => {
     if (downloadFile) {
-      const url = `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://192.168.1.51:8000"}/export/download/${downloadFile}`;
+      const url = `${
+        process.env.NEXT_PUBLIC_BACKEND_URL || "http://192.168.1.51:8000"
+      }/export/download/${downloadFile}`;
       window.open(url, "_blank");
     }
   };
@@ -91,6 +107,7 @@ export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) 
         Exportación en curso
       </h2>
 
+      {/* LOGS EN TIEMPO REAL */}
       <div className="bg-gray-50 rounded-lg border border-gray-200 p-3 h-64 overflow-y-auto text-sm font-mono whitespace-pre-line">
         {logs.length > 0 ? (
           logs.map((log, idx) => (
@@ -103,6 +120,7 @@ export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) 
         )}
       </div>
 
+      {/* RESULTADO FINAL */}
       {done && (
         <div className="space-y-3 pt-3 border-t border-gray-200">
           <div className="text-green-700 font-medium">
@@ -115,11 +133,15 @@ export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) 
             </div>
           )}
 
-          {/* 🆕 Mostrar información de numeración */}
+          {/* 🧾 Info numeración automática */}
           {autoNumbering !== null && (
             <div className="text-sm text-gray-700">
               Numeración automática:{" "}
-              <span className={autoNumbering ? "text-green-600" : "text-orange-600"}>
+              <span
+                className={
+                  autoNumbering ? "text-green-600" : "text-orange-600"
+                }
+              >
                 {autoNumbering ? "Activada" : "Desactivada"}
               </span>
               {autoNumbering && nextNumber && (
@@ -130,6 +152,7 @@ export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) 
             </div>
           )}
 
+          {/* BOTÓN DESCARGA */}
           {downloadFile && (
             <button
               onClick={handleDownload}
@@ -141,6 +164,7 @@ export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) 
         </div>
       )}
 
+      {/* ESTADO DE EXPORTACIÓN */}
       {!done && isExporting && (
         <div className="flex justify-center py-2">
           <span className="animate-pulse text-indigo-600 font-medium">
@@ -149,6 +173,7 @@ export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) 
         </div>
       )}
 
+      {/* CONTROLES */}
       <div className="flex justify-between pt-4 border-t border-gray-200">
         <button
           onClick={() => onConfirm(false)}
