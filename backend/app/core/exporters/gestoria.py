@@ -2,67 +2,60 @@ import pandas as pd
 import os
 from datetime import datetime
 
-GESTORIA_COLUMNS = [
-    "Fecha",
-    "Cliente",
-    "NIF",
-    "Descripción",
-    "Importe",
-    "Cuenta contable",
-    "Forma de pago",
-    "Proyecto",
-    "Empresa",
-    "Observaciones",
-]
-
-
-def build_gestoria_csv(merged: pd.DataFrame, empresa: str, fecha_factura: str, proyecto: str, cuenta: str, export_dir: str):
+def build_gestoria_excel(
+    merged: pd.DataFrame,
+    empresa: str,
+    fecha_factura: str,
+    proyecto: str,
+    cuenta: str,
+    export_dir: str,
+):
     """
-    Genera un CSV simplificado con los campos necesarios para la gestoría.
-    Devuelve el nombre del archivo generado.
+    Genera un Excel (.xlsx) para la Gestoría, agrupando las sesiones
+    por paciente + mes, de modo que cada factura tenga un único número.
     """
 
-    # Crear DataFrame base
-    df = pd.DataFrame()
-    df["Fecha"] = pd.to_datetime(fecha_factura).strftime("%d/%m/%Y")
-    df["Empresa"] = empresa
-    df["Proyecto"] = proyecto
+    # 🔍 Detectar la columna de paciente
+    possible_names = ["paciente", "nombre", "nombre del contacto"]
+    col_paciente = next(
+        (c for c in merged.columns if c.strip().lower() in possible_names),
+        None,
+    )
+    if not col_paciente:
+        raise ValueError("No se encontró una columna de paciente o nombre en el archivo.")
 
-    # Campos del cliente
-    if "nombre" in merged.columns:
-        df["Cliente"] = merged["nombre"]
-    elif "paciente" in merged.columns:
-        df["Cliente"] = merged["paciente"]
-    else:
-        df["Cliente"] = "Desconocido"
+    # 🔹 Crear grupo por paciente + mes
+    fecha_general = pd.to_datetime(fecha_factura)
+    merged["mes"] = fecha_general.to_period("M")
+    merged["_grupo_id"] = merged.groupby([col_paciente, "mes"]).ngroup() + 1
+    merged["Num factura"] = [f"F{fecha_general.strftime('%y%m')}{g:04d}" for g in merged["_grupo_id"]]
 
-    df["NIF"] = merged["nif"] if "nif" in merged.columns else ""
+    # 🔹 Añadir datos básicos
+    merged["Fecha factura"] = fecha_general.strftime("%d/%m/%Y")
+    merged["Empresa"] = empresa
+    merged["Proyecto"] = proyecto
+    merged["Cuenta contable"] = cuenta
 
-    # Descripción e importe
-    if "tipo" in merged.columns:
-        df["Descripción"] = merged["tipo"]
-    else:
-        df["Descripción"] = "Servicios de Psicoterapia"
+    # 🔹 Reordenar columnas (si existen)
+    base_cols = [
+        "Num factura",
+        "Fecha factura",
+        col_paciente,
+        "Empresa",
+        "Proyecto",
+        "Cuenta contable",
+    ]
 
-    if "importe" in merged.columns:
-        df["Importe"] = merged["importe"]
-    elif "precio" in merged.columns:
-        df["Importe"] = merged["precio"]
-    else:
-        df["Importe"] = 0
+    other_cols = [c for c in merged.columns if c not in base_cols and not c.startswith("_")]
+    final_cols = base_cols + other_cols
 
-    # Relleno de columnas contables
-    df["Cuenta contable"] = cuenta
-    df["Forma de pago"] = "Transferencia"
-    df["Observaciones"] = ""
+    final_df = merged[final_cols].copy()
 
-    # Reordenar columnas
-    df = df[GESTORIA_COLUMNS]
-
-    # Generar archivo CSV
-    out_name = f"gestoria_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+    # 🔹 Guardar archivo Excel
+    out_name = f"gestoria_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
     out_path = os.path.join(export_dir, out_name)
-    df.to_csv(out_path, index=False, encoding="utf-8-sig")
 
-    print(f"📤 Archivo Gestoría generado: {out_path} ({len(df)} filas)")
+    final_df.to_excel(out_path, index=False, engine="openpyxl")
+
+    print(f"📘 Archivo Excel de Gestoría generado: {out_path} ({len(final_df)} filas)")
     return out_name
