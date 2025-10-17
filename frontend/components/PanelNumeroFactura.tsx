@@ -21,6 +21,7 @@ export const PanelNumeroFactura: React.FC<PanelNumeroFacturaProps> = ({
       </h3>
 
       <div className="flex flex-col items-start space-y-3">
+        {/* Checkbox numeración automática */}
         <label className="flex items-center space-x-2 text-sm font-medium text-gray-700">
           <input
             type="checkbox"
@@ -31,28 +32,31 @@ export const PanelNumeroFactura: React.FC<PanelNumeroFacturaProps> = ({
           <span>Usar numeración automática</span>
         </label>
 
+        {/* Campo número de factura */}
         <div className="w-full">
           <label className="text-gray-600 text-sm font-medium">
             Introduce el número a partir del cual se generarán las facturas:
           </label>
           <input
-            type="number"
-            min="1"
+            type="text"
             value={value}
             onChange={(e) => onChange(e.target.value)}
-            placeholder="Ejemplo: 125"
+            placeholder="Ejemplo: F250045"
             disabled={!useAutoNumbering}
             className={`w-full rounded-lg border border-indigo-300 px-3 py-2 text-indigo-700 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${
-              !useAutoNumbering ? "opacity-50 cursor-not-allowed bg-gray-100" : ""
+              !useAutoNumbering
+                ? "opacity-50 cursor-not-allowed bg-gray-100"
+                : ""
             }`}
           />
           <p className="text-sm text-gray-500 mt-1">
             {useAutoNumbering
               ? "Las facturas se numerarán de forma correlativa a partir de este número."
-              : "Si está desactivado, no se usará numeración automática y Holded asignará la numeración en borrador."}
+              : "Si está desactivado, no se usará numeración automática y Holded asignará la numeración (factura en borrador)."}
           </p>
         </div>
       </div>
     </div>
   );
 };
+
