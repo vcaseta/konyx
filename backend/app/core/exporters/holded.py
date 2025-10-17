@@ -44,34 +44,30 @@ def build_holded_csv(
     fecha_factura: str,
     proyecto: str,
     cuenta: str,
-    export_dir: str
+    export_dir: str,
 ):
     """
-    Genera el CSV con formato Holded agrupando por paciente + mes,
-    asignando un único número de factura y unificando los campos de cabecera.
+    Genera el CSV con formato Holded agrupando por paciente+mes y
+    garantizando que todos los campos de cabecera sean iguales por factura.
     """
 
-    # 🔹 Detectar la columna de paciente
+    # 🔍 Detectar columna de paciente
     possible_names = ["paciente", "nombre", "nombre del contacto"]
     col_paciente = next(
         (c for c in merged.columns if c.strip().lower() in possible_names),
         None,
     )
     if not col_paciente:
-        raise ValueError("No se encontró una columna de paciente o nombre en el archivo de entrada.")
+        raise ValueError("No se encontró una columna de paciente o nombre en el archivo.")
 
-    # 🔹 Añadir columna de mes (para agrupar)
+    # 🔢 Crear grupo por paciente + mes de factura
     fecha_general = pd.to_datetime(fecha_factura)
     merged["mes"] = fecha_general.to_period("M")
-
-    # 🔹 Crear grupos únicos paciente+mes
-    grupos = merged.groupby([col_paciente, "mes"]).ngroup() + 1
-
-    # 🔹 Asignar número de factura por grupo
-    merged["Num factura"] = [f"F{fecha_general.strftime('%y%m')}{g:04d}" for g in grupos]
+    merged["_grupo_id"] = merged.groupby([col_paciente, "mes"]).ngroup() + 1
+    merged["Num factura"] = [f"F{fecha_general.strftime('%y%m')}{g:04d}" for g in merged["_grupo_id"]]
     merged["Formato de numeración"] = "F{yy}{mm}{num:04d}"
 
-    # 🔹 Campos básicos de cabecera
+    # 🧾 Campos fijos
     merged["Fecha dd/mm/yyyy"] = fecha_general.strftime("%d/%m/%Y")
     merged["Fecha de vencimiento dd/mm/yyyy"] = fecha_general.strftime("%d/%m/%Y")
     merged["Descripción"] = f"Servicios de psicoterapia ({empresa})"
@@ -85,7 +81,7 @@ def build_holded_csv(
     merged["País"] = "España"
     merged["Operación"] = "Sujeta No Exenta"
 
-    # 🔹 Unificar datos de cabecera por factura (para evitar duplicados)
+    # 🧩 Unificar todos los campos de cabecera por número de factura
     campos_cabecera = [
         "Nombre del contacto",
         "NIF del contacto",
@@ -108,19 +104,20 @@ def build_holded_csv(
 
     for campo in campos_cabecera:
         if campo in merged.columns:
-            merged[campo] = merged.groupby("Num factura")[campo].transform(lambda x: x.iloc[0])
+            merged[campo] = merged.groupby("Num factura")[campo].transform(lambda x: x.ffill().bfill().iloc[0])
 
-    # 🔹 Asegurar que existan todas las columnas de Holded
+    # ⚙️ Asegurar que todas las columnas de Holded existan
     for col in HOLDED_COLUMNS:
         if col not in merged.columns:
             merged[col] = ""
 
-    # 🔹 Ordenar columnas y exportar
-    final_df = merged[HOLDED_COLUMNS].copy()
+    # 🧹 Eliminar columnas auxiliares
+    merged = merged.drop(columns=["_grupo_id", "mes"], errors="ignore")
 
+    # 📤 Exportar CSV
     out_name = f"holded_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
     out_path = os.path.join(export_dir, out_name)
-    final_df.to_csv(out_path, index=False, encoding="utf-8-sig", sep=";")
+    merged[HOLDED_COLUMNS].to_csv(out_path, index=False, encoding="utf-8-sig", sep=";")
 
-    print(f"📤 Archivo Holded generado correctamente: {out_path} ({len(final_df)} filas)")
+    print(f"✅ CSV Holded generado sin duplicados: {out_path} ({len(merged)} filas)")
     return out_name
