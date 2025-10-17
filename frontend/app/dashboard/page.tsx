@@ -13,7 +13,6 @@ import { PanelExport } from "../../components/PanelExport";
 import { PanelCerrar } from "../../components/PanelCerrar";
 import { PanelDebug } from "../../components/PanelDebug";
 import { PanelAbout } from "../../components/PanelAbout";
-import { PanelResumen } from "../../components/PanelResumen";
 import { PanelNumeroFactura } from "../../components/PanelNumeroFactura";
 import { Item } from "../../components/Item";
 
@@ -111,59 +110,84 @@ export default function DashboardPage() {
     ficheroSesiones !== null &&
     (usarUltimoContactos || ficheroContactos !== null);
 
-// ---------------------------
-// EXPORTAR
-// ---------------------------
-const onConfirmExport = async (ok: boolean) => {
-  if (!ok) return setMenu("formatoImport");
-
-  try {
-    const usuario = sessionStorage.getItem("konyx_user") || "desconocido";
-
-    if (!ficheroSesiones) {
-      alert("No se ha seleccionado el fichero de sesiones.");
-      return;
+  // ---------------------------
+  // REFRESCAR ESTADÍSTICAS
+  // ---------------------------
+  const refreshStats = async () => {
+    try {
+      const res = await fetch(`${BACKEND}/auth/status`);
+      if (!res.ok) return;
+      const s = await res.json();
+      setUltimoExport(s.ultimoExport || "-");
+      setTotalExportaciones(s.totalExportaciones || 0);
+      setTotalExportacionesFallidas(s.totalExportacionesFallidas || 0);
+      setIntentosLoginFallidos(s.intentosLoginFallidos || 0);
+      setTotalLogins(s.totalLogins || 0);
+    } catch (e) {
+      console.error("Error refrescando estadísticas:", e);
     }
+  };
 
-    const formExport = new FormData();
-    formExport.append("formatoImport", formatoImport || "");
-    formExport.append("formatoExport", formatoExport || "");
-    formExport.append("empresa", empresa || "");
-    formExport.append("fechaFactura", fechaFactura || "");
-    formExport.append("proyecto", proyecto || "");
-    formExport.append("cuenta", cuenta === "Otra (introducir)" ? cuentaOtra : cuenta || "");
-    formExport.append("usuario", usuario);
+  // ---------------------------
+  // EXPORTAR
+  // ---------------------------
+  const onConfirmExport = async (ok: boolean) => {
+    if (!ok) return setMenu("formatoImport");
 
-    // 🧾 Numeración automática (solo se envía si existe)
-    formExport.append("use_auto_numbering", useAutoNumbering ? "true" : "false");
-    formExport.append("last_invoice_number", numeroFacturaInicio || "");
+    try {
+      const usuario = sessionStorage.getItem("konyx_user") || "desconocido";
 
-    // 🗂️ Archivos de sesiones y contactos
-    formExport.append("ficheroSesiones", ficheroSesiones);
-    if (!usarUltimoContactos && ficheroContactos) {
-      formExport.append("ficheroContactos", ficheroContactos);
+      if (!ficheroSesiones) {
+        alert("No se ha seleccionado el fichero de sesiones.");
+        return;
+      }
+
+      const formExport = new FormData();
+      formExport.append("formatoImport", formatoImport || "");
+      formExport.append("formatoExport", formatoExport || "");
+      formExport.append("empresa", empresa || "");
+      formExport.append("fechaFactura", fechaFactura || "");
+      formExport.append("proyecto", proyecto || "");
+      formExport.append("cuenta", cuenta === "Otra (introducir)" ? cuentaOtra : cuenta || "");
+      formExport.append("usuario", usuario);
+
+      // 🧾 Numeración automática
+      formExport.append("use_auto_numbering", useAutoNumbering ? "true" : "false");
+      formExport.append("last_invoice_number", numeroFacturaInicio || "");
+
+      // 🗂️ Archivos
+      formExport.append("ficheroSesiones", ficheroSesiones);
+      if (!usarUltimoContactos && ficheroContactos) {
+        formExport.append("ficheroContactos", ficheroContactos);
+      }
+
+      console.log("🚀 Enviando ficheros y datos al backend...");
+      const res = await fetch(`${BACKEND}/export/start`, {
+        method: "POST",
+        body: formExport,
+      });
+
+      if (!res.ok) {
+        const msg = await res.text();
+        throw new Error(`Error al iniciar exportación: ${msg}`);
+      }
+
+      console.log("✅ Exportación iniciada correctamente");
+      setMenu("exportar");
+      await refreshStats(); // ✅ ya existe
+    } catch (e: any) {
+      console.error("❌ Error en onConfirmExport:", e);
+      alert("Error iniciando exportación: " + (e?.message || e));
     }
+  };
 
-    console.log("🚀 Enviando ficheros y datos al backend...");
-    const res = await fetch(`${BACKEND}/export/start`, {
-      method: "POST",
-      body: formExport,
-    });
-
-    if (!res.ok) {
-      const msg = await res.text();
-      throw new Error(`Error al iniciar exportación: ${msg}`);
-    }
-
-    console.log("✅ Exportación iniciada correctamente");
-    setMenu("exportar");
-    await refreshStats();
-  } catch (e: any) {
-    console.error("❌ Error en onConfirmExport:", e);
-    alert("Error iniciando exportación: " + (e?.message || e));
-  }
-};
-
+  // ---------------------------
+  // LOGOUT
+  // ---------------------------
+  const logout = () => {
+    sessionStorage.removeItem("konyx_token");
+    router.replace("/");
+  };
 
   // ---------------------------
   // RENDER
@@ -364,4 +388,3 @@ const onConfirmExport = async (ok: boolean) => {
     </main>
   );
 }
-
