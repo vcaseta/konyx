@@ -420,21 +420,28 @@ useEffect(() => {
           {menu === "cerrar" && <PanelCerrar onConfirm={logout} onCancel={() => setMenu("formatoImport")} />}
 
           {/* 🧾 Panel de resumen — visible siempre excepto en Config, About y Export */}
-          {menu !== "config" && menu !== "about" && menu !== "exportar" && (
-            <PanelResumen
-              formatoImport={formatoImport}
-              formatoExport={formatoExport}
-              empresa={empresa}
-              fechaFactura={fechaFactura}
-              numeroFacturaInicio={numeroFacturaInicio}
-              proyecto={proyecto}
-              cuenta={cuenta}
-              cuentaOtra={cuentaOtra}
-              ficheroSesiones={ficheroSesiones?.name || ""}
-              ficheroContactos={
-                usarUltimoContactos
-                  ? "Usando último fichero guardado"
-                  : ficheroContactos?.name || ""
+         {menu !== "config" &&
+  menu !== "about" &&
+  menu !== "exportar" &&
+  menu !== "cerrar" && (
+    <PanelResumen
+      formatoImport={formatoImport}
+      formatoExport={formatoExport}
+      empresa={empresa}
+      fechaFactura={fechaFactura}
+      numeroFacturaInicio={numeroFacturaInicio}
+      proyecto={proyecto}
+      cuenta={cuenta}
+      cuentaOtra={cuentaOtra}
+      ficheroSesiones={ficheroSesiones?.name || ""}
+      ficheroContactos={
+        usarUltimoContactos
+          ? "Usando último fichero guardado"
+          : ficheroContactos?.name || ""
+      }
+    />
+)}
+
               }
             />
           )}
