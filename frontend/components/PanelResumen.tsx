@@ -6,6 +6,7 @@ interface PanelResumenProps {
   formatoExport: string | null;
   empresa: string | null;
   fechaFactura: string;
+  numeroFacturaInicio?: string; // 🆕 nuevo campo opcional
   proyecto: string | null;
   cuenta: string | null;
   cuentaOtra: string;
@@ -26,6 +27,7 @@ export const PanelResumen: React.FC<PanelResumenProps> = ({
   formatoExport,
   empresa,
   fechaFactura,
+  numeroFacturaInicio,
   proyecto,
   cuenta,
   cuentaOtra,
@@ -67,6 +69,15 @@ export const PanelResumen: React.FC<PanelResumenProps> = ({
           </span>
         </div>
 
+        {numeroFacturaInicio && (
+          <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+            <span className="block text-gray-500">Nº factura inicial:</span>
+            <span className="font-semibold text-indigo-700 text-[15px]">
+              {numeroFacturaInicio}
+            </span>
+          </div>
+        )}
+
         <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
           <span className="block text-gray-500">Proyecto:</span>
           <span className="font-semibold text-indigo-700 text-[15px]">
@@ -100,4 +111,3 @@ export const PanelResumen: React.FC<PanelResumenProps> = ({
     </div>
   );
 };
-;
