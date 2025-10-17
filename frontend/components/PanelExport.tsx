@@ -9,10 +9,13 @@ export interface PanelExportProps {
 
 interface EndEventData {
   type: string;
+  step?: string; // 🆕 añade soporte para logs
+  changes?: any[]; // 🆕 añade soporte para eventos "changes"
   file?: string;
   autoNumbering?: boolean;
   nextNumber?: string;
 }
+
 
 export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) => {
   const [logs, setLogs] = useState<string[]>([]);
