@@ -1,12 +1,15 @@
 import os
-import io
-import shutil
+import asyncio
 import pandas as pd
-from fastapi import APIRouter, UploadFile, Form, HTTPException
-from fastapi.responses import StreamingResponse, FileResponse, JSONResponse
+import json
+import re
 from datetime import datetime
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form
+from fastapi.responses import StreamingResponse, FileResponse, JSONResponse
+
 from app.core.persistence import load_data, save_data
 from app.core.validators.eholo import validate_eholo_sesiones, validate_eholo_contactos
+from app.core.validators.sesiones_gestoria import validate_sesiones_gestoria_template
 
 router = APIRouter(prefix="/export", tags=["Exportación"])
 
@@ -15,28 +18,22 @@ TEMP_INPUTS = "/app/temp_inputs"
 os.makedirs(EXPORT_DIR, exist_ok=True)
 os.makedirs(TEMP_INPUTS, exist_ok=True)
 
-# Cola temporal de progreso (logs en memoria)
+# Cola de progreso (logs SSE)
 progress_queue = []
+
 
 # ============================================================
 # 🧩 UTILIDADES
 # ============================================================
-
 def log_step(msg: str):
-    """Guarda un paso del proceso en la cola."""
+    """Guarda un mensaje de log en la cola y lo imprime."""
     progress_queue.append(msg)
     print(msg)
-
-
-def send_event(event_type: str, data: dict):
-    """Crea un mensaje SSE."""
-    return f"data: {pd.io.json.dumps(data)}\n\n"
 
 
 # ============================================================
 # 🚀 INICIO DE EXPORTACIÓN
 # ============================================================
-
 @router.post("/start")
 async def start_export(
     formatoImport: str = Form(...),
@@ -48,123 +45,146 @@ async def start_export(
     usuario: str = Form(...),
     use_auto_numbering: str = Form("false"),
     last_invoice_number: str = Form(""),
-    ficheroSesiones: UploadFile = None,
-    ficheroContactos: UploadFile = None,
+    ficheroSesiones: UploadFile = File(...),
+    ficheroContactos: UploadFile = File(None),
 ):
-    """
-    Inicia una nueva exportación.
-    Valida los ficheros según el formato seleccionado (Eholo).
-    """
     try:
+        progress_queue.clear()
         log_step("✅ Iniciando proceso de exportación...")
         log_step(f"📦 Formato import: {formatoImport} | export: {formatoExport}")
         log_step(f"👤 Usuario: {usuario} | Empresa: {empresa} | Fecha: {fechaFactura}")
 
-        # ==============================
+        # ------------------------------------------------------------
         # 🔢 Numeración automática
-        # ==============================
-        if use_auto_numbering == "true":
-            log_step(f"🔢 Numeración automática activada. A partir de: {last_invoice_number}")
+        # ------------------------------------------------------------
+        use_auto = use_auto_numbering.lower() == "true"
+        next_number = ""
+        if use_auto and last_invoice_number:
+            m = re.search(r"(\d+)$", last_invoice_number)
+            if m:
+                prefix = last_invoice_number[: m.start(1)]
+                num = int(m.group(1)) + 1
+                next_number = f"{prefix}{num:0{len(m.group(1))}d}"
+                log_step(f"🧾 Numeración automática activa. Siguiente número: {next_number}")
+            else:
+                log_step("⚠️ No se detectó número al final del valor proporcionado.")
         else:
             log_step("🔢 Numeración automática desactivada. Holded asignará número en borrador.")
 
-        # ==============================
-        # 🗂️ Guardar ficheros
-        # ==============================
-        if not ficheroSesiones:
-            raise HTTPException(status_code=400, detail="Fichero de sesiones no recibido.")
-
-        sesiones_path = os.path.join(TEMP_INPUTS, ficheroSesiones.filename)
+        # ------------------------------------------------------------
+        # 🗂️ Guardar archivos recibidos
+        # ------------------------------------------------------------
+        sesiones_path = os.path.join(TEMP_INPUTS, f"{usuario}_sesiones.xlsx")
         with open(sesiones_path, "wb") as f:
             f.write(await ficheroSesiones.read())
 
         contactos_path = None
         if ficheroContactos:
-            contactos_path = os.path.join(TEMP_INPUTS, ficheroContactos.filename)
+            contactos_path = os.path.join(TEMP_INPUTS, f"{usuario}_contactos.xlsx")
             with open(contactos_path, "wb") as f:
                 f.write(await ficheroContactos.read())
 
         log_step("📁 Archivos guardados correctamente.")
 
-        # ==============================
-        # 🔍 Validación de estructura Eholo
-        # ==============================
+        # ------------------------------------------------------------
+        # 📊 Leer con Pandas
+        # ------------------------------------------------------------
+        df_ses = pd.read_excel(sesiones_path)
+        df_con = pd.read_excel(contactos_path) if ficheroContactos else pd.DataFrame()
+        log_step(f"📊 Sesiones: {len(df_ses)} filas | Contactos: {len(df_con)} filas")
+
+        # ------------------------------------------------------------
+        # ✅ Validación según formato
+        # ------------------------------------------------------------
         if formatoImport.lower() == "eholo":
             log_step("🧩 Validando estructura Eholo...")
+            validate_eholo_sesiones(df_ses)
+            if not df_con.empty:
+                validate_eholo_contactos(df_con)
+            log_step("✅ Validación Eholo correcta.")
+        elif formatoImport.lower() == "gestoria":
+            log_step("🧩 Validando estructura Gestoría...")
+            validate_sesiones_gestoria_template(df_ses)
+            log_step("✅ Validación Gestoría correcta.")
+        else:
+            raise HTTPException(status_code=400, detail=f"Formato de importación desconocido: {formatoImport}")
 
-            try:
-                df_sesiones = pd.read_excel(sesiones_path)
-                validate_eholo_sesiones(df_sesiones)
-            except Exception as e:
-                raise HTTPException(status_code=400, detail=f"Error en sesiones: {str(e)}")
+        # ------------------------------------------------------------
+        # 🔗 Combinar datos
+        # ------------------------------------------------------------
+        merged = df_ses.copy()
+        if not df_con.empty:
+            merged = merged.merge(
+                df_con,
+                how="left",
+                left_on="Nombre" if "Nombre" in df_ses.columns else df_ses.columns[0],
+                right_on="Nombre" if "Nombre" in df_con.columns else df_con.columns[0],
+                suffixes=("", "_contacto"),
+            )
+        merged.fillna("", inplace=True)
 
-            if contactos_path:
-                try:
-                    df_contactos = pd.read_excel(contactos_path)
-                    validate_eholo_contactos(df_contactos)
-                except Exception as e:
-                    raise HTTPException(status_code=400, detail=f"Error en contactos: {str(e)}")
+        # ------------------------------------------------------------
+        # 💾 Exportar CSV
+        # ------------------------------------------------------------
+        filename = f"export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+        filepath = os.path.join(EXPORT_DIR, filename)
+        merged.to_csv(filepath, index=False, sep=";", encoding="utf-8-sig")
 
-        # ==============================
-        # 🧾 Simulación de exportación CSV
-        # ==============================
-        df_export = pd.DataFrame({"col1": [1, 2, 3], "col2": ["a", "b", "c"]})
-        output_name = f"export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
-        output_path = os.path.join(EXPORT_DIR, output_name)
-        df_export.to_csv(output_path, index=False, encoding="utf-8-sig")
+        log_step(f"💾 Archivo exportado: {filename}")
+        log_step("✅ Exportación finalizada correctamente.")
 
-        log_step("✅ Exportación completada correctamente.")
-
-        # 📊 Actualizar estadísticas
+        # ------------------------------------------------------------
+        # 📈 Actualizar estadísticas
+        # ------------------------------------------------------------
         data = load_data()
         data["ultimoExport"] = datetime.now().strftime("%d/%m/%Y")
         data["totalExportaciones"] = data.get("totalExportaciones", 0) + 1
         save_data(data)
 
-        log_step("📈 Estadísticas actualizadas.")
-        progress_queue.append({"type": "end", "file": output_name, "autoNumbering": use_auto_numbering == "true"})
+        # ------------------------------------------------------------
+        # 📡 Enviar evento final
+        # ------------------------------------------------------------
+        progress_queue.append({
+            "type": "end",
+            "file": filename,
+            "autoNumbering": use_auto,
+            "nextNumber": next_number,
+        })
 
-        return JSONResponse({"status": "ok", "file": output_name})
+        return JSONResponse({"status": "ok", "file": filename})
 
-    # =======================================================
+    # ------------------------------------------------------------
     # ❌ Manejo de errores
-    # =======================================================
+    # ------------------------------------------------------------
     except HTTPException as e:
         log_step(f"❌ Error de validación: {e.detail}")
-
-        # 📊 Registrar exportación fallida
         data = load_data()
         data["totalExportacionesFallidas"] = data.get("totalExportacionesFallidas", 0) + 1
         save_data(data)
-
         raise
 
     except Exception as e:
         log_step(f"❌ Error inesperado: {e}")
-
-        # 📊 Registrar exportación fallida (errores genéricos)
         data = load_data()
         data["totalExportacionesFallidas"] = data.get("totalExportacionesFallidas", 0) + 1
         save_data(data)
-
         raise HTTPException(status_code=500, detail=str(e))
 
 
 # ============================================================
-# 📡 PROGRESO SSE
+# 📡 STREAMING DE PROGRESO SSE
 # ============================================================
-
 @router.get("/progress")
 async def export_progress():
-    """Emite logs de progreso en tiempo real (Server-Sent Events)."""
+    """Stream SSE de progreso."""
     async def event_generator():
         while True:
             if progress_queue:
                 msg = progress_queue.pop(0)
                 if isinstance(msg, dict):
-                    yield f"data: {pd.io.json.dumps(msg)}\n\n"
+                    yield f"data: {json.dumps(msg)}\n\n"
                 else:
-                    yield f"data: {pd.io.json.dumps({'type': 'log', 'step': msg})}\n\n"
+                    yield f"data: {json.dumps({'type': 'log', 'step': msg})}\n\n"
             else:
                 await asyncio.sleep(0.5)
 
@@ -174,7 +194,6 @@ async def export_progress():
 # ============================================================
 # 💾 DESCARGA DE ARCHIVO
 # ============================================================
-
 @router.get("/download/{filename}")
 async def download_export(filename: str):
     """Permite descargar un archivo CSV generado."""
@@ -187,10 +206,9 @@ async def download_export(filename: str):
 # ============================================================
 # 🧹 LIMPIEZA DE ARCHIVOS Y LOGS
 # ============================================================
-
 @router.get("/cleanup")
 async def get_cleanup_info():
-    """Devuelve el número de archivos presentes en las carpetas de exportación e inputs temporales."""
+    """Devuelve el número de archivos presentes en export e inputs."""
     try:
         exp_files = [f for f in os.listdir(EXPORT_DIR) if os.path.isfile(os.path.join(EXPORT_DIR, f))]
         inp_files = [f for f in os.listdir(TEMP_INPUTS) if os.path.isfile(os.path.join(TEMP_INPUTS, f))]
@@ -207,7 +225,7 @@ async def get_cleanup_info():
 
 @router.post("/cleanup")
 async def cleanup_exports():
-    """Elimina todos los archivos de exportación, inputs temporales y limpia los logs."""
+    """Elimina archivos de exportación e inputs temporales y limpia logs."""
     try:
         removed = 0
         for folder in [EXPORT_DIR, TEMP_INPUTS]:
@@ -218,7 +236,6 @@ async def cleanup_exports():
                     removed += 1
 
         progress_queue.clear()
-
         msg = f"🧹 Limpieza completada ({removed} archivos eliminados)"
         print(msg)
         return JSONResponse({"status": "ok", "message": msg, "removed": removed})
