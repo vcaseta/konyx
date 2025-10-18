@@ -9,8 +9,8 @@ export interface PanelExportProps {
 
 interface EndEventData {
   type: string;
-  step?: string; // para logs
-  changes?: any[]; // para eventos de cambios
+  step?: string;
+  changes?: any[];
   file?: string;
   autoNumbering?: boolean;
   nextNumber?: string;
@@ -27,8 +27,7 @@ export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) 
 
   useEffect(() => {
     const startTime = Date.now();
-    const backendUrl =
-      process.env.NEXT_PUBLIC_BACKEND_URL || "http://192.168.1.51:8000";
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://192.168.1.51:8000";
     const evtSource = new EventSource(`${backendUrl}/export/progress`);
 
     setIsExporting(true);
@@ -37,48 +36,27 @@ export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) 
       try {
         const data = JSON.parse(e.data) as EndEventData;
 
-        // 🧩 Mensajes de log normales
         if (data.type === "log" && data.step) {
-          setLogs((prev) => [...prev, data.step!]);
-        }
-
-        // 🧩 Mensajes con cambios detectados
-        else if (data.type === "changes" && data.changes) {
-          setLogs((prev) => [
-            ...prev,
-            `Cambios detectados (${data.changes!.length})`,
-          ]);
-        }
-
-        // 🧩 Evento final
-        else if (data.type === "end") {
+          setLogs((prev) => [...prev, data.step]);
+        } else if (data.type === "changes" && data.changes) {
+          setLogs((prev) => [...prev, `Cambios detectados (${data.changes!.length})`]);
+        } else if (data.type === "end") {
           const endTime = Date.now();
           setDuration((endTime - startTime) / 1000);
           setDone(true);
+          evtSource.close();
 
-          // 🧾 Numeración automática
-          if (typeof data.autoNumbering === "boolean") {
-            setAutoNumbering(data.autoNumbering);
-          }
-          if (data.nextNumber) {
-            setNextNumber(data.nextNumber);
-          }
+          // Numeración automática
+          if (typeof data.autoNumbering === "boolean") setAutoNumbering(data.autoNumbering);
+          if (data.nextNumber) setNextNumber(data.nextNumber);
 
-          // 🗃️ Archivo final
-          if (
-            data.file &&
-            typeof data.file === "string" &&
-            data.file.endsWith(".csv")
-          ) {
+          // Archivo final (detecta CSV o Excel)
+          if (data.file && typeof data.file === "string") {
             setDownloadFile(data.file);
           } else {
-            const lastCsv = logs.find(
-              (l) => l.includes("export_") && l.endsWith(".csv")
-            );
-            if (lastCsv) setDownloadFile(lastCsv.trim());
+            const lastFile = logs.find((l) => l.includes("export_"));
+            if (lastFile) setDownloadFile(lastFile.trim());
           }
-
-          evtSource.close();
         }
       } catch (err) {
         console.error("Error parsing SSE message:", err);
@@ -95,9 +73,8 @@ export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) 
 
   const handleDownload = () => {
     if (downloadFile) {
-      const url = `${
-        process.env.NEXT_PUBLIC_BACKEND_URL || "http://192.168.1.51:8000"
-      }/export/download/${downloadFile}`;
+      const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://192.168.1.51:8000";
+      const url = `${baseUrl}/export/download/${downloadFile}`;
       window.open(url, "_blank");
     }
   };
@@ -134,14 +111,11 @@ export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) 
             </div>
           )}
 
-          {/* 🧾 Info numeración automática */}
           {autoNumbering !== null && (
             <div className="text-sm text-gray-700">
               Numeración automática:{" "}
               <span
-                className={
-                  autoNumbering ? "text-green-600" : "text-orange-600"
-                }
+                className={autoNumbering ? "text-green-600" : "text-orange-600"}
               >
                 {autoNumbering ? "Activada" : "Desactivada"}
               </span>
@@ -159,13 +133,15 @@ export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) 
               onClick={handleDownload}
               className="w-full px-4 py-2 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-700 transition"
             >
-              Descargar archivo ({downloadFile})
+              {downloadFile.endsWith(".xlsx")
+                ? "Descargar Excel"
+                : "Descargar CSV"}{" "}
+              ({downloadFile})
             </button>
           )}
         </div>
       )}
 
-      {/* ESTADO DE EXPORTACIÓN */}
       {!done && isExporting && (
         <div className="flex justify-center py-2">
           <span className="animate-pulse text-indigo-600 font-medium">
@@ -174,7 +150,6 @@ export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) 
         </div>
       )}
 
-      {/* CONTROLES */}
       <div className="flex justify-between pt-4 border-t border-gray-200">
         <button
           onClick={() => onConfirm(false)}
@@ -200,4 +175,3 @@ export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) 
     </div>
   );
 };
-
