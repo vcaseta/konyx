@@ -4,28 +4,28 @@ from datetime import datetime
 from ._utils_cols import get_patient_col, get_therapist_col
 
 HOLDED_COLUMNS = [
-    "Num factura","Formato de numeración","Fecha dd/mm/yyyy","Fecha de vencimiento dd/mm/yyyy",
-    "Descripción","Nombre del contacto","NIF del contacto","Dirección","Población","Código postal",
-    "Provincia","País","Concepto","Descripción del producto","SKU","Precio unidad","Unidades",
-    "Descuento %","IVA %","Retención %","Rec. de eq. %","Operación","Forma de pago (ID)",
-    "Cantidad cobrada","Fecha de cobro","Cuenta de pago","Tags separados por -","Nombre canal de venta",
-    "Cuenta canal de venta","Moneda","Cambio de moneda","Almacén",
+    "Num factura", "Formato de numeración", "Fecha dd/mm/yyyy", "Fecha de vencimiento dd/mm/yyyy",
+    "Descripción", "Nombre del contacto", "NIF del contacto", "Dirección", "Población", "Código postal",
+    "Provincia", "País", "Concepto", "Descripción del producto", "SKU", "Precio unidad", "Unidades",
+    "Descuento %", "IVA %", "Retención %", "Rec. de eq. %", "Operación", "Forma de pago (ID)",
+    "Cantidad cobrada", "Fecha de cobro", "Cuenta de pago", "Tags separados por -", "Nombre canal de venta",
+    "Cuenta canal de venta", "Moneda", "Cambio de moneda", "Almacén",
 ]
 
 def build_holded_csv(merged: pd.DataFrame, empresa: str, fecha_factura: str, proyecto: str, cuenta: str, export_dir: str):
-    """Genera CSV Holded agrupado por **paciente+mes** (no por profesional)."""
+    """Genera CSV Holded agrupado por **paciente+mes**, sobrescribiendo el archivo anterior."""
 
     col_paciente = get_patient_col(merged)
     if not col_paciente:
         raise ValueError("No se encontró una columna de paciente en el archivo (por ej. 'Paciente').")
 
-    col_terapeuta = get_therapist_col(merged)  # opcional para descripción de línea
+    col_terapeuta = get_therapist_col(merged)
 
     fecha_general = pd.to_datetime(fecha_factura, errors="coerce")
     if pd.isna(fecha_general):
         raise ValueError("Fecha factura inválida.")
 
-    # Agrupar por paciente+mes para asignar un único Num factura por paciente/mes
+    # Agrupar por paciente+mes
     merged["__mes__"] = fecha_general.to_period("M")
     merged["__gid__"] = merged.groupby([col_paciente, "__mes__"]).ngroup() + 1
 
@@ -44,11 +44,9 @@ def build_holded_csv(merged: pd.DataFrame, empresa: str, fecha_factura: str, pro
     merged["Cambio de moneda"] = 1
     merged["País"] = "España"
     merged["Operación"] = "Sujeta No Exenta"
-
-    # Nombre del contacto = paciente
     merged["Nombre del contacto"] = merged[col_paciente]
 
-    # Descripción del producto (línea)
+    # Descripción por línea
     def desc_linea(row):
         fecha = str(row.get("Fecha", ""))[:10]
         ter = str(row.get(col_terapeuta, "")).strip() if col_terapeuta else ""
@@ -58,11 +56,10 @@ def build_holded_csv(merged: pd.DataFrame, empresa: str, fecha_factura: str, pro
 
     # Precio y unidades
     if "Precio unidad" not in merged.columns:
-        # intenta deducir de 'Importe' o 'Precio'
         merged["Precio unidad"] = merged.get("Importe", merged.get("Precio", 0)).fillna(0)
     merged["Unidades"] = merged.get("Unidades", 1)
 
-    # Asegurar todas las columnas
+    # Completar columnas faltantes
     for col in HOLDED_COLUMNS:
         if col not in merged.columns:
             merged[col] = ""
@@ -70,9 +67,9 @@ def build_holded_csv(merged: pd.DataFrame, empresa: str, fecha_factura: str, pro
     # Limpiar auxiliares
     merged = merged.drop(columns=["__gid__", "__mes__"], errors="ignore")
 
-    out_name = f"holded_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
-    out_path = os.path.join(export_dir, out_name)
+    # 📁 Guardar SIEMPRE con el mismo nombre
+    out_path = os.path.join(export_dir, "holded_export.csv")
     merged[HOLDED_COLUMNS].to_csv(out_path, index=False, encoding="utf-8-sig", sep=";")
 
-    print(f"✅ CSV Holded generado (agrupado por paciente+mes): {out_path} ({len(merged)} filas)")
-    return out_name
+    print(f"✅ Archivo Holded sobrescrito: {out_path} ({len(merged)} filas)")
+    return "holded_export.csv"
