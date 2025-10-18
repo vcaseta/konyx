@@ -3,73 +3,87 @@ import pandas as pd
 from datetime import datetime
 from ._utils_cols import get_patient_col, get_therapist_col
 
-HOLDED_COLUMNS = [
-    "Num factura", "Formato de numeración", "Fecha dd/mm/yyyy", "Fecha de vencimiento dd/mm/yyyy",
-    "Descripción", "Nombre del contacto", "NIF del contacto", "Dirección", "Población", "Código postal",
-    "Provincia", "País", "Concepto", "Descripción del producto", "SKU", "Precio unidad", "Unidades",
-    "Descuento %", "IVA %", "Retención %", "Rec. de eq. %", "Operación", "Forma de pago (ID)",
-    "Cantidad cobrada", "Fecha de cobro", "Cuenta de pago", "Tags separados por -", "Nombre canal de venta",
-    "Cuenta canal de venta", "Moneda", "Cambio de moneda", "Almacén",
-]
 
 def build_holded_csv(merged: pd.DataFrame, empresa: str, fecha_factura: str, proyecto: str, cuenta: str, export_dir: str):
-    """Genera CSV Holded agrupado por **paciente+mes**, sobrescribiendo el archivo anterior."""
+    """
+    Genera CSV compatible con Holded según formato validado (una línea por paciente+mes).
+    Las sesiones del mismo paciente se agrupan y se listan separadas por saltos de línea en la columna Descripción.
+    """
 
     col_paciente = get_patient_col(merged)
     if not col_paciente:
-        raise ValueError("No se encontró una columna de paciente en el archivo (por ej. 'Paciente').")
+        raise ValueError("No se encontró una columna de paciente (por ej. 'Paciente').")
 
     col_terapeuta = get_therapist_col(merged)
 
-    fecha_general = pd.to_datetime(fecha_factura, errors="coerce")
-    if pd.isna(fecha_general):
+    fecha_dt = pd.to_datetime(fecha_factura, errors="coerce")
+    if pd.isna(fecha_dt):
         raise ValueError("Fecha factura inválida.")
 
-    # Agrupar por paciente+mes
-    merged["__mes__"] = fecha_general.to_period("M")
+    # Crear agrupador paciente+mes
+    merged["__mes__"] = fecha_dt.to_period("M")
     merged["__gid__"] = merged.groupby([col_paciente, "__mes__"]).ngroup() + 1
 
-    # Datos cabecera/plantilla Holded
-    merged["Num factura"] = [f"F{fecha_general.strftime('%y%m')}{g:04d}" for g in merged["__gid__"]]
-    merged["Formato de numeración"] = "F{yy}{mm}{num:04d}"
-    merged["Fecha dd/mm/yyyy"] = fecha_general.strftime("%d/%m/%Y")
-    merged["Fecha de vencimiento dd/mm/yyyy"] = fecha_general.strftime("%d/%m/%Y")
-    merged["Descripción"] = f"Servicios de psicoterapia ({empresa})"
-    merged["Concepto"] = "Servicios de Psicoterapia"
-    merged["IVA %"] = 0
-    merged["Forma de pago (ID)"] = "Transferencia"
-    merged["Cuenta de pago"] = cuenta
-    merged["Tags separados por -"] = f"#{proyecto.lower().replace(' ', '-')}"
-    merged["Moneda"] = "EUR"
-    merged["Cambio de moneda"] = 1
-    merged["País"] = "España"
-    merged["Operación"] = "Sujeta No Exenta"
-    merged["Nombre del contacto"] = merged[col_paciente]
+    facturas = []
+    contador = 1
 
-    # Descripción por línea
-    def desc_linea(row):
-        fecha = str(row.get("Fecha", ""))[:10]
-        ter = str(row.get(col_terapeuta, "")).strip() if col_terapeuta else ""
-        return f"{fecha} – Sesión – {ter}".strip(" –")
+    for (paciente, mes), grupo in merged.groupby([col_paciente, "__mes__"], dropna=False):
+        # Número de factura
+        num_factura = f"FAC-{fecha_dt.strftime('%Y%m')}-{contador:03d}"
 
-    merged["Descripción del producto"] = merged.apply(desc_linea, axis=1)
+        # Detalle de sesiones (una por línea)
+        detalles = []
+        for _, row in grupo.iterrows():
+            fecha_sesion = str(row.get("Fecha", ""))[:10]
+            tipo = str(row.get("Tipo", "Sesión")).strip()
+            terapeuta = str(row.get(col_terapeuta, "")).strip() if col_terapeuta else ""
+            importe = None
+            for k in ["Importe", "Precio", "Precio unidad"]:
+                if k in row and pd.notna(row[k]):
+                    try:
+                        importe = float(row[k])
+                        break
+                    except:
+                        pass
+            if importe is None:
+                importe = 0.0
 
-    # Precio y unidades
-    if "Precio unidad" not in merged.columns:
-        merged["Precio unidad"] = merged.get("Importe", merged.get("Precio", 0)).fillna(0)
-    merged["Unidades"] = merged.get("Unidades", 1)
+            detalles.append(f"{fecha_sesion} - {tipo} {importe:.0f}€")
 
-    # Completar columnas faltantes
-    for col in HOLDED_COLUMNS:
-        if col not in merged.columns:
-            merged[col] = ""
+        descripcion = "\n".join(detalles)
 
-    # Limpiar auxiliares
-    merged = merged.drop(columns=["__gid__", "__mes__"], errors="ignore")
+        # Total y cantidad
+        cantidad = len(detalles)
+        total = sum(
+            float(row.get("Importe", row.get("Precio", 0)) or 0)
+            for _, row in grupo.iterrows()
+        )
 
-    # 📁 Guardar SIEMPRE con el mismo nombre
+        factura = {
+            "Número": num_factura,
+            "Fecha": fecha_dt.strftime("%Y-%m-%d"),
+            "Vencimiento": fecha_dt.strftime("%Y-%m-31"),
+            "Cliente": paciente,
+            "Email cliente": "",
+            "Moneda": "EUR",
+            "Concepto": "Servicios del mes",
+            "Descripción": descripcion,
+            "Cantidad": cantidad,
+            "Precio": round(total, 2),
+            "Impuesto": 21,
+            "Descuento": 0,
+            "Cuenta contable": "70500000",
+            "Tags": "",
+        }
+
+        facturas.append(factura)
+        contador += 1
+
+    df_out = pd.DataFrame(facturas)
+
+    # Guardar CSV (UTF-8 con comas, NO con ;)
     out_path = os.path.join(export_dir, "holded_export.csv")
-    merged[HOLDED_COLUMNS].to_csv(out_path, index=False, encoding="utf-8-sig", sep=";")
+    df_out.to_csv(out_path, index=False, encoding="utf-8-sig")
 
-    print(f"✅ Archivo Holded sobrescrito: {out_path} ({len(merged)} filas)")
+    print(f"✅ CSV Holded generado correctamente: {out_path} ({len(df_out)} facturas únicas)")
     return "holded_export.csv"
