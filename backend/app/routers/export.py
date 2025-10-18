@@ -10,6 +10,7 @@ from fastapi.responses import StreamingResponse, FileResponse, JSONResponse
 from app.core.persistence import load_data, save_data
 from app.core.validators.eholo import validate_eholo_sesiones, validate_eholo_contactos
 from app.core.validators.sesiones_gestoria import validate_sesiones_gestoria_template
+from app.core.validators.enrich_contacts import validate_and_enrich_contacts
 from app.core.exporters.holded_api import send_to_holded
 from app.core.exporters.holded_export import build_holded_csv
 from app.core.exporters.gestoria_export import build_gestoria_excel
@@ -27,11 +28,13 @@ progress_queue = []
 # 🧩 UTILIDADES
 # ============================================================
 def log_step(msg: str):
+    """Agrega mensajes de log a la cola y los imprime en consola."""
     progress_queue.append(msg)
     print(msg)
 
 
 def register_failed_export():
+    """Aumenta el contador de exportaciones fallidas y lo guarda."""
     try:
         data = load_data()
         data["totalExportacionesFallidas"] = data.get("totalExportacionesFallidas", 0) + 1
@@ -135,14 +138,19 @@ async def start_export(
         merged.fillna("", inplace=True)
 
         # ------------------------------------------------------------
+        # 🧠 Validar y completar contactos (Groq)
+        # ------------------------------------------------------------
+        log_step("🔍 Validando y completando contactos con Groq...")
+        merged = validate_and_enrich_contacts(merged, log_step)
+
+        # ------------------------------------------------------------
         # 💾 Exportar según tipo
         # ------------------------------------------------------------
         if formatoExport.lower() == "holded":
             log_step("📤 Generando CSV Holded...")
-            filename = build_holded_csv(merged, empresa, fechaFactura, proyecto, cuenta, EXPORT_DIR)
+            filename = build_holded_csv(merged, empresa, fechaFactura, proyecto, cuenta, EXPORT_DIR, log_step)
             log_step(f"✅ Archivo CSV generado: {filename}")
 
-            # Enviar a API Holded (si aplica)
             try:
                 send_to_holded(empresa, merged, fechaFactura, proyecto, cuenta, EXPORT_DIR, log_step)
             except Exception as e:
@@ -150,7 +158,7 @@ async def start_export(
 
         elif formatoExport.lower() == "gestoria":
             log_step("📤 Generando Excel para Gestoría...")
-            filename = build_gestoria_excel(merged, empresa, fechaFactura, proyecto, cuenta, EXPORT_DIR)
+            filename = build_gestoria_excel(merged, empresa, fechaFactura, proyecto, cuenta, EXPORT_DIR, log_step)
             log_step(f"✅ Archivo Excel generado: {filename}")
 
         else:
@@ -220,7 +228,12 @@ async def get_cleanup_info():
     try:
         exp_files = [f for f in os.listdir(EXPORT_DIR) if os.path.isfile(os.path.join(EXPORT_DIR, f))]
         inp_files = [f for f in os.listdir(TEMP_INPUTS) if os.path.isfile(os.path.join(TEMP_INPUTS, f))]
-        return {"status": "ok", "exports_count": len(exp_files), "inputs_count": len(inp_files), "total": len(exp_files) + len(inp_files)}
+        return {
+            "status": "ok",
+            "exports_count": len(exp_files),
+            "inputs_count": len(inp_files),
+            "total": len(exp_files) + len(inp_files)
+        }
     except Exception as e:
         return {"status": "error", "detail": str(e)}
 
