@@ -40,7 +40,7 @@ export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) 
           const step = data.step ?? "";
           if (step.trim()) setLogs((prev) => [...prev, step]);
         } else if (data.type === "changes") {
-          const count = data.changes?.length ?? 0; // ✅ acceso seguro
+          const count = data.changes?.length ?? 0;
           setLogs((prev) => [...prev, `Cambios detectados (${count})`]);
         } else if (data.type === "end") {
           const endTime = Date.now();
@@ -51,11 +51,12 @@ export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) 
           if (typeof data.autoNumbering === "boolean") setAutoNumbering(data.autoNumbering);
           if (data.nextNumber) setNextNumber(data.nextNumber);
 
+          // ✅ Recogemos el nombre del archivo final (Excel o CSV)
           if (data.file && typeof data.file === "string") {
             setDownloadFile(data.file);
           } else {
-            const lastFile = logs.find((l) => l.includes("export_"));
-            if (lastFile) setDownloadFile(lastFile.trim());
+            // fallback por si no se envía nombre en el evento final
+            setDownloadFile("holded_export.csv");
           }
         }
       } catch (err) {
@@ -71,14 +72,27 @@ export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) 
     return () => evtSource.close();
   }, []);
 
+  // ------------------------------------------------------------
+  // DESCARGA DEL ARCHIVO FINAL
+  // ------------------------------------------------------------
   const handleDownload = () => {
-    if (downloadFile) {
-      const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://192.168.1.51:8000";
-      const url = `${baseUrl}/export/download/${downloadFile}`;
-      window.open(url, "_blank");
-    }
+    if (!downloadFile) return;
+
+    const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://192.168.1.51:8000";
+
+    // 🔍 Si el nombre no incluye extensión, forzamos CSV por defecto
+    const cleanFile =
+      downloadFile.endsWith(".xlsx") || downloadFile.endsWith(".csv")
+        ? downloadFile
+        : "holded_export.csv";
+
+    const url = `${baseUrl}/export/download/${cleanFile}`;
+    window.open(url, "_blank");
   };
 
+  // ------------------------------------------------------------
+  // INTERFAZ
+  // ------------------------------------------------------------
   return (
     <div className="bg-white/70 backdrop-blur-md rounded-2xl shadow-lg p-6 space-y-4">
       <h2 className="text-2xl font-semibold text-indigo-800 mb-2">
@@ -134,9 +148,8 @@ export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) 
               className="w-full px-4 py-2 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-700 transition"
             >
               {downloadFile.endsWith(".xlsx")
-                ? "Descargar Excel"
-                : "Descargar CSV"}{" "}
-              ({downloadFile})
+                ? "Descargar Excel (Gestoría)"
+                : "Descargar CSV (Holded)"}
             </button>
           )}
         </div>
