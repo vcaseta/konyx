@@ -23,7 +23,6 @@ os.makedirs(TEMP_INPUTS, exist_ok=True)
 
 progress_queue = []
 
-
 # ============================================================
 # 🧩 UTILIDADES
 # ============================================================
@@ -139,18 +138,19 @@ async def start_export(
         # 💾 Exportar según tipo
         # ------------------------------------------------------------
         if formatoExport.lower() == "holded":
-            log_step("📤 Exportando a Holded...")
-            csv_path = os.path.join(EXPORT_DIR, "holded_export.csv")
-            build_holded_csv(merged, empresa, fechaFactura, proyecto, cuenta, EXPORT_DIR)
-            send_to_holded(empresa, merged, fechaFactura, proyecto, cuenta, EXPORT_DIR, log_step)
-            filename = "holded_export.csv"
+            log_step("📤 Generando CSV Holded...")
+            filename = build_holded_csv(merged, empresa, fechaFactura, proyecto, cuenta, EXPORT_DIR)
             log_step(f"✅ Archivo CSV generado: {filename}")
 
+            # Enviar a API Holded (si aplica)
+            try:
+                send_to_holded(empresa, merged, fechaFactura, proyecto, cuenta, EXPORT_DIR, log_step)
+            except Exception as e:
+                log_step(f"⚠️ Error al enviar a Holded: {e}")
+
         elif formatoExport.lower() == "gestoria":
-            log_step("📤 Exportando a Excel (Gestoría)...")
-            excel_path = os.path.join(EXPORT_DIR, "gestoria_export.xlsx")
-            build_gestoria_excel(merged, empresa, fechaFactura, proyecto, cuenta, EXPORT_DIR)
-            filename = "gestoria_export.xlsx"
+            log_step("📤 Generando Excel para Gestoría...")
+            filename = build_gestoria_excel(merged, empresa, fechaFactura, proyecto, cuenta, EXPORT_DIR)
             log_step(f"✅ Archivo Excel generado: {filename}")
 
         else:
@@ -198,7 +198,6 @@ async def export_progress():
                     yield f"data: {json.dumps({'type': 'log', 'step': msg})}\n\n"
             else:
                 await asyncio.sleep(0.5)
-
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 
