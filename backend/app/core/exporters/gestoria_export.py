@@ -3,15 +3,17 @@ import pandas as pd
 from datetime import datetime
 from openpyxl import Workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
+from openpyxl.styles import Font, Alignment
 
 
 def build_gestoria_excel(merged_df, empresa: str, fecha_factura: str, proyecto: str, cuenta: str, export_dir: str):
     """
     Genera un archivo Excel (.xlsx) para gestoría.
-    - Cada línea representa una sesión.
-    - Agrupación por paciente + mes.
-    - IVA = 0% (servicios sanitarios)
-    - Siempre devuelve el nombre del archivo generado.
+    - Cada línea representa una sesión (una por factura real).
+    - Agrupa por paciente + mes.
+    - Añade hoja "Resumen mensual" con totales por paciente y total general.
+    - IVA = 0% (servicios sanitarios).
+    - Devuelve el nombre del archivo generado.
     """
 
     # -----------------------------------
@@ -87,20 +89,38 @@ def build_gestoria_excel(merged_df, empresa: str, fecha_factura: str, proyecto: 
     df_out = pd.DataFrame(facturas)
 
     # -----------------------------------
+    # 📊 Generar resumen mensual
+    # -----------------------------------
+    resumen = (
+        df_out.groupby("Nombre fiscal", as_index=False)
+        .agg({"Base imponible": "sum"})
+        .rename(columns={"Base imponible": "Total facturado"})
+    )
+    resumen["Total facturado"] = resumen["Total facturado"].round(2)
+    total_general = resumen["Total facturado"].sum().round(2)
+
+    # -----------------------------------
     # 💾 Crear Excel con openpyxl
     # -----------------------------------
     filename = f"gestoria_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
     filepath = os.path.join(export_dir, filename)
 
     wb = Workbook()
+
+    # ------------------ Hoja principal ------------------
     ws = wb.active
     ws.title = "Facturas Gestoría"
 
-    # Escribir encabezados y datos
-    for r_idx, row in enumerate(dataframe_to_rows(df_out, index=False, header=True), 1):
+    for row in dataframe_to_rows(df_out, index=False, header=True):
         ws.append(row)
 
-    # Autoajustar ancho de columnas
+    # Estilos
+    header_font = Font(bold=True)
+    for cell in ws[1]:
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal="center")
+
+    # Autoajuste columnas
     for col in ws.columns:
         max_length = 0
         col_letter = col[0].column_letter
@@ -111,6 +131,40 @@ def build_gestoria_excel(merged_df, empresa: str, fecha_factura: str, proyecto: 
                 pass
         ws.column_dimensions[col_letter].width = max_length + 2
 
+    # ------------------ Hoja resumen ------------------
+    ws2 = wb.create_sheet("Resumen mensual")
+
+    ws2.append(["Paciente", "Total facturado (€)"])
+    for row in dataframe_to_rows(resumen, index=False, header=False):
+        ws2.append(row)
+
+    ws2.append(["", ""])
+    ws2.append(["TOTAL GENERAL", total_general])
+
+    # Estilo de encabezados y totales
+    ws2["A1"].font = Font(bold=True)
+    ws2["B1"].font = Font(bold=True)
+    ws2["A1"].alignment = Alignment(horizontal="center")
+    ws2["B1"].alignment = Alignment(horizontal="center")
+
+    ws2["A" + str(len(resumen) + 3)].font = Font(bold=True)
+    ws2["B" + str(len(resumen) + 3)].font = Font(bold=True)
+    ws2["A" + str(len(resumen) + 3)].alignment = Alignment(horizontal="center")
+    ws2["B" + str(len(resumen) + 3)].alignment = Alignment(horizontal="right")
+
+    # Autoajuste columnas
+    for col in ws2.columns:
+        max_length = 0
+        col_letter = col[0].column_letter
+        for cell in col:
+            try:
+                max_length = max(max_length, len(str(cell.value)))
+            except:
+                pass
+        ws2.column_dimensions[col_letter].width = max_length + 4
+
+    # Guardar archivo
     wb.save(filepath)
 
     return filename
+
