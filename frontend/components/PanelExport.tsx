@@ -37,21 +37,20 @@ export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) 
         const data = JSON.parse(e.data) as EndEventData;
 
         if (data.type === "log") {
-          const step = data.step ?? ""; // 👈 aseguramos string
+          const step = data.step ?? "";
           if (step.trim()) setLogs((prev) => [...prev, step]);
-        } else if (data.type === "changes" && data.changes) {
-          setLogs((prev) => [...prev, `Cambios detectados (${data.changes.length})`]);
+        } else if (data.type === "changes") {
+          const count = data.changes?.length ?? 0; // ✅ acceso seguro
+          setLogs((prev) => [...prev, `Cambios detectados (${count})`]);
         } else if (data.type === "end") {
           const endTime = Date.now();
           setDuration((endTime - startTime) / 1000);
           setDone(true);
           evtSource.close();
 
-          // Numeración automática
           if (typeof data.autoNumbering === "boolean") setAutoNumbering(data.autoNumbering);
           if (data.nextNumber) setNextNumber(data.nextNumber);
 
-          // Archivo final (CSV o Excel)
           if (data.file && typeof data.file === "string") {
             setDownloadFile(data.file);
           } else {
@@ -128,7 +127,7 @@ export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) 
             </div>
           )}
 
-          {/* BOTONES DESCARGA */}
+          {/* BOTÓN DESCARGA */}
           {downloadFile && (
             <button
               onClick={handleDownload}
