@@ -21,7 +21,6 @@ TEMP_INPUTS = "/app/temp_inputs"
 os.makedirs(EXPORT_DIR, exist_ok=True)
 os.makedirs(TEMP_INPUTS, exist_ok=True)
 
-# Cola de progreso (logs SSE)
 progress_queue = []
 
 
@@ -29,13 +28,11 @@ progress_queue = []
 # 🧩 UTILIDADES
 # ============================================================
 def log_step(msg: str):
-    """Guarda un mensaje de log en la cola y lo imprime."""
     progress_queue.append(msg)
     print(msg)
 
 
 def register_failed_export():
-    """Suma +1 al contador de exportaciones fallidas."""
     try:
         data = load_data()
         data["totalExportacionesFallidas"] = data.get("totalExportacionesFallidas", 0) + 1
@@ -43,6 +40,15 @@ def register_failed_export():
         log_step("📉 Exportación fallida registrada.")
     except Exception as e:
         log_step(f"⚠️ No se pudo registrar la exportación fallida: {e}")
+
+
+def clear_old_exports():
+    """Elimina todos los archivos anteriores en /exports."""
+    for f in os.listdir(EXPORT_DIR):
+        path = os.path.join(EXPORT_DIR, f)
+        if os.path.isfile(path):
+            os.remove(path)
+    log_step("🧹 Limpieza previa: eliminados archivos antiguos en /exports.")
 
 
 # ============================================================
@@ -64,8 +70,10 @@ async def start_export(
 ):
     try:
         progress_queue.clear()
+        clear_old_exports()
+
         log_step("✅ Iniciando proceso de exportación...")
-        log_step(f"📦 Formato import: {formatoImport} | export: {formatoExport}")
+        log_step(f"📦 Import: {formatoImport} | Export: {formatoExport}")
         log_step(f"👤 Usuario: {usuario} | Empresa: {empresa} | Fecha: {fechaFactura}")
 
         # ------------------------------------------------------------
@@ -83,10 +91,10 @@ async def start_export(
             else:
                 log_step("⚠️ No se detectó número al final del valor proporcionado.")
         else:
-            log_step("🔢 Numeración automática desactivada. Holded asignará número en borrador.")
+            log_step("🔢 Numeración automática desactivada.")
 
         # ------------------------------------------------------------
-        # 🗂️ Guardar archivos recibidos
+        # 🗂️ Guardar archivos temporales
         # ------------------------------------------------------------
         sesiones_path = os.path.join(TEMP_INPUTS, f"{usuario}_sesiones.xlsx")
         with open(sesiones_path, "wb") as f:
@@ -101,36 +109,27 @@ async def start_export(
         log_step("📁 Archivos guardados correctamente.")
 
         # ------------------------------------------------------------
-        # 📊 Leer con Pandas
+        # 📊 Cargar con Pandas
         # ------------------------------------------------------------
         df_ses = pd.read_excel(sesiones_path)
         df_con = pd.read_excel(contactos_path) if ficheroContactos else pd.DataFrame()
         log_step(f"📊 Sesiones: {len(df_ses)} filas | Contactos: {len(df_con)} filas")
 
         # ------------------------------------------------------------
-        # ✅ Validación según formato
+        # ✅ Validación
         # ------------------------------------------------------------
         if formatoImport.lower() == "eholo":
             log_step("🧩 Validando estructura Eholo...")
-            try:
-                validate_eholo_sesiones(df_ses)
-                if not df_con.empty:
-                    validate_eholo_contactos(df_con)
-                log_step("✅ Validación Eholo correcta.")
-            except Exception as e:
-                log_step(f"❌ Error de validación Eholo: {str(e)}")
-                register_failed_export()
-                raise HTTPException(status_code=400, detail=f"Error en validación Eholo: {str(e)}")
+            validate_eholo_sesiones(df_ses)
+            if not df_con.empty:
+                validate_eholo_contactos(df_con)
+            log_step("✅ Validación Eholo correcta.")
 
         elif formatoImport.lower() == "gestoria":
             log_step("🧩 Validando estructura Gestoría...")
-            try:
-                validate_sesiones_gestoria_template(df_ses)
-                log_step("✅ Validación Gestoría correcta.")
-            except Exception as e:
-                log_step(f"❌ Error de validación Gestoría: {str(e)}")
-                register_failed_export()
-                raise HTTPException(status_code=400, detail=f"Error en validación Gestoría: {str(e)}")
+            validate_sesiones_gestoria_template(df_ses)
+            log_step("✅ Validación Gestoría correcta.")
+
         else:
             register_failed_export()
             raise HTTPException(status_code=400, detail=f"Formato de importación desconocido: {formatoImport}")
@@ -150,21 +149,31 @@ async def start_export(
         merged.fillna("", inplace=True)
 
         # ------------------------------------------------------------
-        # 💾 Exportar según tipo
+        # 💾 Generar siempre CSV (sobrescribe)
         # ------------------------------------------------------------
+        csv_filename = "export_holded.csv"
+        csv_path = os.path.join(EXPORT_DIR, csv_filename)
+        log_step("💾 Generando CSV (Holded o respaldo)...")
+        build_holded_csv(merged, empresa, fechaFactura, proyecto, cuenta, EXPORT_DIR)
+        log_step(f"✅ CSV generado: {csv_filename}")
+
+        # ------------------------------------------------------------
+        # 📤 Exportar según tipo (sobrescribe)
+        # ------------------------------------------------------------
+        excel_filename = "export_gestoria.xlsx" if formatoExport.lower() == "gestoria" else None
+
         if formatoExport.lower() == "holded":
-            log_step("📤 Exportando a Holded...")
-            filename = send_to_holded(empresa, merged, fechaFactura, proyecto, cuenta, EXPORT_DIR, log_step)
+            log_step("📤 Enviando a Holded vía API...")
+            send_to_holded(empresa, merged, fechaFactura, proyecto, cuenta, EXPORT_DIR, log_step)
 
         elif formatoExport.lower() == "gestoria":
-            log_step("📤 Exportando a Excel (Gestoría)...")
-            filename = build_gestoria_excel(merged, empresa, fechaFactura, proyecto, cuenta, EXPORT_DIR)
-            log_step(f"✅ Archivo Excel generado: {filename}")
+            log_step("📤 Generando Excel (Gestoría)...")
+            build_gestoria_excel(merged, empresa, fechaFactura, proyecto, cuenta, EXPORT_DIR)
+            log_step(f"✅ Excel generado: {excel_filename}")
 
         else:
+            register_failed_export()
             raise HTTPException(status_code=400, detail=f"Formato de exportación desconocido: {formatoExport}")
-
-        log_step("✅ Exportación finalizada correctamente.")
 
         # ------------------------------------------------------------
         # 📈 Actualizar estadísticas
@@ -175,24 +184,23 @@ async def start_export(
         save_data(data)
 
         # ------------------------------------------------------------
-        # 📡 Enviar evento final
+        # 📡 Evento final
         # ------------------------------------------------------------
+        result_file = excel_filename or csv_filename
         progress_queue.append({
             "type": "end",
-            "file": filename,
+            "file": result_file,
+            "csvFile": csv_filename,
             "autoNumbering": use_auto,
             "nextNumber": next_number,
         })
 
-        return JSONResponse({"status": "ok", "file": filename})
+        log_step("✅ Exportación finalizada correctamente.")
+        return JSONResponse({"status": "ok", "file": result_file, "csvFile": csv_filename})
 
-    # ------------------------------------------------------------
-    # ❌ Manejo de errores generales
-    # ------------------------------------------------------------
     except HTTPException as e:
-        log_step(f"❌ Error de validación: {e.detail}")
+        log_step(f"❌ Error: {e.detail}")
         raise
-
     except Exception as e:
         log_step(f"❌ Error inesperado: {e}")
         register_failed_export()
@@ -200,11 +208,10 @@ async def start_export(
 
 
 # ============================================================
-# 📡 STREAMING DE PROGRESO SSE
+# 📡 STREAMING SSE
 # ============================================================
 @router.get("/progress")
 async def export_progress():
-    """Stream SSE de progreso."""
     async def event_generator():
         while True:
             if progress_queue:
@@ -215,16 +222,14 @@ async def export_progress():
                     yield f"data: {json.dumps({'type': 'log', 'step': msg})}\n\n"
             else:
                 await asyncio.sleep(0.5)
-
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 
 # ============================================================
-# 💾 DESCARGA DE ARCHIVO
+# 💾 DESCARGA
 # ============================================================
 @router.get("/download/{filename}")
 async def download_export(filename: str):
-    """Permite descargar un archivo CSV/Excel generado."""
     file_path = os.path.join(EXPORT_DIR, filename)
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="Archivo no encontrado.")
@@ -232,28 +237,10 @@ async def download_export(filename: str):
 
 
 # ============================================================
-# 🧹 LIMPIEZA DE ARCHIVOS Y LOGS
+# 🧹 LIMPIEZA
 # ============================================================
-@router.get("/cleanup")
-async def get_cleanup_info():
-    """Devuelve el número de archivos presentes en export e inputs."""
-    try:
-        exp_files = [f for f in os.listdir(EXPORT_DIR) if os.path.isfile(os.path.join(EXPORT_DIR, f))]
-        inp_files = [f for f in os.listdir(TEMP_INPUTS) if os.path.isfile(os.path.join(TEMP_INPUTS, f))]
-        total = len(exp_files) + len(inp_files)
-        return {
-            "status": "ok",
-            "exports_count": len(exp_files),
-            "inputs_count": len(inp_files),
-            "total": total,
-        }
-    except Exception as e:
-        return {"status": "error", "detail": str(e)}
-
-
 @router.post("/cleanup")
 async def cleanup_exports():
-    """Elimina archivos de exportación e inputs temporales y limpia logs."""
     try:
         removed = 0
         for folder in [EXPORT_DIR, TEMP_INPUTS]:
@@ -262,7 +249,6 @@ async def cleanup_exports():
                 if os.path.isfile(path):
                     os.remove(path)
                     removed += 1
-
         progress_queue.clear()
         msg = f"🧹 Limpieza completada ({removed} archivos eliminados)"
         print(msg)
