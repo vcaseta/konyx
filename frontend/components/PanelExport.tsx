@@ -12,6 +12,7 @@ interface EndEventData {
   step?: string;
   changes?: any[];
   file?: string;
+  csvFile?: string;
   autoNumbering?: boolean;
   nextNumber?: string;
 }
@@ -21,6 +22,7 @@ export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) 
   const [isExporting, setIsExporting] = useState(false);
   const [done, setDone] = useState(false);
   const [downloadFile, setDownloadFile] = useState<string | null>(null);
+  const [downloadCsv, setDownloadCsv] = useState<string | null>(null);
   const [duration, setDuration] = useState<number | null>(null);
   const [autoNumbering, setAutoNumbering] = useState<boolean | null>(null);
   const [nextNumber, setNextNumber] = useState<string | null>(null);
@@ -46,17 +48,17 @@ export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) 
           setDone(true);
           evtSource.close();
 
-          // Numeración automática
           if (typeof data.autoNumbering === "boolean") setAutoNumbering(data.autoNumbering);
           if (data.nextNumber) setNextNumber(data.nextNumber);
 
-          // Archivo final (detecta CSV o Excel)
-          if (data.file && typeof data.file === "string") {
-            setDownloadFile(data.file);
-          } else {
-            const lastFile = logs.find((l) => l.includes("export_"));
-            if (lastFile) setDownloadFile(lastFile.trim());
-          }
+          // 📦 Archivos generados
+          if (data.file) setDownloadFile(data.file);
+          if (data.csvFile) setDownloadCsv(data.csvFile);
+
+          setLogs((prev) => [
+            ...prev,
+            `Archivos disponibles: ${[data.file, data.csvFile].filter(Boolean).join(", ")}`
+          ]);
         }
       } catch (err) {
         console.error("Error parsing SSE message:", err);
@@ -71,10 +73,11 @@ export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) 
     return () => evtSource.close();
   }, []);
 
-  const handleDownload = () => {
-    if (downloadFile) {
+  const handleDownload = (filename?: string) => {
+    const file = filename || downloadFile;
+    if (file) {
       const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://192.168.1.51:8000";
-      const url = `${baseUrl}/export/download/${downloadFile}`;
+      const url = `${baseUrl}/export/download/${file}`;
       window.open(url, "_blank");
     }
   };
@@ -127,18 +130,29 @@ export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) 
             </div>
           )}
 
-          {/* BOTÓN DESCARGA */}
-          {downloadFile && (
-            <button
-              onClick={handleDownload}
-              className="w-full px-4 py-2 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-700 transition"
-            >
-              {downloadFile.endsWith(".xlsx")
-                ? "Descargar Excel"
-                : "Descargar CSV"}{" "}
-              ({downloadFile})
-            </button>
-          )}
+          {/* BOTONES DE DESCARGA */}
+          <div className="flex flex-col gap-2 pt-2">
+            {downloadFile && (
+              <button
+                onClick={() => handleDownload(downloadFile)}
+                className="w-full px-4 py-2 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-700 transition"
+              >
+                {downloadFile.endsWith(".xlsx")
+                  ? "Descargar Excel"
+                  : "Descargar archivo principal"}{" "}
+                ({downloadFile})
+              </button>
+            )}
+
+            {downloadCsv && downloadCsv !== downloadFile && (
+              <button
+                onClick={() => handleDownload(downloadCsv)}
+                className="w-full px-4 py-2 rounded-lg bg-blue-500 text-white font-medium hover:bg-blue-600 transition"
+              >
+                Descargar CSV de respaldo ({downloadCsv})
+              </button>
+            )}
+          </div>
         </div>
       )}
 
@@ -162,6 +176,7 @@ export const PanelExport: React.FC<PanelExportProps> = ({ onConfirm, onReset }) 
             setLogs([]);
             setDone(false);
             setDownloadFile(null);
+            setDownloadCsv(null);
             setDuration(null);
             setAutoNumbering(null);
             setNextNumber(null);
