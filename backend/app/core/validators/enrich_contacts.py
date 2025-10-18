@@ -2,12 +2,10 @@ import requests
 import pandas as pd
 from app.core.persistence import load_data
 
-
+# ============================================================
+# 🧠 Completar datos con Groq
+# ============================================================
 def groq_complete(prompt: str, log_fn=print) -> str:
-    """
-    Envía una consulta a Groq (modelo llama3-70b-8192).
-    Si hay error, devuelve cadena vacía y registra aviso sin interrumpir el proceso.
-    """
     data = load_data()
     api_key = data.get("apiGroq", "").strip()
     if not api_key:
@@ -35,57 +33,82 @@ def groq_complete(prompt: str, log_fn=print) -> str:
             },
             timeout=10,
         )
-
         data = response.json()
         if "choices" in data and len(data["choices"]) > 0:
             return data["choices"][0]["message"]["content"].strip()
         else:
-            log_fn(f"⚠️ Respuesta Groq vacía para prompt: {prompt[:60]}...")
             return ""
-
     except Exception as e:
         log_fn(f"⚠️ Error Groq: {e}")
         return ""
 
+# ============================================================
+# 🧩 Validación y enriquecimiento
+# ============================================================
+def find_col(df: pd.DataFrame, possible_names: list):
+    """Busca una columna ignorando mayúsculas, tildes y espacios."""
+    cols = {c.strip().lower().replace(" ", "").replace(".", ""): c for c in df.columns}
+    for name in possible_names:
+        key = name.strip().lower().replace(" ", "").replace(".", "")
+        if key in cols:
+            return cols[key]
+    return None
+
 
 def validate_and_enrich_contacts(df: pd.DataFrame, log_fn=print) -> pd.DataFrame:
-    """
-    Valida y completa los datos de contacto del DataFrame.
-    - Avisa si faltan NIF, dirección o provincia.
-    - Si falta provincia y hay CP, consulta Groq para completarla.
-    - Si falta NIF o dirección, registra aviso sin detener el proceso.
-    """
     df = df.copy()
-    required_cols = ["NIF", "Dirección", "Código Postal", "Población", "Provincia"]
-    for col in required_cols:
-        if col not in df.columns:
-            df[col] = ""
 
-    # Normalizar CP
+    # Buscar columnas relevantes (sin depender del nombre exacto)
+    nif_col = find_col(df, ["NIF", "DNI", "N.I.F", "Documento", "Identificación", "NIF/Pasaporte"])
+    direccion_col = find_col(df, ["Dirección", "Domicilio", "Calle"])
+    cp_col = find_col(df, ["Código Postal", "CP", "C.P."])
+    poblacion_col = find_col(df, ["Población", "Ciudad", "Localidad"])
+    provincia_col = find_col(df, ["Provincia", "Region"])
+    nombre_col = find_col(df, ["Nombre", "Paciente", "Nombre fiscal"])
+
+    # Asegurar que existen las columnas
+    for col, default in [
+        (nif_col or "NIF", ""),
+        (direccion_col or "Dirección", ""),
+        (cp_col or "Código Postal", ""),
+        (poblacion_col or "Población", ""),
+        (provincia_col or "Provincia", ""),
+        (nombre_col or "Nombre", ""),
+    ]:
+        if col not in df.columns:
+            df[col] = default
+
     df["Código Postal"] = df["Código Postal"].astype(str).str.strip().str[:5]
 
+    # Evitar mensajes repetidos
+    seen = set()
+
     for idx, row in df.iterrows():
-        nombre = str(row.get("Nombre") or row.get("Paciente") or "").strip()
-        cp = str(row.get("Código Postal", "")).strip()
-        provincia = str(row.get("Provincia", "")).strip()
-        nif = str(row.get("NIF", "")).strip()
+        nombre = str(row.get(nombre_col or "Nombre", "")).strip()
+        if not nombre:
+            continue
 
-        # NIF vacío
-        if not nif:
+        # ---- NIF ----
+        nif = str(row.get(nif_col or "NIF", "")).strip()
+        if not nif and nombre not in seen:
             log_fn(f"⚠️ {nombre}: NIF vacío o no encontrado.")
+            seen.add(nombre)
 
-        # Provincia faltante: intentar completar con Groq
+        # ---- Dirección / Población ----
+        direccion = str(row.get(direccion_col or "Dirección", "")).strip()
+        poblacion = str(row.get(poblacion_col or "Población", "")).strip()
+        if (not direccion or not poblacion) and nombre not in seen:
+            log_fn(f"⚠️ {nombre}: Dirección o población incompleta.")
+            seen.add(nombre)
+
+        # ---- Provincia ----
+        provincia = str(row.get(provincia_col or "Provincia", "")).strip()
+        cp = str(row.get(cp_col or "Código Postal", "")).strip()
         if not provincia and cp:
             prompt = f"Indica la provincia de España correspondiente al código postal {cp}. Responde solo con el nombre."
             provincia_res = groq_complete(prompt, log_fn)
             if provincia_res:
-                df.at[idx, "Provincia"] = provincia_res
+                df.at[idx, provincia_col or "Provincia"] = provincia_res
                 log_fn(f"✅ Provincia completada con Groq ({nombre} → {provincia_res})")
-            else:
-                log_fn(f"⚠️ {nombre}: No se pudo completar provincia para CP {cp}.")
-
-        # Dirección o población faltante
-        if not row.get("Dirección") or not row.get("Población"):
-            log_fn(f"⚠️ {nombre}: Dirección o población incompleta.")
 
     return df
