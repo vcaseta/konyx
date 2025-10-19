@@ -143,7 +143,7 @@ async def start_export(
         log_step("🔍 Validando y completando contactos con Groq...")
         merged = validate_and_enrich_contacts(merged, log_step)
 
-        # ------------------------------------------------------------
+              # ------------------------------------------------------------
         # 💾 Exportar según tipo
         # ------------------------------------------------------------
         if formatoExport.lower() == "holded":
@@ -158,11 +158,21 @@ async def start_export(
 
         elif formatoExport.lower() == "gestoria":
             log_step("📤 Generando Excel para Gestoría...")
-            filename = build_gestoria_excel(merged, empresa, fechaFactura, proyecto, cuenta, EXPORT_DIR, log_step)
+            filename = build_gestoria_excel(
+                merged,
+                empresa,
+                fechaFactura,
+                proyecto,
+                cuenta,
+                EXPORT_DIR,
+                log_step,
+                use_auto_numbering=use_auto,   # 👈 NUEVA LÍNEA CLAVE
+            )
             log_step(f"✅ Archivo Excel generado: {filename}")
 
         else:
             raise HTTPException(status_code=400, detail=f"Formato de exportación desconocido: {formatoExport}")
+
 
         # ------------------------------------------------------------
         # 📈 Actualizar estadísticas
