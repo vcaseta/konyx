@@ -8,16 +8,18 @@ export default function LoginPage() {
   const router = useRouter();
   const { setToken } = useAuth();
 
-  const [user, setUser] = useState("");
   const [password, setPassword] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
   const [backendPassword, setBackendPassword] = useState<string | null>(null);
+
+  // URL del backend desde .env
+  const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL;
 
   // 🧠 Cargar contraseña real desde backend
   useEffect(() => {
     const fetchPassword = async () => {
       try {
-        const res = await fetch("http://192.168.1.51:8000/auth/status");
+        const res = await fetch(`${API_BASE}/auth/status`);
         if (!res.ok) throw new Error("Error al conectar con backend");
         const data = await res.json();
         setBackendPassword(data.password);
@@ -27,7 +29,7 @@ export default function LoginPage() {
       }
     };
     fetchPassword();
-  }, []);
+  }, [API_BASE]);
 
   // 🚀 Manejar inicio de sesión
   const handleLogin = async () => {
@@ -36,20 +38,19 @@ export default function LoginPage() {
     try {
       if (!backendPassword) throw new Error("Backend no disponible");
 
-      const res = await fetch("http://192.168.1.51:8000/auth/login", {
+      const res = await fetch(`${API_BASE}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: user, password }),
+        body: JSON.stringify({ password }),
       });
 
-      if (!res.ok) throw new Error("Usuario o contraseña incorrectos");
+      if (!res.ok) throw new Error("Contraseña incorrecta");
       const data = await res.json();
 
       // 🔐 Guardamos token y credenciales globales
       setToken(data.token);
       sessionStorage.setItem("konyx_token", data.token);
       sessionStorage.setItem("konyx_password", password);
-      sessionStorage.setItem("konyx_user", user);
 
       router.replace("/dashboard");
     } catch (error: any) {
@@ -70,16 +71,10 @@ export default function LoginPage() {
           <img src="/logo.png" className="h-48 w-auto" alt="Konyx" />
         </div>
 
-        <h2 className="text-2xl font-bold mb-4 text-center text-indigo-800">Iniciar Sesión</h2>
+        <h2 className="text-2xl font-bold mb-4 text-center text-indigo-800">
+          Iniciar Sesión
+        </h2>
         {msg && <p className="text-red-600 mb-2 text-center">{msg}</p>}
-
-        <input
-          type="text"
-          placeholder="Usuario"
-          value={user}
-          onChange={(e) => setUser(e.target.value)}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        />
 
         <input
           type="password"
@@ -91,9 +86,9 @@ export default function LoginPage() {
 
         <button
           onClick={handleLogin}
-          disabled={!user || !password}
+          disabled={!password}
           className={`w-full py-2 rounded-lg text-white font-semibold transition ${
-            user && password
+            password
               ? "bg-indigo-600 hover:bg-indigo-700"
               : "bg-gray-400 cursor-not-allowed"
           }`}
