@@ -27,7 +27,7 @@ const CUENTAS = [
   "Otra (introducir)",
 ] as const;
 
-const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || "http://192.168.1.51:8000";
+const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL;
 
 type MenuKey =
   | "formatoImport"
