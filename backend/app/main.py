@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi import APIRouter
 from app.routers import auth, export, validate, convert
 import os
 
@@ -7,16 +8,22 @@ import os
 # 🚀 CONFIGURACIÓN INICIAL
 # ============================================================
 
+VERSION = "3.1.0"
+ALLOWED_ORIGINS = [
+    "https://konyx.duckdns.org",     # ✅ Frontend oficial
+    "http://localhost:3000",         # (opcional para desarrollo)
+]
+
 app = FastAPI(
     title="Konyx Backend",
-    version="3.1.0",
+    version=VERSION,
     description="Backend modular de Konyx con Groq AI y exportación avanzada",
 )
 
-# 🌍 CORS
+# 🌍 CORS — restringido al dominio del frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://konyx.duckdns.org"],  # 🔒 solo frontend oficial
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -26,7 +33,6 @@ app.add_middleware(
 # 🧩 MONTAJE DE ROUTERS BAJO /api
 # ============================================================
 
-from fastapi import APIRouter
 api_router = APIRouter(prefix="/api")
 
 api_router.include_router(auth.router)
@@ -42,16 +48,20 @@ app.include_router(api_router)
 
 @app.get("/")
 def root():
+    """Muestra información básica del backend (segura)."""
     return {
         "message": "✅ Backend Konyx activo",
-        "version": "3.1.0",
+        "version": VERSION,
         "base_path": "/api",
         "routers": ["/auth", "/export", "/validate", "/convert"],
     }
 
+
 @app.get("/health")
 def health():
+    """Usado por el frontend y sistemas de monitoreo."""
     return {"status": "ok", "message": "Servidor operativo"}
+
 
 # ============================================================
 # 🏁 LOG DE INICIO
@@ -61,12 +71,14 @@ def health():
 async def startup_event():
     print("\n" + "=" * 70)
     print("🟢 INICIANDO BACKEND KONYX")
-    print(f"📦 Versión: 3.1.0")
+    print(f"📦 Versión: {VERSION}")
     print(f"📂 Ruta base: {os.getcwd()}")
     print("🔗 Rutas disponibles bajo /api/:")
     print("   - /auth")
     print("   - /export")
     print("   - /validate")
     print("   - /convert")
-    print("🌍 CORS: habilitado para todos los orígenes (*)")
+    print("🌍 CORS permitido para:")
+    for origin in ALLOWED_ORIGINS:
+        print(f"   → {origin}")
     print("=" * 70 + "\n")
