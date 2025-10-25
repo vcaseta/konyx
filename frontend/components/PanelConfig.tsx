@@ -80,9 +80,15 @@ export const PanelConfig: React.FC<PanelConfigProps> = ({
     }
 
     try {
+      const token = sessionStorage.getItem("konyx_token");
+      if (!token) throw new Error("Sesión no válida. Inicia sesión nuevamente.");
+
       const res = await fetch(`${BACKEND}/auth/update_password`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`, // ✅ Enviar token JWT
+        },
         body: JSON.stringify({
           old_password: passActual,
           new_password: passNueva,
@@ -93,9 +99,14 @@ export const PanelConfig: React.FC<PanelConfigProps> = ({
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.detail || "Error al cambiar la contraseña");
 
+      // ✅ Mostrar mensaje de éxito
       setPassMsg({ type: "ok", text: data.message || "Contraseña actualizada correctamente" });
-      setPasswordGlobal(data.password);
-      sessionStorage.setItem("konyx_password", data.password);
+
+      // ✅ Actualizar valores locales y sesión
+      setPasswordGlobal(passNueva);
+      sessionStorage.setItem("konyx_password", passNueva);
+
+      // ✅ Limpiar campos
       setPassActual("");
       setPassNueva("");
       setPassConfirma("");
@@ -118,9 +129,13 @@ export const PanelConfig: React.FC<PanelConfigProps> = ({
       if (tipo === "enplural") body.apiEnPlural = nueva;
       if (tipo === "groq") body.apiGroq = nueva;
 
+      const token = sessionStorage.getItem("konyx_token");
       const res = await fetch(`${BACKEND}/auth/update_apis`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: token ? `Bearer ${token}` : "",
+        },
         body: JSON.stringify(body),
       });
 
@@ -151,7 +166,11 @@ export const PanelConfig: React.FC<PanelConfigProps> = ({
     if (!confirm("¿Seguro que quieres borrar todos los archivos generados y de entrada?")) return;
 
     try {
-      const res = await fetch(`${BACKEND}/export/cleanup`, { method: "POST" });
+      const token = sessionStorage.getItem("konyx_token");
+      const res = await fetch(`${BACKEND}/export/cleanup`, {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
       const data = await res.json();
       alert(data.message || "Limpieza completada");
 
@@ -312,4 +331,5 @@ export const PanelConfig: React.FC<PanelConfigProps> = ({
     </div>
   );
 };
+;
 
