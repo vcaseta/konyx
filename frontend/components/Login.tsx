@@ -12,37 +12,36 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
 
-  // ✅ Leer variable del entorno (sin fallback)
-  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
-
   const handleLogin = async () => {
     setMsg(null);
 
     try {
-      if (!BACKEND_URL) throw new Error("BACKEND_URL no configurada");
+      // Solo hay un usuario válido, por ejemplo "admin" o "konyx"
+      const fixedUser = "konyx";
 
-      const res = await fetch(`${BACKEND_URL}/auth/login`, {
+      // Permite que el campo "usuario" se muestre, pero no afecta realmente
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user, password }),
+        body: JSON.stringify({ user: fixedUser, password }),
       });
 
       if (!res.ok) throw new Error("Usuario o contraseña incorrectos");
 
       const data = await res.json();
 
-      // 🔐 Guardar token
+      // Guardar token y contraseña global
       setToken(data.token);
       sessionStorage.setItem("konyx_token", data.token);
+      sessionStorage.setItem("konyx_user", fixedUser);
 
-      // 💾 Guardar contraseña solo la primera vez
       if (!sessionStorage.getItem("konyx_password")) {
         sessionStorage.setItem("konyx_password", password);
       }
 
       router.replace("/dashboard");
     } catch (error: any) {
-      setMsg(error.message || "Error al conectar con el servidor");
+      setMsg(error.message);
     }
   };
 
@@ -53,12 +52,10 @@ export default function LoginPage() {
           <img src="/logo.png" className="h-48 w-auto" alt="Konyx" />
         </div>
 
-        <h2 className="text-2xl font-bold mb-4 text-center text-indigo-800">
-          Iniciar Sesión
-        </h2>
+        <h2 className="text-2xl font-bold mb-4 text-center">Iniciar Sesión</h2>
+        {msg && <p className="text-red-600 mb-2">{msg}</p>}
 
-        {msg && <p className="text-red-600 mb-2 text-center">{msg}</p>}
-
+        {/* Campo de usuario visible, pero no funcional */}
         <input
           type="text"
           placeholder="Usuario"
@@ -85,3 +82,4 @@ export default function LoginPage() {
     </main>
   );
 }
+
