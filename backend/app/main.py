@@ -16,7 +16,7 @@ app = FastAPI(
 # 🌍 CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # o especificar tu dominio si quieres más seguridad
+    allow_origins=["https://konyx.duckdns.org"],  # 🔒 solo frontend oficial
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
