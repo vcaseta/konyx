@@ -16,17 +16,25 @@ app = FastAPI(
 # 🌍 CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # o especificar tu dominio si quieres más seguridad
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# 🧩 Routers
-app.include_router(auth.router)
-app.include_router(export.router)
-app.include_router(validate.router)
-app.include_router(convert.router)
+# ============================================================
+# 🧩 MONTAJE DE ROUTERS BAJO /api
+# ============================================================
+
+from fastapi import APIRouter
+api_router = APIRouter(prefix="/api")
+
+api_router.include_router(auth.router)
+api_router.include_router(export.router)
+api_router.include_router(validate.router)
+api_router.include_router(convert.router)
+
+app.include_router(api_router)
 
 # ============================================================
 # 🩺 ENDPOINTS BÁSICOS
@@ -37,6 +45,7 @@ def root():
     return {
         "message": "✅ Backend Konyx activo",
         "version": "3.1.0",
+        "base_path": "/api",
         "routers": ["/auth", "/export", "/validate", "/convert"],
     }
 
@@ -54,11 +63,10 @@ async def startup_event():
     print("🟢 INICIANDO BACKEND KONYX")
     print(f"📦 Versión: 3.1.0")
     print(f"📂 Ruta base: {os.getcwd()}")
-    print("🔗 Rutas disponibles:")
+    print("🔗 Rutas disponibles bajo /api/:")
     print("   - /auth")
     print("   - /export")
     print("   - /validate")
     print("   - /convert")
     print("🌍 CORS: habilitado para todos los orígenes (*)")
     print("=" * 70 + "\n")
-
