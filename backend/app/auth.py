@@ -1,11 +1,20 @@
 from fastapi import APIRouter, HTTPException, Request, Body
 from pydantic import BaseModel
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
+from jose import jwt
+import os
 
 from app.core.persistence import load_data, save_data
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+# -----------------------------
+# Configuración de seguridad
+# -----------------------------
+SECRET_KEY = os.getenv("KONYX_SECRET", "supersecret_konyx")
+ALGORITHM = "HS256"
+TOKEN_EXPIRE_MINUTES = 1440  # 24 horas
 
 
 # -----------------------------
@@ -32,31 +41,23 @@ class ApiUpdate(BaseModel):
 # Helpers
 # -----------------------------
 async def _read_payload(request: Request) -> Dict[str, Any]:
-    """
-    Lee el payload tanto si llega como JSON como si llega como FormData.
-    Devuelve siempre un dict plano.
-    """
+    """Lee el payload tanto si llega como JSON como FormData."""
     try:
         data = await request.json()
         if isinstance(data, dict):
             return data
     except Exception:
         pass
-
     try:
         form = await request.form()
         return {k: (v if v is not None else "") for k, v in form.items()}
     except Exception:
         pass
-
     return {}
 
 
 def _ensure_defaults(d: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Garantiza llaves por defecto en el storage.
-    No sobreescribe valores existentes.
-    """
+    """Garantiza llaves por defecto en el storage."""
     d.setdefault("password", "admin123")
     d.setdefault("apiKissoro", "")
     d.setdefault("apiEnPlural", "")
@@ -69,17 +70,22 @@ def _ensure_defaults(d: Dict[str, Any]) -> Dict[str, Any]:
     return d
 
 
+def _create_token(username: str):
+    """Genera token JWT con expiración."""
+    expire = datetime.utcnow() + timedelta(minutes=TOKEN_EXPIRE_MINUTES)
+    payload = {"sub": username, "exp": expire}
+    token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+    return token
+
+
 # -----------------------------
 # Endpoints
 # -----------------------------
 @router.post("/login")
 async def login(request: Request):
-    """
-    Acepta:
-      - JSON: { "username": "...", "password": "..." }
-      - FormData: username=...&password=...
-    """
+    """Autenticación básica con contador de intentos."""
     payload = await _read_payload(request)
+    username = (payload.get("user") or payload.get("username") or "").strip()
     password = (payload.get("password") or "").strip()
 
     if not password:
@@ -87,66 +93,62 @@ async def login(request: Request):
 
     data = _ensure_defaults(load_data())
 
+    # Bloqueo temporal si demasiados fallos
+    if int(data.get("intentosLoginFallidos", 0)) >= 10:
+        raise HTTPException(status_code=403, detail="Demasiados intentos fallidos. Espere unos minutos.")
+
     if password != data.get("password", "admin123"):
         data["intentosLoginFallidos"] = int(data.get("intentosLoginFallidos", 0)) + 1
         save_data(data)
         raise HTTPException(status_code=401, detail="Usuario o contraseña incorrectos")
 
     # Login correcto
+    data["intentosLoginFallidos"] = 0
     data["totalLogins"] = int(data.get("totalLogins", 0)) + 1
     data["ultimoLogin"] = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
     save_data(data)
 
-    return {"token": "konyx_token_demo"}
+    token = _create_token(username or "admin")
+    return {"token": token}
 
 
 @router.get("/status")
 def status():
-    """
-    Devuelve configuración y métricas para el dashboard.
-    """
+    """Solo devuelve estado general, sin exponer contraseñas."""
     data = _ensure_defaults(load_data())
     return {
-        "password": data.get("password", "admin123"),
-        "apiKissoro": data.get("apiKissoro", ""),
-        "apiEnPlural": data.get("apiEnPlural", ""),
-        "apiGroq": data.get("apiGroq", ""),
+        "status": "ok",
         "ultimoExport": data.get("ultimoExport", "-"),
         "totalExportaciones": data.get("totalExportaciones", 0),
         "totalExportacionesFallidas": data.get("totalExportacionesFallidas", 0),
         "intentosLoginFallidos": data.get("intentosLoginFallidos", 0),
         "totalLogins": data.get("totalLogins", 0),
-        "archivo_generado": data.get("archivo_generado", ""),
+        "ultimoLogin": data.get("ultimoLogin", "-"),
     }
 
 
 @router.post("/update_password")
 async def update_password(req: PasswordUpdate = Body(...)):
-    """
-    Cambia la contraseña global. Se usa desde PanelConfig.
-    """
+    """Cambia la contraseña global."""
     data = _ensure_defaults(load_data())
 
-    # Validar contraseña actual
     if req.old_password != data.get("password", "admin123"):
         raise HTTPException(status_code=400, detail="Contraseña actual incorrecta")
 
-    # Validar coincidencia
     if req.new_password != req.confirm:
         raise HTTPException(status_code=400, detail="Las contraseñas no coinciden")
 
-    # Actualizar y guardar
+    if len(req.new_password) < 6:
+        raise HTTPException(status_code=400, detail="La contraseña debe tener al menos 6 caracteres")
+
     data["password"] = req.new_password
     save_data(data)
-
-    return {"message": "Contraseña actualizada correctamente", "password": req.new_password}
+    return {"message": "Contraseña actualizada correctamente"}
 
 
 @router.post("/update_apis")
 async def update_apis(req: ApiUpdate = Body(...)):
-    """
-    Actualiza APIs de Kissoro / EnPlural / Groq.
-    """
+    """Actualiza APIs de Kissoro / EnPlural / Groq."""
     data = _ensure_defaults(load_data())
 
     if req.apiKissoro is not None:
@@ -157,9 +159,4 @@ async def update_apis(req: ApiUpdate = Body(...)):
         data["apiGroq"] = req.apiGroq
 
     save_data(data)
-    return {
-        "message": "APIs actualizadas correctamente",
-        "apiKissoro": data["apiKissoro"],
-        "apiEnPlural": data["apiEnPlural"],
-        "apiGroq": data["apiGroq"],
-    }
+    return {"message": "APIs actualizadas correctamente"}
