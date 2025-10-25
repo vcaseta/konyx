@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Request, Header, Body
+from fastapi import APIRouter, HTTPException, Request, Body
 from pydantic import BaseModel
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
@@ -10,17 +10,17 @@ from app.core.persistence import load_data, save_data
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-# -----------------------------
-# Configuración de seguridad
-# -----------------------------
+# ============================================================
+# 🔐 Configuración de seguridad
+# ============================================================
 SECRET_KEY = os.getenv("KONYX_SECRET", "supersecret_konyx")
 ALGORITHM = "HS256"
-TOKEN_EXPIRE_MINUTES = 1440  # 24 horas
+TOKEN_EXPIRE_MINUTES = 1440  # 24 h
 USUARIO_FIJO = "admenplural"
 
-# -----------------------------
-# Anti-abuso básico
-# -----------------------------
+# ============================================================
+# 🧠 Anti-abuso básico (rate limit)
+# ============================================================
 RATE_LIMIT_WINDOW = 60  # segundos
 MAX_REQUESTS_PER_MINUTE = 30
 _last_requests: Dict[str, list] = {}  # { ip: [timestamps] }
@@ -28,17 +28,16 @@ _last_requests: Dict[str, list] = {}  # { ip: [timestamps] }
 
 def _check_rate_limit(ip: str):
     now = time.time()
-    timestamps = _last_requests.get(ip, [])
-    timestamps = [t for t in timestamps if now - t < RATE_LIMIT_WINDOW]
+    timestamps = [t for t in _last_requests.get(ip, []) if now - t < RATE_LIMIT_WINDOW]
     if len(timestamps) >= MAX_REQUESTS_PER_MINUTE:
         raise HTTPException(status_code=429, detail="Demasiadas solicitudes, espere un momento")
     timestamps.append(now)
     _last_requests[ip] = timestamps
 
 
-# -----------------------------
-# Modelos
-# -----------------------------
+# ============================================================
+# 🧩 Modelos
+# ============================================================
 class LoginRequest(BaseModel):
     username: Optional[str] = None
     password: str
@@ -56,27 +55,29 @@ class ApiUpdate(BaseModel):
     apiGroq: Optional[str] = None
 
 
-# -----------------------------
-# Helpers
-# -----------------------------
+# ============================================================
+# 🧰 Helpers
+# ============================================================
 async def _read_payload(request: Request) -> Dict[str, Any]:
-    """Lee el payload tanto si llega como JSON como FormData."""
+    """Lee el cuerpo del request (JSON o FormData)."""
     try:
         data = await request.json()
         if isinstance(data, dict):
             return data
     except Exception:
         pass
+
     try:
         form = await request.form()
-        return {k: (v if v is not None else "") for k, v in form.items()}
+        return {k: v for k, v in form.items()}
     except Exception:
         pass
+
     return {}
 
 
 def _ensure_defaults(d: Dict[str, Any]) -> Dict[str, Any]:
-    """Garantiza llaves por defecto en el storage."""
+    """Inicializa campos por defecto en la base persistente."""
     d.setdefault("password", "admin123")
     d.setdefault("apiKissoro", "")
     d.setdefault("apiEnPlural", "")
@@ -93,16 +94,15 @@ def _create_token(username: str):
     """Genera token JWT con expiración."""
     expire = datetime.utcnow() + timedelta(minutes=TOKEN_EXPIRE_MINUTES)
     payload = {"sub": username, "exp": expire}
-    token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
-    return token
+    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 
 def _verify_jwt_header(auth_header: Optional[str]):
-    """Verifica un token JWT recibido en Authorization header."""
+    """Valida el token JWT recibido en Authorization header."""
     if not auth_header or not auth_header.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Token no proporcionado")
 
-    token = auth_header.split("Bearer ")[1].strip()
+    token = auth_header.split(" ")[1]
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username = payload.get("sub")
@@ -112,12 +112,13 @@ def _verify_jwt_header(auth_header: Optional[str]):
         raise HTTPException(status_code=401, detail="Token inválido o expirado")
 
 
-# -----------------------------
-# Endpoints
-# -----------------------------
+# ============================================================
+# 🚪 Endpoints
+# ============================================================
+
 @router.post("/login")
 async def login(request: Request):
-    """Autenticación básica con contador de intentos."""
+    """Autenticación básica con control de intentos."""
     client_ip = request.client.host
     _check_rate_limit(client_ip)
 
@@ -130,15 +131,10 @@ async def login(request: Request):
 
     data = _ensure_defaults(load_data())
 
-    # Bloqueo temporal si demasiados fallos
     if int(data.get("intentosLoginFallidos", 0)) >= 10:
         raise HTTPException(status_code=403, detail="Demasiados intentos fallidos. Espere unos minutos.")
 
-    # Validación de usuario fijo
-    if username != USUARIO_FIJO:
-        raise HTTPException(status_code=401, detail="Usuario o contraseña incorrectos")
-
-    if password != data.get("password", "admin123"):
+    if username != USUARIO_FIJO or password != data.get("password", "admin123"):
         data["intentosLoginFallidos"] = int(data.get("intentosLoginFallidos", 0)) + 1
         save_data(data)
         raise HTTPException(status_code=401, detail="Usuario o contraseña incorrectos")
@@ -154,9 +150,8 @@ async def login(request: Request):
 
 
 @router.get("/status")
-def status(authorization: str = Header(None)):
-    """Solo devuelve estado general, protegido con token JWT."""
-    _verify_jwt_header(authorization)
+def status():
+    """Devuelve estadísticas generales (sin exponer contraseñas)."""
     data = _ensure_defaults(load_data())
     return {
         "status": "ok",
@@ -170,8 +165,10 @@ def status(authorization: str = Header(None)):
 
 
 @router.post("/update_password")
-async def update_password(req: PasswordUpdate = Body(...)):
-    """Cambia la contraseña global."""
+async def update_password(request: Request, req: PasswordUpdate = Body(...)):
+    """Cambia la contraseña global. Requiere token JWT."""
+    _verify_jwt_header(request.headers.get("Authorization"))  # ✅ Autenticación obligatoria
+
     data = _ensure_defaults(load_data())
 
     if req.old_password != data.get("password", "admin123"):
@@ -189,8 +186,10 @@ async def update_password(req: PasswordUpdate = Body(...)):
 
 
 @router.post("/update_apis")
-async def update_apis(req: ApiUpdate = Body(...)):
-    """Actualiza APIs de Kissoro / EnPlural / Groq."""
+async def update_apis(request: Request, req: ApiUpdate = Body(...)):
+    """Actualiza las claves API (Kissoro, EnPlural y Groq). Requiere token JWT."""
+    _verify_jwt_header(request.headers.get("Authorization"))  # ✅ Autenticación obligatoria
+
     data = _ensure_defaults(load_data())
 
     if req.apiKissoro is not None:
@@ -201,28 +200,23 @@ async def update_apis(req: ApiUpdate = Body(...)):
         data["apiGroq"] = req.apiGroq
 
     save_data(data)
-    return {"message": "APIs actualizadas correctamente"}
+    return {
+        "message": "APIs actualizadas correctamente",
+        "apiKissoro": data["apiKissoro"],
+        "apiEnPlural": data["apiEnPlural"],
+        "apiGroq": data["apiGroq"],
+    }
 
 
-# -----------------------------
-# ✅ Verificar token JWT (manual)
-# -----------------------------
 @router.get("/verify")
 async def verify_token(request: Request):
-    """Verifica si el token JWT recibido sigue siendo válido."""
+    """Verifica si el token JWT sigue siendo válido."""
     client_ip = request.client.host
     _check_rate_limit(client_ip)
 
     auth_header = request.headers.get("Authorization")
-    if not auth_header or not auth_header.startswith("Bearer "):
-        return {"valid": False}
-
-    token = auth_header.split(" ")[1]
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username = payload.get("sub")
-        if username != USUARIO_FIJO:
-            return {"valid": False}
-        return {"valid": True, "user": username}
-    except JWTError:
+        _verify_jwt_header(auth_header)
+        return {"valid": True, "user": USUARIO_FIJO}
+    except HTTPException:
         return {"valid": False}
