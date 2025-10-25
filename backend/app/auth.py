@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Request, Body
+from fastapi import APIRouter, HTTPException, Request, Header, Body
 from pydantic import BaseModel
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
@@ -29,7 +29,6 @@ _last_requests: Dict[str, list] = {}  # { ip: [timestamps] }
 def _check_rate_limit(ip: str):
     now = time.time()
     timestamps = _last_requests.get(ip, [])
-    # Mantener solo los últimos 60 segundos
     timestamps = [t for t in timestamps if now - t < RATE_LIMIT_WINDOW]
     if len(timestamps) >= MAX_REQUESTS_PER_MINUTE:
         raise HTTPException(status_code=429, detail="Demasiadas solicitudes, espere un momento")
@@ -98,6 +97,21 @@ def _create_token(username: str):
     return token
 
 
+def _verify_jwt_header(auth_header: Optional[str]):
+    """Verifica un token JWT recibido en Authorization header."""
+    if not auth_header or not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Token no proporcionado")
+
+    token = auth_header.split("Bearer ")[1].strip()
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username = payload.get("sub")
+        if username != USUARIO_FIJO:
+            raise HTTPException(status_code=401, detail="Token inválido")
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Token inválido o expirado")
+
+
 # -----------------------------
 # Endpoints
 # -----------------------------
@@ -140,8 +154,9 @@ async def login(request: Request):
 
 
 @router.get("/status")
-def status():
-    """Solo devuelve estado general, sin exponer contraseñas."""
+def status(authorization: str = Header(None)):
+    """Solo devuelve estado general, protegido con token JWT."""
+    _verify_jwt_header(authorization)
     data = _ensure_defaults(load_data())
     return {
         "status": "ok",
@@ -190,15 +205,11 @@ async def update_apis(req: ApiUpdate = Body(...)):
 
 
 # -----------------------------
-# ✅ Verificar token JWT (nuevo)
+# ✅ Verificar token JWT (manual)
 # -----------------------------
 @router.get("/verify")
 async def verify_token(request: Request):
-    """
-    Verifica si el token JWT recibido sigue siendo válido.
-    Devuelve { "valid": true } o { "valid": false }.
-    Protegido con rate-limit por IP.
-    """
+    """Verifica si el token JWT recibido sigue siendo válido."""
     client_ip = request.client.host
     _check_rate_limit(client_ip)
 
@@ -207,14 +218,11 @@ async def verify_token(request: Request):
         return {"valid": False}
 
     token = auth_header.split(" ")[1]
-
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username = payload.get("sub")
-
         if username != USUARIO_FIJO:
             return {"valid": False}
-
         return {"valid": True, "user": username}
     except JWTError:
         return {"valid": False}
