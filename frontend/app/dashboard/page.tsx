@@ -119,23 +119,33 @@ export default function DashboardPage() {
     ficheroSesiones !== null &&
     (usarUltimoContactos || ficheroContactos !== null);
 
-  // ---------------------------
-  // REFRESCAR ESTADÍSTICAS
-  // ---------------------------
-  const refreshStats = async () => {
-    try {
-      const res = await fetch(`${BACKEND}/auth/status`);
-      if (!res.ok) return;
-      const s = await res.json();
-      setUltimoExport(s.ultimoExport || "-");
-      setTotalExportaciones(s.totalExportaciones || 0);
-      setTotalExportacionesFallidas(s.totalExportacionesFallidas || 0);
-      setIntentosLoginFallidos(s.intentosLoginFallidos || 0);
-      setTotalLogins(s.totalLogins || 0);
-    } catch (e) {
-      console.error("Error refrescando estadísticas:", e);
+// ---------------------------
+// REFRESCAR ESTADÍSTICAS
+// ---------------------------
+const refreshStats = async () => {
+  try {
+    // ✅ Incluir el token JWT en la cabecera
+    const res = await fetch(`${BACKEND}/auth/status`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!res.ok) {
+      console.warn("❌ No autorizado o error al consultar /auth/status");
+      return;
     }
-  };
+
+    const s = await res.json();
+    setUltimoExport(s.ultimoExport || "-");
+    setTotalExportaciones(s.totalExportaciones || 0);
+    setTotalExportacionesFallidas(s.totalExportacionesFallidas || 0);
+    setIntentosLoginFallidos(s.intentosLoginFallidos || 0);
+    setTotalLogins(s.totalLogins || 0);
+  } catch (e) {
+    console.error("Error refrescando estadísticas:", e);
+  }
+};
 
   // ---------------------------
   // ACTUALIZAR DEBUG AL ENTRAR EN CONFIG
