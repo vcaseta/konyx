@@ -11,13 +11,17 @@ import os
 VERSION = "3.1.0"
 ALLOWED_ORIGINS = [
     "https://konyx.duckdns.org",     # ✅ Frontend oficial
-    "http://localhost:3000",         # (opcional para desarrollo)
+    "https://api.konyx.duckdns.org", # ✅ Subdominio API
+    "http://localhost:3000",         # (opcional para desarrollo local)
 ]
 
 app = FastAPI(
     title="Konyx Backend",
     version=VERSION,
     description="Backend modular de Konyx con Groq AI y exportación avanzada",
+    docs_url=None,        # ❌ Desactiva /docs (Swagger UI)
+    redoc_url=None,       # ❌ Desactiva /redoc (ReDoc)
+    openapi_url=None,     # ❌ Desactiva /openapi.json
 )
 
 # 🌍 CORS — restringido al dominio del frontend
@@ -81,4 +85,6 @@ async def startup_event():
     print("🌍 CORS permitido para:")
     for origin in ALLOWED_ORIGINS:
         print(f"   → {origin}")
+    print("🔒 /docs, /redoc y /openapi.json desactivados")
     print("=" * 70 + "\n")
+
