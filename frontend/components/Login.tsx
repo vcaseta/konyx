@@ -14,27 +14,21 @@ export default function LoginPage() {
 
   const handleLogin = async () => {
     setMsg(null);
-
     try {
-      // Solo hay un usuario válido, por ejemplo "admin" o "konyx"
-      const fixedUser = "konyx";
-
-      // Permite que el campo "usuario" se muestre, pero no afecta realmente
       const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user: fixedUser, password }),
+        body: JSON.stringify({ user, password }),
       });
-
       if (!res.ok) throw new Error("Usuario o contraseña incorrectos");
 
       const data = await res.json();
 
-      // Guardar token y contraseña global
+      // Guardamos token de sesión
       setToken(data.token);
       sessionStorage.setItem("konyx_token", data.token);
-      sessionStorage.setItem("konyx_user", fixedUser);
 
+      // SOLO guardar contraseña global si aún no existe (primer uso)
       if (!sessionStorage.getItem("konyx_password")) {
         sessionStorage.setItem("konyx_password", password);
       }
@@ -51,11 +45,8 @@ export default function LoginPage() {
         <div className="flex justify-center mb-4">
           <img src="/logo.png" className="h-48 w-auto" alt="Konyx" />
         </div>
-
         <h2 className="text-2xl font-bold mb-4 text-center">Iniciar Sesión</h2>
         {msg && <p className="text-red-600 mb-2">{msg}</p>}
-
-        {/* Campo de usuario visible, pero no funcional */}
         <input
           type="text"
           placeholder="Usuario"
@@ -63,7 +54,6 @@ export default function LoginPage() {
           onChange={(e) => setUser(e.target.value)}
           className="w-full rounded-lg border border-gray-300 px-3 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500"
         />
-
         <input
           type="password"
           placeholder="Contraseña"
@@ -71,7 +61,6 @@ export default function LoginPage() {
           onChange={(e) => setPassword(e.target.value)}
           className="w-full rounded-lg border border-gray-300 px-3 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500"
         />
-
         <button
           onClick={handleLogin}
           className="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition"
