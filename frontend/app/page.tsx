@@ -8,11 +8,12 @@ export default function LoginPage() {
   const router = useRouter();
   const { setToken } = useAuth();
 
+  const [user, setUser] = useState(""); // 👈 Campo usuario restaurado
   const [password, setPassword] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
   const [backendPassword, setBackendPassword] = useState<string | null>(null);
 
-  // URL del backend desde .env
+  // ✅ URL del backend desde .env
   const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL;
 
   // 🧠 Cargar contraseña real desde backend
@@ -34,23 +35,23 @@ export default function LoginPage() {
   // 🚀 Manejar inicio de sesión
   const handleLogin = async () => {
     setMsg(null);
-
     try {
       if (!backendPassword) throw new Error("Backend no disponible");
 
       const res = await fetch(`${API_BASE}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ user, password }), // 👈 se envía user también
       });
 
-      if (!res.ok) throw new Error("Contraseña incorrecta");
+      if (!res.ok) throw new Error("Usuario o contraseña incorrectos");
       const data = await res.json();
 
-      // 🔐 Guardamos token y credenciales globales
+      // 🔐 Guardamos token y credenciales
       setToken(data.token);
       sessionStorage.setItem("konyx_token", data.token);
       sessionStorage.setItem("konyx_password", password);
+      sessionStorage.setItem("konyx_user", user);
 
       router.replace("/dashboard");
     } catch (error: any) {
@@ -76,6 +77,16 @@ export default function LoginPage() {
         </h2>
         {msg && <p className="text-red-600 mb-2 text-center">{msg}</p>}
 
+        {/* Campo de usuario */}
+        <input
+          type="text"
+          placeholder="Usuario"
+          value={user}
+          onChange={(e) => setUser(e.target.value)}
+          className="w-full rounded-lg border border-gray-300 px-3 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        />
+
+        {/* Campo de contraseña */}
         <input
           type="password"
           placeholder="Contraseña"
@@ -86,9 +97,9 @@ export default function LoginPage() {
 
         <button
           onClick={handleLogin}
-          disabled={!password}
+          disabled={!user || !password}
           className={`w-full py-2 rounded-lg text-white font-semibold transition ${
-            password
+            user && password
               ? "bg-indigo-600 hover:bg-indigo-700"
               : "bg-gray-400 cursor-not-allowed"
           }`}
@@ -99,4 +110,3 @@ export default function LoginPage() {
     </main>
   );
 }
-
