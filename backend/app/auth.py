@@ -1,8 +1,8 @@
-from fastapi import APIRouter, HTTPException, Request, Body
+from fastapi import APIRouter, HTTPException, Request, Body, Header
 from pydantic import BaseModel
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
-from jose import jwt
+from jose import jwt, JWTError, ExpiredSignatureError
 import os
 
 from app.core.persistence import load_data, save_data
@@ -15,9 +15,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 SECRET_KEY = os.getenv("KONYX_SECRET", "supersecret_konyx").strip()
 ALGORITHM = "HS256"
 TOKEN_EXPIRE_MINUTES = 1440  # 24 horas
-
-# Usuario interno fijo (NO expuesto ni configurable)
-VALID_USERNAME = "admenplural"
+VALID_USERNAME = "admenplural"  # Usuario interno oculto
 
 
 # ============================================================
@@ -81,6 +79,20 @@ def _create_token(username: str) -> str:
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 
+def _verify_token(token: str) -> dict:
+    """Verifica un token JWT y devuelve el payload si es válido."""
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username = payload.get("sub")
+        if username != VALID_USERNAME:
+            raise HTTPException(status_code=401, detail="Token inválido (usuario incorrecto)")
+        return payload
+    except ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expirado")
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Token inválido")
+
+
 # ============================================================
 # 🚪 LOGIN
 # ============================================================
@@ -114,6 +126,28 @@ async def login(request: Request):
 
     token = _create_token(username)
     return {"token": token, "expires_in": TOKEN_EXPIRE_MINUTES * 60}
+
+
+# ============================================================
+# 🧾 VERIFY TOKEN
+# ============================================================
+@router.get("/verify")
+def verify_token(authorization: Optional[str] = Header(None)):
+    """
+    Verifica si el token JWT sigue siendo válido.
+    Se usa en el frontend para mantener la sesión activa.
+    """
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Token no proporcionado")
+
+    # Espera un header del tipo: Authorization: Bearer <token>
+    parts = authorization.split()
+    if len(parts) != 2 or parts[0].lower() != "bearer":
+        raise HTTPException(status_code=401, detail="Formato de token inválido")
+
+    token = parts[1]
+    payload = _verify_token(token)
+    return {"valid": True, "user": payload.get("sub"), "exp": payload.get("exp")}
 
 
 # ============================================================
