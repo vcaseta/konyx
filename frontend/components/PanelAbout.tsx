@@ -22,14 +22,14 @@ export function PanelAbout() {
           <p>
             <strong>Contacto:</strong>{" "}
             <a
-              href="mailto:vcaseta75@gmail.com"
+              href="mailto:info@enpluralpicologia.com"
               className="text-indigo-600 hover:underline"
             >
-              vcaseta75@gmail.com
+              info@enpluralpsicologia.com
             </a>
           </p>
           <p>
-            <strong>Versión:</strong> 2.2.14
+            <strong>Versión:</strong> 2.2.24
           </p>
           <p>
             <strong>Fecha de creación:</strong> Octubre 2025
