@@ -211,29 +211,57 @@ async def start_export(
         # Buscar columna de NIF
         col_nif = find_column(merged, ["NIF", "DNI", "Documento de identidad", "Documento"])
         
+        tiene_errores = False
+        
         if col_nif:
             sin_nif = merged[merged[col_nif].astype(str).str.strip() == ""]
             if len(sin_nif) > 0:
+                tiene_errores = True
                 pacientes_sin_nif = []
                 col_paciente = find_column(merged, ["paciente", "nombre", "nombre paciente"])
                 
                 for idx, row in sin_nif.iterrows():
                     nombre = str(row.get(col_paciente, f"Fila {idx}")).strip()
-                    pacientes_sin_nif.append(nombre)
+                    if nombre:  # Solo agregar si el nombre no está vacío
+                        pacientes_sin_nif.append(nombre)
                 
-                error_msg = f"❌ ERROR: {len(sin_nif)} paciente(s) sin NIF/DNI. No se puede continuar.\n\n"
-                error_msg += "Pacientes sin NIF:\n"
-                error_msg += "\n".join(f"  - {p}" for p in pacientes_sin_nif[:10])
+                log_step(f"❌ ERROR: {len(sin_nif)} paciente(s) sin NIF/DNI")
+                log_step("")
+                log_step("Pacientes sin NIF:")
+                for p in pacientes_sin_nif[:10]:
+                    log_step(f"  • {p}")
                 if len(pacientes_sin_nif) > 10:
-                    error_msg += f"\n  ... y {len(pacientes_sin_nif) - 10} más"
+                    log_step(f"  ... y {len(pacientes_sin_nif) - 10} más")
+                log_step("")
+                log_step("⚠️ No se puede continuar sin completar los NIFs.")
+                log_step("Por favor, actualiza el archivo de contactos y vuelve a intentar.")
                 
-                log_step(error_msg)
                 register_failed_export()
-                raise HTTPException(status_code=400, detail=error_msg)
+                
+                # Enviar evento de error al frontend
+                progress_queue.append({
+                    "type": "error",
+                    "message": "Pacientes sin NIF detectados",
+                    "pacientes": pacientes_sin_nif[:10],
+                    "total": len(sin_nif)
+                })
+                
+                # Retornar respuesta en lugar de lanzar excepción
+                return JSONResponse(
+                    status_code=400,
+                    content={
+                        "status": "error",
+                        "type": "validation",
+                        "message": f"{len(sin_nif)} paciente(s) sin NIF/DNI",
+                        "pacientes": pacientes_sin_nif[:10],
+                        "total": len(sin_nif)
+                    }
+                )
         else:
             log_step("⚠️ No se encontró columna de NIF en los datos")
         
-        log_step("✅ Todos los pacientes tienen NIF")
+        if not tiene_errores:
+            log_step("✅ Todos los pacientes tienen NIF")
 
         # ------------------------------------------------------------
         # 💾 Exportar según tipo
