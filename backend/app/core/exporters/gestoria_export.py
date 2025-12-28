@@ -17,6 +17,8 @@ def build_gestoria_excel(
     export_dir: str,
     log_fn=print,
     use_auto_numbering: bool = True,
+    invoice_prefix: str = "",
+    invoice_start_number: int = 1,
 ):
     """
     Genera el Excel de exportación para Gestoría con el formato completo (20 columnas solicitadas).
@@ -68,9 +70,14 @@ def build_gestoria_excel(
         # ========================================
         # 1. NÚMERO DE FACTURA
         # ========================================
-        if use_auto_numbering:
+        if use_auto_numbering and invoice_prefix:
+            # Usar la numeración personalizada del usuario
+            num_factura = f"{invoice_prefix}{(invoice_start_number + contador - 1):04d}"
+        elif use_auto_numbering:
+            # Usar numeración por defecto basada en fecha
             num_factura = f"F{fecha_dt.strftime('%y%m')}{contador:04d}"
         else:
+            # Sin numeración automática
             num_factura = "PR%%%%"
         
         # ========================================
