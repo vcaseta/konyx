@@ -44,6 +44,21 @@ def register_failed_export():
         log_step(f"⚠️ No se pudo registrar la exportación fallida: {e}")
 
 
+def normalize_column_name(name: str) -> str:
+    """Normaliza nombre de columna para comparación."""
+    return name.strip().lower().replace("á", "a").replace("é", "e").replace("í", "i").replace("ó", "o").replace("ú", "u")
+
+
+def find_column(df: pd.DataFrame, possible_names: list) -> str:
+    """Busca una columna en el DataFrame ignorando mayúsculas y tildes."""
+    cols_map = {normalize_column_name(c): c for c in df.columns}
+    for name in possible_names:
+        normalized = normalize_column_name(name)
+        if normalized in cols_map:
+            return cols_map[normalized]
+    return None
+
+
 # ============================================================
 # 🚀 INICIO DE EXPORTACIÓN
 # ============================================================
@@ -71,18 +86,22 @@ async def start_export(
         # 🔢 Numeración automática
         # ------------------------------------------------------------
         use_auto = use_auto_numbering.lower() == "true"
-        next_number = ""
+        invoice_prefix = ""
+        invoice_start_number = 1
+        
         if use_auto and last_invoice_number:
             m = re.search(r"(\d+)$", last_invoice_number)
             if m:
-                prefix = last_invoice_number[: m.start(1)]
-                num = int(m.group(1)) + 1
-                next_number = f"{prefix}{num:0{len(m.group(1))}d}"
+                invoice_prefix = last_invoice_number[: m.start(1)]
+                invoice_start_number = int(m.group(1)) + 1
+                next_number = f"{invoice_prefix}{invoice_start_number:0{len(m.group(1))}d}"
                 log_step(f"🧾 Numeración automática activa. Siguiente número: {next_number}")
+                log_step(f"   Prefijo: '{invoice_prefix}' | Inicio: {invoice_start_number}")
             else:
                 log_step("⚠️ No se detectó número al final del valor proporcionado.")
+                use_auto = False
         else:
-            log_step("🔢 Numeración automática desactivada (Holded asignará número).")
+            log_step("🔢 Numeración automática desactivada (se usará PR%%%%).")
 
         # ------------------------------------------------------------
         # 🗂️ Guardar archivos de entrada
@@ -124,17 +143,58 @@ async def start_export(
             raise HTTPException(status_code=400, detail=f"Formato de importación desconocido: {formatoImport}")
 
         # ------------------------------------------------------------
-        # 🔗 Combinar datos
+        # 🔗 COMBINAR DATOS (MERGE CORREGIDO)
         # ------------------------------------------------------------
         merged = df_ses.copy()
+        
         if not df_con.empty:
-            merged = merged.merge(
-                df_con,
+            log_step("🔗 Combinando sesiones con contactos...")
+            
+            # Detectar columnas de nombre en ambos DataFrames
+            col_paciente_ses = find_column(df_ses, ["paciente", "nombre paciente", "cliente", "nombre"])
+            col_nombre_con = find_column(df_con, ["nombre", "nombre completo", "paciente"])
+            
+            if not col_paciente_ses:
+                log_step("⚠️ No se encontró columna de paciente en sesiones. Usando primera columna.")
+                col_paciente_ses = df_ses.columns[0]
+            
+            if not col_nombre_con:
+                log_step("⚠️ No se encontró columna de nombre en contactos. Usando primera columna.")
+                col_nombre_con = df_con.columns[0]
+            
+            log_step(f"   📋 Merge: Sesiones['{col_paciente_ses}'] ← Contactos['{col_nombre_con}']")
+            
+            # Normalizar nombres para el merge (eliminar espacios extra, mayúsculas)
+            df_ses_temp = df_ses.copy()
+            df_con_temp = df_con.copy()
+            
+            df_ses_temp['_nombre_norm'] = df_ses_temp[col_paciente_ses].astype(str).str.strip().str.lower()
+            df_con_temp['_nombre_norm'] = df_con_temp[col_nombre_con].astype(str).str.strip().str.lower()
+            
+            # Hacer el merge por nombre normalizado
+            merged = df_ses_temp.merge(
+                df_con_temp,
                 how="left",
-                left_on="Nombre" if "Nombre" in df_ses.columns else df_ses.columns[0],
-                right_on="Nombre" if "Nombre" in df_con.columns else df_con.columns[0],
+                left_on="_nombre_norm",
+                right_on="_nombre_norm",
                 suffixes=("", "_contacto"),
             )
+            
+            # Eliminar columnas temporales
+            merged = merged.drop(columns=['_nombre_norm'], errors='ignore')
+            
+            # Reportar estadísticas del merge
+            matched = merged[col_nombre_con].notna().sum()
+            total = len(merged)
+            log_step(f"   ✅ Merge completado: {matched}/{total} sesiones con datos de contacto ({matched/total*100:.1f}%)")
+            
+            if matched < total:
+                unmatched = total - matched
+                log_step(f"   ⚠️ {unmatched} sesiones sin datos de contacto (nombres no coinciden)")
+        else:
+            log_step("ℹ️ No se proporcionó archivo de contactos. Se usarán solo datos de sesiones.")
+        
+        # Rellenar valores nulos con cadenas vacías
         merged.fillna("", inplace=True)
 
         # ------------------------------------------------------------
@@ -143,7 +203,39 @@ async def start_export(
         log_step("🔍 Validando y completando contactos con Groq...")
         merged = validate_and_enrich_contacts(merged, log_step)
 
-              # ------------------------------------------------------------
+        # ------------------------------------------------------------
+        # 🚨 VALIDACIÓN DE NIF OBLIGATORIO
+        # ------------------------------------------------------------
+        log_step("🔍 Validando que todos los pacientes tengan NIF...")
+        
+        # Buscar columna de NIF
+        col_nif = find_column(merged, ["NIF", "DNI", "Documento de identidad", "Documento"])
+        
+        if col_nif:
+            sin_nif = merged[merged[col_nif].astype(str).str.strip() == ""]
+            if len(sin_nif) > 0:
+                pacientes_sin_nif = []
+                col_paciente = find_column(merged, ["paciente", "nombre", "nombre paciente"])
+                
+                for idx, row in sin_nif.iterrows():
+                    nombre = str(row.get(col_paciente, f"Fila {idx}")).strip()
+                    pacientes_sin_nif.append(nombre)
+                
+                error_msg = f"❌ ERROR: {len(sin_nif)} paciente(s) sin NIF/DNI. No se puede continuar.\n\n"
+                error_msg += "Pacientes sin NIF:\n"
+                error_msg += "\n".join(f"  - {p}" for p in pacientes_sin_nif[:10])
+                if len(pacientes_sin_nif) > 10:
+                    error_msg += f"\n  ... y {len(pacientes_sin_nif) - 10} más"
+                
+                log_step(error_msg)
+                register_failed_export()
+                raise HTTPException(status_code=400, detail=error_msg)
+        else:
+            log_step("⚠️ No se encontró columna de NIF en los datos")
+        
+        log_step("✅ Todos los pacientes tienen NIF")
+
+        # ------------------------------------------------------------
         # 💾 Exportar según tipo
         # ------------------------------------------------------------
         if formatoExport.lower() == "holded":
@@ -166,13 +258,14 @@ async def start_export(
                 cuenta,
                 EXPORT_DIR,
                 log_step,
-                use_auto_numbering=use_auto,   # 👈 NUEVA LÍNEA CLAVE
+                use_auto_numbering=use_auto,
+                invoice_prefix=invoice_prefix,
+                invoice_start_number=invoice_start_number,
             )
             log_step(f"✅ Archivo Excel generado: {filename}")
 
         else:
             raise HTTPException(status_code=400, detail=f"Formato de exportación desconocido: {formatoExport}")
-
 
         # ------------------------------------------------------------
         # 📈 Actualizar estadísticas
@@ -185,6 +278,13 @@ async def start_export(
         # ------------------------------------------------------------
         # 📡 Evento final SSE
         # ------------------------------------------------------------
+        next_number = ""
+        if use_auto:
+            # Calcular el siguiente número después de procesar todas las facturas
+            total_facturas = len(merged)
+            next_num = invoice_start_number + total_facturas
+            next_number = f"{invoice_prefix}{next_num:04d}"
+
         progress_queue.append({
             "type": "end",
             "file": filename,
