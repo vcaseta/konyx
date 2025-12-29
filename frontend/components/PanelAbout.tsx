@@ -22,14 +22,14 @@ export function PanelAbout() {
           <p>
             <strong>Contacto:</strong>{" "}
             <a
-              href="mailto:info@enpluralpicologia.com"
+              href="mailto:kissorotarragona@gmail.com"
               className="text-indigo-600 hover:underline"
             >
               info@enpluralpsicologia.com
             </a>
           </p>
           <p>
-            <strong>Versión:</strong> 2.2.24
+            <strong>Versión:</strong> 2.3.10
           </p>
           <p>
             <strong>Fecha de creación:</strong> Octubre 2025
