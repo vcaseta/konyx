@@ -1,5 +1,6 @@
 import pandas as pd
 import requests
+import time
 from datetime import datetime
 from app.core.persistence import load_data
 from .holded_export import build_holded_csv
@@ -7,6 +8,13 @@ from ._utils_cols import get_patient_col, get_therapist_col, pick_col
 
 HOLDED_API_BASE = "https://api.holded.com/api/invoicing/v1/documents"
 HOLDED_CONTACTS_API = "https://api.holded.com/api/contacts/v1/contacts"
+
+# Delay entre llamadas para evitar rate limiting (en segundos)
+API_DELAY = 0.5
+
+# Flag para habilitar/deshabilitar creación de contactos
+# Si tienes problemas con la API de contactos, cambia a False
+ENABLE_CONTACT_CREATION = False
 
 
 def normalize_column_name(name: str) -> str:
@@ -35,12 +43,25 @@ def get_or_create_contact(contact_data: dict, headers: dict, log_step) -> str:
         if nif:
             search_url = f"{HOLDED_CONTACTS_API}?vatnumber={nif}"
             r = requests.get(search_url, headers=headers, timeout=10)
+            
+            # Verificar respuesta exitosa
             if r.status_code == 200:
-                contacts = r.json()
-                if contacts and len(contacts) > 0:
-                    contact_id = contacts[0].get("id")
-                    log_step(f"   📋 Contacto encontrado: {contact_data['name']} (NIF: {nif})")
-                    return contact_id
+                try:
+                    # Intentar parsear JSON
+                    contacts = r.json()
+                    if contacts and len(contacts) > 0:
+                        contact_id = contacts[0].get("id")
+                        log_step(f"   📋 Contacto encontrado: {contact_data['name']} (NIF: {nif})")
+                        return contact_id
+                except ValueError:
+                    # Respuesta vacía o no es JSON válido
+                    log_step(f"   ℹ️  Contacto no encontrado en búsqueda (NIF: {nif})")
+            elif r.status_code == 404:
+                # No encontrado es normal
+                log_step(f"   ℹ️  Contacto no existe (NIF: {nif})")
+            else:
+                # Error inesperado
+                log_step(f"   ⚠️ Error buscando contacto: {r.status_code}")
         
         # 2. Si no existe, crear contacto nuevo
         log_step(f"   ➕ Creando contacto nuevo: {contact_data['name']}")
@@ -72,15 +93,31 @@ def get_or_create_contact(contact_data: dict, headers: dict, log_step) -> str:
         r = requests.post(HOLDED_CONTACTS_API, json=contact_payload, headers=headers, timeout=15)
         
         if r.status_code in [200, 201]:
-            contact_id = r.json().get("id")
-            log_step(f"   ✅ Contacto creado: {contact_data['name']}")
-            return contact_id
+            try:
+                response_data = r.json()
+                contact_id = response_data.get("id")
+                if contact_id:
+                    log_step(f"   ✅ Contacto creado: {contact_data['name']}")
+                    return contact_id
+                else:
+                    log_step(f"   ⚠️ Contacto creado pero sin ID retornado")
+                    return None
+            except ValueError:
+                log_step(f"   ⚠️ Contacto posiblemente creado pero respuesta inválida")
+                return None
         else:
-            log_step(f"   ⚠️ Error creando contacto {contact_data['name']}: {r.status_code} - {r.text[:200]}")
+            error_text = r.text[:200] if r.text else "Sin detalles"
+            log_step(f"   ⚠️ Error {r.status_code} creando contacto: {error_text}")
             return None
             
+    except requests.exceptions.Timeout:
+        log_step(f"   ⚠️ Timeout al procesar contacto {contact_data.get('name', 'desconocido')}")
+        return None
+    except requests.exceptions.RequestException as e:
+        log_step(f"   ⚠️ Error de conexión procesando contacto: {e}")
+        return None
     except Exception as e:
-        log_step(f"   ⚠️ Error procesando contacto {contact_data.get('name', 'desconocido')}: {e}")
+        log_step(f"   ⚠️ Error inesperado procesando contacto: {e}")
         return None
 
 
@@ -102,15 +139,23 @@ def send_to_holded(empresa: str, merged_df, fecha_factura: str, proyecto: str, c
     api_key = None
     empresa_nombre = ""
     
+    # Normalizar nombre de empresa
+    empresa_lower = empresa.strip().lower()
+    
+    log_step(f"🔍 Detectando empresa: '{empresa}'")
+    
     # Determinar empresa y API key
-    if empresa.strip().lower().startswith("kissoro"):
-        api_key = data.get("apiKissoro", "")
+    if "kissoro" in empresa_lower:
+        api_key = data.get("apiKissoro", "").strip()
         empresa_nombre = "Kissoro"
-    elif "plural" in empresa.strip().lower():
-        api_key = data.get("apiEnPlural", "")
+        log_step(f"   ✅ Empresa detectada: Kissoro")
+    elif "plural" in empresa_lower or "psicologo" in empresa_lower or "psicologia" in empresa_lower:
+        api_key = data.get("apiEnPlural", "").strip()
         empresa_nombre = "En Plural Psicología"
+        log_step(f"   ✅ Empresa detectada: En Plural Psicología")
     else:
-        log_step(f"⚠️ Empresa desconocida: {empresa}. Se genera solo CSV.")
+        log_step(f"⚠️ Empresa desconocida: '{empresa}'. Se genera solo CSV.")
+        log_step(f"   Empresas válidas: 'Kissoro' o 'En Plural Psicología'")
         return build_holded_csv(merged_df, empresa, fecha_factura, proyecto, cuenta, export_dir, log_step)
     
     # ============================================================
@@ -123,11 +168,14 @@ def send_to_holded(empresa: str, merged_df, fecha_factura: str, proyecto: str, c
     # ============================================================
     # 2. VERIFICAR API KEY
     # ============================================================
-    if not api_key or api_key.strip() == "":
-        log_step(f"⚠️ No hay API configurada para {empresa_nombre}. Solo se generó CSV.")
+    if not api_key or api_key == "":
+        log_step(f"⚠️ No hay API key configurada para {empresa_nombre}")
+        log_step(f"   Por favor configura 'apiKissoro' o 'apiEnPlural' en el panel de configuración")
+        log_step(f"   Solo se generó CSV de respaldo")
         return filename
     
     log_step(f"🔑 API de Holded configurada para {empresa_nombre}")
+    log_step(f"   API Key: {api_key[:10]}...{api_key[-4:] if len(api_key) > 14 else ''}")
     
     # ============================================================
     # 3. PREPARAR COLUMNAS
@@ -206,15 +254,23 @@ def send_to_holded(empresa: str, merged_df, fecha_factura: str, proyecto: str, c
             }
             
             # ========================================
-            # 5.2. CREAR O BUSCAR CONTACTO
+            # 5.2. CREAR O BUSCAR CONTACTO (OPCIONAL)
             # ========================================
-            contact_id = get_or_create_contact(contact_data, headers, log_step)
+            contact_id = None
             
-            if contact_id:
-                if "creando contacto" in log_step.__self__.__dict__.get("_last_log", ""):  # type: ignore
-                    stats["contactos_creados"] += 1
-                else:
-                    stats["contactos_encontrados"] += 1
+            if ENABLE_CONTACT_CREATION:
+                contact_id = get_or_create_contact(contact_data, headers, log_step)
+                
+                # Pequeño delay para evitar rate limiting
+                time.sleep(API_DELAY)
+                
+                if contact_id:
+                    if "creando contacto" in str(log_step.__dict__):  # type: ignore
+                        stats["contactos_creados"] += 1
+                    else:
+                        stats["contactos_encontrados"] += 1
+            else:
+                log_step(f"   ℹ️  Creación de contactos deshabilitada (usando solo nombre)")
             
             # ========================================
             # 5.3. PREPARAR ITEMS DE LA FACTURA
@@ -277,6 +333,9 @@ def send_to_holded(empresa: str, merged_df, fecha_factura: str, proyecto: str, c
             
             # Enviar factura
             r = requests.post(HOLDED_API_BASE, json=invoice_payload, headers=headers, timeout=15)
+            
+            # Delay para evitar rate limiting
+            time.sleep(API_DELAY)
             
             if r.status_code in [200, 201]:
                 log_step(f"   ✅ Factura creada: {len(items)} sesiones, total {total_factura:.2f}€")
