@@ -330,21 +330,71 @@ async def start_export(
 
 
 # ============================================================
-# 📡 STREAMING SSE
+# 📡 STREAMING SSE - MEJORADO
 # ============================================================
 @router.get("/progress")
 async def export_progress():
     async def event_generator():
-        while True:
-            if progress_queue:
-                msg = progress_queue.pop(0)
-                if isinstance(msg, dict):
-                    yield f"data: {json.dumps(msg)}\n\n"
+        sent_messages = 0
+        empty_count = 0
+        max_empty = 240  # Máximo 120 segundos esperando (240 * 0.5s)
+        
+        print("🔌 Cliente SSE conectado")
+        
+        try:
+            while True:
+                if progress_queue:
+                    empty_count = 0  # Reset contador si hay mensajes
+                    msg = progress_queue.pop(0)
+                    
+                    try:
+                        if isinstance(msg, dict):
+                            yield f"data: {json.dumps(msg)}\n\n"
+                        else:
+                            yield f"data: {json.dumps({'type': 'log', 'step': msg})}\n\n"
+                        
+                        sent_messages += 1
+                        
+                        # Si es evento final, terminar
+                        if isinstance(msg, dict) and msg.get("type") == "end":
+                            print(f"✅ SSE finalizado. Enviados {sent_messages} mensajes.")
+                            break
+                            
+                    except Exception as e:
+                        print(f"⚠️ Error enviando evento SSE: {e}")
+                        break
                 else:
-                    yield f"data: {json.dumps({'type': 'log', 'step': msg})}\n\n"
-            else:
-                await asyncio.sleep(0.5)
-    return StreamingResponse(event_generator(), media_type="text/event-stream")
+                    empty_count += 1
+                    
+                    # Cada 10 iteraciones (5 segundos), enviar keepalive
+                    if empty_count % 10 == 0:
+                        try:
+                            yield f": keepalive\n\n"
+                        except Exception as e:
+                            print(f"⚠️ Conexión SSE cerrada por el cliente")
+                            break
+                    
+                    # Si llevamos demasiado tiempo esperando, cerrar
+                    if empty_count >= max_empty:
+                        print(f"⚠️ SSE timeout después de {empty_count * 0.5}s sin mensajes")
+                        break
+                        
+                    await asyncio.sleep(0.5)
+        
+        except Exception as e:
+            print(f"❌ Error en generador SSE: {e}")
+        finally:
+            print(f"🔌 Cliente SSE desconectado ({sent_messages} mensajes enviados)")
+    
+    return StreamingResponse(
+        event_generator(), 
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        }
+    )
 
 
 # ============================================================
