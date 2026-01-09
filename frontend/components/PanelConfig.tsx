@@ -87,7 +87,7 @@ export const PanelConfig: React.FC<PanelConfigProps> = ({
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`, // ✅ Enviar token JWT
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           old_password: passActual,
@@ -99,14 +99,10 @@ export const PanelConfig: React.FC<PanelConfigProps> = ({
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.detail || "Error al cambiar la contraseña");
 
-      // ✅ Mostrar mensaje de éxito
       setPassMsg({ type: "ok", text: data.message || "Contraseña actualizada correctamente" });
-
-      // ✅ Actualizar valores locales y sesión
       setPasswordGlobal(passNueva);
       sessionStorage.setItem("konyx_password", passNueva);
 
-      // ✅ Limpiar campos
       setPassActual("");
       setPassNueva("");
       setPassConfirma("");
@@ -118,43 +114,58 @@ export const PanelConfig: React.FC<PanelConfigProps> = ({
   // ⚙️ Cambiar APIs
   const handleApiChange = async (tipo: "kissoro" | "enplural" | "groq", nueva: string) => {
     setPassMsg(null);
+    
     if (!nueva.trim()) {
       setPassMsg({ type: "err", text: "Introduce una API válida" });
       return;
     }
 
     try {
+      const token = sessionStorage.getItem("konyx_token");
+      
+      // ✅ VALIDAR QUE EXISTA TOKEN
+      if (!token) {
+        setPassMsg({ type: "err", text: "Sesión expirada. Inicia sesión nuevamente." });
+        return;
+      }
+
       const body: any = {};
       if (tipo === "kissoro") body.apiKissoro = nueva;
       if (tipo === "enplural") body.apiEnPlural = nueva;
       if (tipo === "groq") body.apiGroq = nueva;
 
-      const token = sessionStorage.getItem("konyx_token");
       const res = await fetch(`${BACKEND}/auth/update_apis`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: token ? `Bearer ${token}` : "",
+          Authorization: `Bearer ${token}`,  // ✅ Siempre enviar Bearer
         },
         body: JSON.stringify(body),
       });
 
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.detail || "Error al actualizar API");
+      
+      if (!res.ok) {
+        throw new Error(data.detail || "Error al actualizar API");
+      }
 
       setPassMsg({ type: "ok", text: "API actualizada correctamente" });
 
+      // ✅ ACTUALIZAR VALORES Y LIMPIAR CAMPOS
       if (tipo === "kissoro") {
-        setApiKissoroVigente(data.apiKissoro || nueva);
-        localStorage.setItem("apiKissoro", data.apiKissoro || nueva);
+        setApiKissoroVigente(nueva);
+        setApiKissoroNuevo("");  // ⬅️ Limpiar campo
+        localStorage.setItem("apiKissoro", nueva);
       }
       if (tipo === "enplural") {
-        setApiEnPluralVigente(data.apiEnPlural || nueva);
-        localStorage.setItem("apiEnPlural", data.apiEnPlural || nueva);
+        setApiEnPluralVigente(nueva);
+        setApiEnPluralNuevo("");  // ⬅️ Limpiar campo
+        localStorage.setItem("apiEnPlural", nueva);
       }
       if (tipo === "groq") {
-        setApiGroqVigente(data.apiGroq || nueva);
-        localStorage.setItem("apiGroq", data.apiGroq || nueva);
+        setApiGroqVigente(nueva);
+        setApiGroqNuevo("");  // ⬅️ Limpiar campo
+        localStorage.setItem("apiGroq", nueva);
       }
     } catch (err: any) {
       setPassMsg({ type: "err", text: err.message || "Error inesperado" });
@@ -174,7 +185,6 @@ export const PanelConfig: React.FC<PanelConfigProps> = ({
       const data = await res.json();
       alert(data.message || "Limpieza completada");
 
-      // 🔁 Actualizar contador tras limpiar (espera 0.5s para sincronizar)
       setTimeout(async () => {
         const check = await fetch(`${BACKEND}/export/cleanup`);
         const info = await check.json();
@@ -186,9 +196,6 @@ export const PanelConfig: React.FC<PanelConfigProps> = ({
     }
   };
 
-  // --------------------------------------------------------------
-  // Render
-  // --------------------------------------------------------------
   return (
     <div className="bg-white/80 rounded-2xl shadow-lg p-6 backdrop-blur-sm space-y-6">
       <h3 className="text-xl font-bold text-indigo-700 text-center mb-2">
@@ -331,5 +338,3 @@ export const PanelConfig: React.FC<PanelConfigProps> = ({
     </div>
   );
 };
-;
-
